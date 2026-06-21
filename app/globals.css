@@ -1,0 +1,230 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+  --radius: 0.5rem;
+}
+
+/* Global border color removed - apply explicitly where needed */
+
+body {
+  @apply bg-background text-foreground antialiased;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Glassmorphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+}
+
+.glass-dark {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
+}
+
+.glass-card {
+  @apply glass rounded-xl transition-all duration-300 hover:shadow-xl hover:scale-[1.02];
+}
+
+/* Institutional button styles */
+.btn {
+  @apply px-6 py-2.5 rounded-lg font-medium transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+}
+
+.btn-primary {
+  @apply bg-primary text-primary-foreground hover:bg-blue-700;
+  @apply focus:ring-primary shadow-md hover:shadow-lg;
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-slate-200;
+  @apply focus:ring-secondary border border-border;
+}
+
+.btn-ghost {
+  @apply bg-transparent hover:bg-secondary text-foreground;
+  @apply focus:ring-muted;
+}
+
+/* Smooth transitions */
+.smooth-transition {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Input styles */
+.input {
+  @apply w-full px-4 py-2.5 rounded-lg border border-input;
+  @apply bg-white text-foreground placeholder:text-muted-foreground;
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent;
+  @apply transition-all duration-200;
+}
+
+/* Card styles */
+.card {
+  @apply bg-card text-card-foreground rounded-xl border border-border;
+  @apply shadow-sm hover:shadow-md transition-shadow duration-300;
+}
+
+/* Sidebar navigation */
+.nav-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-lg;
+  @apply text-muted-foreground hover:text-foreground hover:bg-secondary;
+  @apply transition-all duration-200 cursor-pointer;
+}
+
+.nav-item.active {
+  background-color: rgba(37, 99, 235, 0.1);
+  @apply text-primary font-medium;
+}
+
+/* Form input */
+.form-input {
+  @apply w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground;
+  @apply outline-none transition-colors focus:border-primary;
+}
+
+/* Dashboard stats card */
+.stat-card {
+  @apply glass-card p-6 space-y-2;
+}
+
+.stat-value {
+  @apply text-3xl font-bold text-foreground;
+}
+
+.stat-label {
+  @apply text-sm text-muted-foreground;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-green-100 text-green-800 border border-green-200;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-yellow-800 border border-yellow-200;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-red-800 border border-red-200;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-800 border border-blue-200;
+}
+
+/* Table styles */
+.table-container {
+  @apply w-full overflow-x-auto rounded-lg border border-border;
+}
+
+.table {
+  @apply w-full text-sm;
+}
+
+.table thead {
+  @apply bg-secondary border-b border-border;
+}
+
+.table th {
+  @apply px-4 py-3 text-left font-semibold text-foreground;
+}
+
+.table td {
+  @apply px-4 py-3 border-b border-border text-muted-foreground;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(248, 250, 252, 0.5);
+  @apply transition-colors duration-150;
+}
+
+/* Loading spinner */
+.spinner {
+  @apply inline-block w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin;
+}
+
+/* Hero section */
+.hero-gradient {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.3);
+  @apply rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.5);
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.4s ease-out;
+}

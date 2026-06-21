@@ -1,0 +1,420 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum Division {
+  KEBERSIHAN
+  KESENIAN
+  KEOLAHRAGAAN
+  ROHANI
+}
+
+enum WargaStatus {
+  AKTIF
+  ALUMNI
+}
+
+enum TxType {
+  PEMASUKAN
+  PENGELUARAN
+}
+
+enum BillType {
+  DENDA_PIKET
+  IURAN
+  LAINNYA
+}
+
+enum BillStatus {
+  BELUM_LUNAS
+  LUNAS
+  DIBATALKAN
+}
+
+enum AttendanceStatus {
+  HADIR
+  TIDAK_HADIR
+  IZIN
+}
+
+enum WaStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// Jenis karya tulis ilmiah yang dipublikasikan warga asrama
+enum ScientificWorkType {
+  SKRIPSI
+  TESIS
+  DISERTASI
+  JURNAL
+  ARTIKEL
+  MAKALAH
+  PROCEEDING
+  LAPORAN_PENELITIAN
+  LAINNYA
+}
+
+// Status permintaan akses karya ilmiah dari publik
+enum AccessRequestStatus {
+  PENDING
+  DISETUJUI
+  DITOLAK
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id             String       @id @default(cuid())
+  username       String       @unique
+  passwordHash   String
+  fullName       String
+  phone          String
+  status         WargaStatus  @default(AKTIF)
+  jabatan        String?
+  divisionScope  Division?
+  photoUrl       String?
+  createdById    String?
+  createdBy      User?        @relation("UserCreator", fields: [createdById], references: [id])
+  createdUsers   User[]       @relation("UserCreator")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  roles          UserRole[]
+  uploadedDocuments Document[] @relation("DocumentUploader")
+  authoredPosts  Post[]       @relation("PostAuthor")
+  publishedWorks ScientificWork[] @relation("WorkPublisher")
+  createdActivities Activity[] @relation("ActivityCreator")
+  createdAnnouncements Announcement[] @relation("AnnouncementCreator")
+  updatedProfiles  AsramaProfile[] @relation("ProfileUpdater")
+  generatedPeriods PiketPeriod[] @relation("PeriodGenerator")
+  piketAssignments PiketAssignment[]
+  markedAttendances PiketAttendance[] @relation("AttendanceMarker")
+  fines          Fine[]
+  bills          Bill[]       @relation("BillOwner")
+  settledBills   Bill[]       @relation("BillSettler")
+  transactions   Transaction[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  label       String
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  label     String
+  group     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  fileUrl     String
+  category    String?
+  isPublic    Boolean  @default(false)
+  uploadedById String
+  uploadedBy  User     @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("documents")
+}
+
+// Repositori karya tulis ilmiah warga asrama.
+// Hanya abstrak (PDF) yang diunggah & dipublikasikan; berkas lengkap (skripsi dsb.)
+// diakses melalui mekanisme permintaan akses (AccessRequest).
+model ScientificWork {
+  id                String             @id @default(cuid())
+  title             String
+  authorName        String             // Nama penulis (warga asrama), bisa berbeda dari akun pengunggah
+  authorInstitution String?            // Institusi / kampus penulis
+  type              ScientificWorkType @default(ARTIKEL)
+  year              Int
+  abstractFileUrl   String?            // Path ke berkas abstrak (PDF) yang diunggah
+  titlePageFileUrl  String?            // Path ke berkas halaman judul (PDF)
+  tocFileUrl        String?            // Path ke berkas daftar isi (PDF)
+  isPublished       Boolean            @default(true)
+  publishedById   String
+  publishedBy     User               @relation("WorkPublisher", fields: [publishedById], references: [id])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  accessRequests  AccessRequest[]
+
+  @@index([year])
+  @@index([type])
+  @@map("scientific_works")
+}
+
+// Permintaan akses publik terhadap karya ilmiah (berkas lengkap)
+model AccessRequest {
+  id          String              @id @default(cuid())
+  workId      String
+  work        ScientificWork      @relation(fields: [workId], references: [id], onDelete: Cascade)
+  name        String              // Nama pemohon
+  whatsapp    String              // Nomor WhatsApp
+  email       String              // Email pemohon
+  purpose     String              // Keperluan
+  institution String              // Institusi / Kampus
+  status      AccessRequestStatus @default(PENDING)
+  note        String?             // Catatan dari admin (opsional)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([workId])
+  @@index([status])
+  @@map("access_requests")
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  coverUrl    String?
+  images      String[]
+  publishedAt DateTime?
+  isPublic    Boolean   @default(false)
+  authorId    String
+  author      User      @relation("PostAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("posts")
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  division    Division?
+  title       String
+  description String?
+  location    String?
+  startAt     DateTime?
+  endAt       DateTime?
+  coverUrl    String?
+  images      String[]
+  createdById String
+  createdBy   User     @relation("ActivityCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("activities")
+}
+
+model AsramaProfile {
+  id          String   @id @default(cuid())
+  visi        String?
+  misi        String?
+  sejarah     String?
+  about       String?
+  updatedById String
+  updatedBy   User     @relation("ProfileUpdater", fields: [updatedById], references: [id])
+  updatedAt   DateTime @updatedAt
+
+  @@map("asrama_profile")
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  division    Division
+  title       String
+  body        String
+  pinned      Boolean  @default(false)
+  createdById String
+  createdBy   User     @relation("AnnouncementCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("announcements")
+}
+
+model PiketPeriod {
+  id                 String   @id @default(cuid())
+  startDate          DateTime
+  endDate            DateTime
+  kerjaBaktiCount    Int
+  kerjaBaktiWeekday  Int      @default(0)
+  peoplePerDay       Int      @default(1)
+  finePerDay         Int
+  isActive           Boolean  @default(true)
+  generatedById      String
+  generatedBy        User     @relation("PeriodGenerator", fields: [generatedById], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  kerjaBaktiDates    PiketKerjaBakti[]
+  assignments        PiketAssignment[]
+  fines              Fine[]
+
+  @@map("piket_periods")
+}
+
+model PiketKerjaBakti {
+  id       String      @id @default(cuid())
+  periodId String
+  date     DateTime
+  period   PiketPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, date])
+  @@map("piket_kerja_bakti")
+}
+
+model PiketAssignment {
+  id       String      @id @default(cuid())
+  periodId String
+  userId   String
+  date     DateTime
+  sector   Int         @default(0) // 0 = Sektor A, 1 = Sektor B, 2 = Sektor C, ...
+  period   PiketPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  attendance PiketAttendance?
+
+  @@unique([periodId, date, userId])
+  @@map("piket_assignments")
+}
+
+model PiketAttendance {
+  id           String           @id @default(cuid())
+  assignmentId String           @unique
+  status       AttendanceStatus
+  markedAt     DateTime         @default(now())
+  markedById   String?
+  assignment   PiketAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  markedBy     User?            @relation("AttendanceMarker", fields: [markedById], references: [id])
+
+  @@map("piket_attendances")
+}
+
+model Fine {
+  id         String      @id @default(cuid())
+  userId     String
+  periodId   String
+  daysMissed Int
+  amount     Int
+  billId     String?
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period     PiketPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  bill       Bill?       @relation(fields: [billId], references: [id])
+  createdAt  DateTime    @default(now())
+
+  @@map("fines")
+}
+
+model Bill {
+  id          String     @id @default(cuid())
+  userId      String
+  type        BillType
+  title       String
+  amount      Int
+  status      BillStatus @default(BELUM_LUNAS)
+  dueDate     DateTime?
+  settledAt   DateTime?
+  settledById String?
+  note        String?
+  user        User       @relation("BillOwner", fields: [userId], references: [id], onDelete: Cascade)
+  settledBy   User?      @relation("BillSettler", fields: [settledById], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  fines       Fine[]
+  transaction Transaction?
+
+  @@map("bills")
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  type          TxType
+  category      String?
+  amount        Int
+  description   String?
+  occurredAt    DateTime
+  relatedBillId String?  @unique
+  createdById   String
+  relatedBill   Bill?    @relation(fields: [relatedBillId], references: [id])
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("transactions")
+}
+
+model WaMessage {
+  id          String   @id @default(cuid())
+  toPhone     String
+  body        String
+  status      WaStatus @default(PENDING)
+  attempts    Int      @default(0)
+  relatedType String?
+  relatedId   String?
+  sentAt      DateTime?
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@map("wa_messages")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  actor     User     @relation(fields: [actorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}

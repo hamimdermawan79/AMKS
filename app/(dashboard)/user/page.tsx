@@ -1,0 +1,204 @@
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { isSuperAdmin } from '@/lib/rbac/can';
+import Link from 'next/link';
+import UserDashboard from './user-dashboard';
+
+export default async function DashboardPage() {
+  const session = await auth();
+
+  // Fetch user roles
+  const userWithRoles = await db.user.findUnique({
+    where: { id: session?.user.id },
+    select: {
+      roles: {
+        select: {
+          role: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  const roleNames = userWithRoles?.roles.map((r) => r.role.name) ?? [];
+  const isKetua = roleNames.includes('KETUA');
+  const isWargaOnly = roleNames.length === 1 && roleNames[0] === 'WARGA';
+
+  // Warga only → plain user view
+  if (isWargaOnly) {
+    return <UserDashboard session={session} showAdminButton={false} />;
+  }
+
+  // Ketua → user view + admin access button
+  if (isKetua) {
+    return <UserDashboard session={session} showAdminButton={true} />;
+  }
+
+  // SuperAdmin, Sekretaris, Bendahara, DivHead → admin panel
+  return <AdminDashboard session={session} />;
+}
+
+// ==================== ADMIN DASHBOARD ====================
+async function AdminDashboard({ session }: { session: any }) {
+  // System stats
+  const [totalUsers, activeUsers, alumniUsers, roleCounts] = await Promise.all([
+    db.user.count(),
+    db.user.count({ where: { status: 'AKTIF' } }),
+    db.user.count({ where: { status: 'ALUMNI' } }),
+    db.role.findMany({
+      include: { users: true },
+    }),
+  ]);
+
+  // Recent registered users
+  const recentUsers = await db.user.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, username: true, fullName: true, status: true, createdAt: true },
+  });
+
+  // Active piket periods
+  const activePiketPeriods = await db.piketPeriod.count({
+    where: { isActive: true },
+  });
+
+  // Total bills outstanding
+  const outstandingBills = await db.bill.count({
+    where: { status: 'BELUM_LUNAS' },
+  });
+
+  const isSuper = await isSuperAdmin({
+    id: session.user.id,
+    username: session.user.username,
+  });
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Administrator Panel</h1>
+        <p className="text-sm text-muted-foreground">
+          System overview &amp; quick access. Logged in as{' '}
+          <span className="font-medium text-foreground">{session.user.fullName}</span>
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatBox label="Total Users" value={totalUsers} />
+        <StatBox label="Active" value={activeUsers} />
+        <StatBox label="Alumni" value={alumniUsers} />
+        <StatBox
+          label="Outstanding Bills"
+          value={outstandingBills}
+          valueClass="text-red-600"
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white border border-border p-6">
+        <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Link
+            href="/admin/warga"
+            className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
+          >
+            <p className="font-medium text-foreground text-sm">User Management</p>
+            <p className="text-xs text-muted-foreground mt-1">Add, edit, delete users</p>
+          </Link>
+          {isSuper && (
+            <Link
+              href="/admin/pengaturan"
+              className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
+            >
+              <p className="font-medium text-foreground text-sm">Settings</p>
+              <p className="text-xs text-muted-foreground mt-1">Roles &amp; permissions</p>
+            </Link>
+          )}
+          <Link
+            href="/admin/keuangan"
+            className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
+          >
+            <p className="font-medium text-foreground text-sm">Finance</p>
+            <p className="text-xs text-muted-foreground mt-1">Transactions &amp; bills</p>
+          </Link>
+          <Link
+            href="/admin/kebersihan"
+            className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
+          >
+            <p className="font-medium text-foreground text-sm">Piket System</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {activePiketPeriods} active period{activePiketPeriods !== 1 ? 's' : ''}
+            </p>
+          </Link>
+        </div>
+      </div>
+
+      {/* System Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Recent Registrations */}
+        <div className="bg-white border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-foreground">Recent Registrations</h2>
+            <Link href="/admin/warga" className="text-xs text-primary hover:underline">
+              View all
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {recentUsers.map((user) => (
+              <div key={user.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{user.fullName}</p>
+                  <p className="text-xs text-muted-foreground">@{user.username}</p>
+                </div>
+                <span
+                  className={`text-xs px-2 py-0.5 font-medium ${
+                    user.status === 'AKTIF'
+                      ? 'bg-green-50 text-green-700'
+                      : 'bg-yellow-50 text-yellow-700'
+                  }`}
+                >
+                  {user.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Role Distribution */}
+        <div className="bg-white border border-border p-6">
+          <h2 className="font-semibold text-foreground mb-4">Role Distribution</h2>
+          <div className="space-y-3">
+            {roleCounts.map((role) => (
+              <div key={role.id} className="flex items-center justify-between">
+                <span className="text-sm text-foreground">{role.label}</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  {role.users.length}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================== HELPERS ====================
+function StatBox({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string;
+  value: number;
+  valueClass?: string;
+}) {
+  return (
+    <div className="border border-border p-5 bg-white">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className={`text-3xl font-bold mt-1 ${valueClass || 'text-foreground'}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
