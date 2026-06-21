@@ -4,13 +4,21 @@ import { isSuperAdmin } from '@/lib/rbac/can';
 import Link from 'next/link';
 import UserDashboard from './user-dashboard';
 
+const DIVISION_SLUGS: Record<string, string> = {
+  KEBERSIHAN: 'kebersihan',
+  KESENIAN: 'kesenian',
+  KEOLAHRAGAAN: 'keolahragaan',
+  ROHANI: 'rohani',
+};
+
 export default async function DashboardPage() {
   const session = await auth();
 
-  // Fetch user roles
+  // Fetch user roles + division scope (for Ketua Divisi)
   const userWithRoles = await db.user.findUnique({
     where: { id: session?.user.id },
     select: {
+      divisionScope: true,
       roles: {
         select: {
           role: { select: { name: true } },
@@ -20,21 +28,37 @@ export default async function DashboardPage() {
   });
 
   const roleNames = userWithRoles?.roles.map((r) => r.role.name) ?? [];
+  const isSuperAdmin = roleNames.includes('SUPERADMIN');
   const isKetua = roleNames.includes('KETUA');
-  const isWargaOnly = roleNames.length === 1 && roleNames[0] === 'WARGA';
+  const isDivisionHead = roleNames.includes('DIVISION_HEAD');
+  const divisionSlug =
+    userWithRoles?.divisionScope && DIVISION_SLUGS[userWithRoles.divisionScope]
+      ? DIVISION_SLUGS[userWithRoles.divisionScope]
+      : null;
 
-  // Warga only → plain user view
-  if (isWargaOnly) {
-    return <UserDashboard session={session} showAdminButton={false} />;
+  // SuperAdmin → full admin system overview
+  if (isSuperAdmin) {
+    return <AdminDashboard session={session} />;
   }
 
-  // Ketua → user view + admin access button
+  // Ketua → user view + global admin access button (full access)
   if (isKetua) {
     return <UserDashboard session={session} showAdminButton={true} />;
   }
 
-  // SuperAdmin, Sekretaris, Bendahara, DivHead → admin panel
-  return <AdminDashboard session={session} />;
+  // Ketua Divisi → user view + a button linking to their own division admin panel
+  if (isDivisionHead && divisionSlug) {
+    return (
+      <UserDashboard
+        session={session}
+        showAdminButton={false}
+        divisionManageHref={`/admin/${divisionSlug}/kelola`}
+      />
+    );
+  }
+
+  // Everyone else — Warga, Sekretaris, Bendahara — plain user dashboard.
+  return <UserDashboard session={session} showAdminButton={false} />;
 }
 
 // ==================== ADMIN DASHBOARD ====================

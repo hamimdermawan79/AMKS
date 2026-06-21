@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { canFromSession, isSuperAdmin } from '@/lib/rbac/can';
+import { canFromSession } from '@/lib/rbac/can';
 import { redirect } from 'next/navigation';
 import KebersihanUserView from './KebersihanUserView';
 
@@ -11,19 +11,8 @@ export default async function KebersihanPage() {
     redirect('/login');
   }
 
-  // SuperAdmin → pure admin tools view (no read-only user page)
-  const isSuper = await isSuperAdmin({
-    id: session.user.id,
-    username: session.user.username,
-  });
-  if (isSuper) {
-    redirect('/admin/kebersihan/kelola');
-  }
-
-  // Ketua / Ketua Divisi Kebersihan get the "Akses Layanan Admin" button
   const canManage = await canFromSession('division:manage:kebersihan', 'KEBERSIHAN');
 
-  // Active piket period with assignments + kerja bakti dates
   const period = await db.piketPeriod.findFirst({
     where: { isActive: true },
     orderBy: { createdAt: 'desc' },
@@ -39,7 +28,6 @@ export default async function KebersihanPage() {
     },
   });
 
-  // Division announcements (pemberitahuan)
   const announcements = await db.announcement.findMany({
     where: { division: 'KEBERSIHAN' },
     orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
@@ -49,42 +37,30 @@ export default async function KebersihanPage() {
 
   const myId = session.user.id;
 
-  // Build schedule grid: unique sorted dates (columns) x sectors (rows)
-  const dateKeys: string[] = [];
-  const seen = new Set<string>();
+  // Build vertical calendar: group assignments by date
+  const dateMap = new Map<string, { sector: number; assignmentId: string; userId: string; fullName: string; isMe: boolean; present: boolean }[]>();
   for (const a of period?.assignments ?? []) {
     const key = a.date.toISOString().slice(0, 10);
-    if (!seen.has(key)) {
-      seen.add(key);
-      dateKeys.push(key);
-    }
-  }
-
-  const sectorCount = period?.peoplePerDay ?? 0;
-
-  // cell lookup: `${dateKey}|${sector}` -> assignment summary
-  const cells: Record<
-    string,
-    {
-      assignmentId: string;
-      userId: string;
-      fullName: string;
-      isMe: boolean;
-      present: boolean;
-    }
-  > = {};
-  for (const a of period?.assignments ?? []) {
-    const key = `${a.date.toISOString().slice(0, 10)}|${a.sector}`;
-    cells[key] = {
+    const list = dateMap.get(key) ?? [];
+    list.push({
+      sector: a.sector,
       assignmentId: a.id,
       userId: a.userId,
       fullName: a.user.fullName,
       isMe: a.userId === myId,
       present: a.attendance?.status === 'HADIR',
-    };
+    });
+    dateMap.set(key, list);
   }
 
-  // Event terdekat: my next piket + next kerja bakti (>= today)
+  const scheduledDates = Array.from(dateMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, sectors]) => ({ date, sectors }));
+
+  const sectorCount = period?.peoplePerDay ?? 0;
+  const sectorLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+
+  // Next piket + next kerja bakti
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -104,7 +80,12 @@ export default async function KebersihanPage() {
     .filter((k) => k.date >= today)
     .sort((x, y) => x.date.getTime() - y.date.getTime())[0];
 
-  // My assignments needing presensi (own + no attendance yet)
+  // All kerja bakti dates in the period (for the schedule grid)
+  const kerjaBaktiDates = (period?.kerjaBaktiDates ?? [])
+    .map((k) => k.date.toISOString().slice(0, 10))
+    .sort();
+
+  // My assignments needing presensi
   const myAssignments = (period?.assignments ?? [])
     .filter((a) => a.userId === myId)
     .map((a) => ({
@@ -119,8 +100,9 @@ export default async function KebersihanPage() {
       canManage={canManage}
       hasPeriod={!!period}
       sectorCount={sectorCount}
-      dateKeys={dateKeys}
-      cells={cells}
+      sectorLabels={sectorLabels}
+      scheduledDates={scheduledDates}
+      kerjaBaktiDates={kerjaBaktiDates}
       announcements={announcements.map((a) => ({
         ...a,
         createdAt: a.createdAt.toISOString(),

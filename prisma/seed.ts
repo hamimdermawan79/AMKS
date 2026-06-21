@@ -118,11 +118,12 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani',
   ],
   SEKRETARIS: [
-    // Access all pages (documents, announcements)
+    // Access all pages (documents, announcements) + manage karya ilmiah & access requests
     'user:create', 'user:read',
     'document:create', 'document:read', 'document:update', 'document:delete',
     'post:create', 'post:read', 'post:update', 'post:delete',
-    'work:read',
+    'work:create', 'work:read', 'work:update', 'work:delete',
+    'access_request:read', 'access_request:manage',
     'activity:read', 'announcement:read',
     'piket:read', 'fine:read', 'finance:read', 'bill:read',
   ],
@@ -144,7 +145,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'announcement:create', 'announcement:read', 'announcement:update', 'announcement:delete',
     'piket:schedule', 'piket:attendance:mark', 'piket:read',
     'fine:read',
-    // Scoped division permissions assigned separately per user
+    // Division management permissions. The role grants all four; `can()` narrows
+    // each head to their own division by matching the user's divisionScope, so a
+    // Kebersihan head can only manage Kebersihan, etc.
+    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani',
   ],
   WARGA: [
     // Read-only

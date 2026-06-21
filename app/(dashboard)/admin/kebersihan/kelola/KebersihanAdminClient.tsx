@@ -14,7 +14,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
-import { createSchedule, addPemberitahuan, deletePemberitahuan } from "../actions";
+import { createSchedule, addPemberitahuan, deletePemberitahuan, deletePiketPeriod } from "../actions";
 
 type Warga = { id: string; fullName: string; username: string };
 
@@ -36,6 +36,11 @@ type Props = {
     pinned: boolean;
     createdAt: string;
   }[];
+  scheduleData: {
+    date: string;
+    sectors: { sector: number; fullName: string }[];
+  }[];
+  sectorCount: number;
 };
 
 const WEEKDAYS = [
@@ -56,10 +61,72 @@ function fmtDate(iso: string) {
   });
 }
 
+function fmtShortDate(iso: string) {
+  const d = new Date(iso);
+  const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+  return {
+    dayLabel: dayNames[d.getDay()],
+    dateStr: `${d.getDate()} ${d.toLocaleDateString("id-ID", { month: "short" })}`,
+  };
+}
+
+function shortName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length > 1 && parts[0].toLowerCase() === "muhammad") {
+    return parts[1];
+  }
+  return parts[0];
+}
+
+function groupScheduleWeeks(
+  data: Props["scheduleData"],
+): { label: string; days: string[]; cellMap: Record<string, string> }[] {
+  const buckets: string[][] = [];
+  let cur: string[] = [];
+  let lastWs = -1;
+
+  for (const item of data) {
+    const d = new Date(item.date);
+    const monday = new Date(d);
+    monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const ws = monday.getTime();
+    if (ws !== lastWs && cur.length > 0) { buckets.push(cur); cur = []; }
+    lastWs = ws;
+    cur.push(item.date);
+  }
+  if (cur.length > 0) buckets.push(cur);
+
+  const cellMap: Record<string, string> = {};
+  for (const item of data) {
+    for (const s of item.sectors) {
+      cellMap[`${item.date}|${s.sector}`] = s.fullName;
+    }
+  }
+
+  const dateSet = new Set(data.map((x) => x.date));
+
+  return buckets.map((bucket) => {
+    const first = new Date(bucket[0]);
+    const monday = new Date(first);
+    monday.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+    const days: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    const fd = fmtShortDate(days[0]);
+    const ld = fmtShortDate(days[6]);
+    return { label: `Sen, ${fd.dateStr}  –  Min, ${ld.dateStr}`, days, cellMap };
+  });
+}
+
 export default function KebersihanAdminClient({
   warga,
   activePeriod,
   announcements,
+  scheduleData,
+  sectorCount,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -81,6 +148,24 @@ export default function KebersihanAdminClient({
   const [annBody, setAnnBody] = useState("");
   const [annPinned, setAnnPinned] = useState(false);
   const [annError, setAnnError] = useState("");
+
+  // ----- Delete active period state -----
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeletePeriod = () => {
+    if (!activePeriod) return;
+    setDeleteError("");
+    startTransition(async () => {
+      try {
+        await deletePiketPeriod(activePeriod.id);
+        setConfirmDelete(false);
+        router.refresh();
+      } catch (e: any) {
+        setDeleteError(e?.message ?? "Gagal menghapus jadwal");
+      }
+    });
+  };
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const available = useMemo(
@@ -187,22 +272,78 @@ export default function KebersihanAdminClient({
       {/* Active period summary */}
       {activePeriod && (
         <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-5">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-            <span className="font-semibold text-blue-900">Periode aktif:</span>
-            <span className="text-blue-800">
-              {fmtDate(activePeriod.startDate)} – {fmtDate(activePeriod.endDate)}
-            </span>
-            <span className="text-blue-800">{activePeriod.peoplePerDay} sektor/hari</span>
-            <span className="text-blue-800">{activePeriod.assignmentCount} penugasan</span>
-            <span className="text-blue-800">{activePeriod.kerjaBaktiCount} kerja bakti</span>
-            <span className="text-blue-800">
-              Denda Rp{activePeriod.finePerDay.toLocaleString("id-ID")}/hari
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+              <span className="font-semibold text-blue-900">Periode aktif:</span>
+              <span className="text-blue-800">
+                {fmtDate(activePeriod.startDate)} – {fmtDate(activePeriod.endDate)}
+              </span>
+              <span className="text-blue-800">{activePeriod.peoplePerDay} sektor/hari</span>
+              <span className="text-blue-800">{activePeriod.assignmentCount} penugasan</span>
+              <span className="text-blue-800">{activePeriod.kerjaBaktiCount} kerja bakti</span>
+              <span className="text-blue-800">
+                Denda Rp{activePeriod.finePerDay.toLocaleString("id-ID")}/hari
+              </span>
+            </div>
+            {!confirmDelete && (
+              <button
+                onClick={() => {
+                  setDeleteError("");
+                  setConfirmDelete(true);
+                }}
+                disabled={isPending}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" />
+                Hapus Jadwal
+              </button>
+            )}
           </div>
+
+          {/* Inline confirmation */}
+          {confirmDelete && (
+            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-medium text-red-800">
+                Hapus jadwal piket aktif ini?
+              </p>
+              <p className="mt-1 text-xs text-red-700/80">
+                Seluruh penugasan ({activePeriod.assignmentCount}), presensi, dan{" "}
+                {activePeriod.kerjaBaktiCount} hari kerja bakti pada periode ini akan
+                dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+              </p>
+              {deleteError && (
+                <p className="mt-2 rounded-lg border border-red-300 bg-white px-3 py-2 text-xs text-red-700">
+                  {deleteError}
+                </p>
+              )}
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={handleDeletePeriod}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {isPending ? "Menghapus..." : "Ya, Hapus"}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={isPending}
+                  className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          )}
+
           <p className="mt-2 text-xs text-blue-700/80">
             Membuat jadwal baru tidak menonaktifkan periode lama secara otomatis.
           </p>
         </div>
+      )}
+      {/* ===== SCHEDULE TABLE ===== */}
+      {activePeriod && scheduleData.length > 0 && (
+        <ScheduleTable data={scheduleData} sectorCount={sectorCount} />
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -467,6 +608,74 @@ function Field({
         {label}
       </label>
       {children}
+    </div>
+  );
+}
+
+const SECTOR_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+
+function ScheduleTable({
+  data,
+  sectorCount,
+}: {
+  data: { date: string; sectors: { sector: number; fullName: string }[] }[];
+  sectorCount: number;
+}) {
+  const weeks = useMemo(() => groupScheduleWeeks(data), [data]);
+  const sectorIndexes = useMemo(() => Array.from({ length: sectorCount }, (_, i) => i), [sectorCount]);
+
+  return (
+    <div className="space-y-6">
+      {weeks.map((week, wi) => (
+        <div key={wi}>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {week.label}
+          </p>
+
+          {/* Grid: 1 col for labels + 7 cols for days */}
+          <div
+            className="grid rounded-2xl border border-border bg-white overflow-hidden"
+            style={{ gridTemplateColumns: `60px repeat(7, 1fr)` }}
+          >
+            {/* Header row */}
+            <div className="border-b border-r border-border bg-slate-50 px-2 py-2.5 text-[10px] font-semibold text-muted-foreground">
+              Sektor
+            </div>
+            {week.days.map((date) => {
+              const s = fmtShortDate(date);
+              return (
+                <div
+                  key={date}
+                  className="border-b border-r border-border bg-slate-50 px-1 py-2.5 text-center text-[10px] font-semibold text-muted-foreground last:border-r-0"
+                >
+                  <div>{s.dayLabel}</div>
+                  <div className="mt-0.5 text-[9px] font-normal opacity-75">{s.dateStr}</div>
+                </div>
+              );
+            })}
+
+            {/* Data rows */}
+            {sectorIndexes.map((si) => (
+              <div key={si} className="contents">
+                <div className="border-b border-r border-border bg-white px-2 py-2 text-center text-xs font-bold text-muted-foreground">
+                  {SECTOR_LABELS[si] ?? si + 1}
+                </div>
+                {week.days.map((date) => {
+                  const name = week.cellMap[`${date}|${si}`];
+                  return (
+                    <div
+                      key={`${date}|${si}`}
+                      className="border-b border-r border-border bg-white px-1 py-2 text-center text-xs text-foreground last:border-r-0"
+                    >
+                      {name ? shortName(name) : <span className="text-muted-foreground/30">—</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

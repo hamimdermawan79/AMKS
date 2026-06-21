@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { canFromSession } from '@/lib/rbac/can';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { handleLogout } from './logout-action';
@@ -15,7 +16,7 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  // Fetch user roles
+  // Fetch user roles (used for the account-settings toggle)
   const userWithRoles = await db.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -29,6 +30,29 @@ export default async function DashboardLayout({
 
   const roleNames = userWithRoles?.roles.map((r) => r.role.name) ?? [];
   const isFullAccess = roleNames.includes('SUPERADMIN') || roleNames.includes('KETUA');
+
+  // Permission-driven nav visibility (RBAC source of truth) so that scoped
+  // roles like Sekretaris see exactly the admin pages they can manage.
+  const [
+    canManageUsers,
+    canManageContent,
+    canManageWorks,
+    canViewAccessRequests,
+    canManageSystem,
+  ] = await Promise.all([
+    canFromSession('user:create'),
+    canFromSession('post:create'),
+    canFromSession('work:create'),
+    canFromSession('access_request:read'),
+    canFromSession('permission:manage'),
+  ]);
+
+  const hasAdminSection =
+    canManageUsers ||
+    canManageContent ||
+    canManageWorks ||
+    canViewAccessRequests ||
+    canManageSystem;
 
   return (
     <div className="min-h-screen bg-white flex">
@@ -68,21 +92,34 @@ export default async function DashboardLayout({
               {/* Divider */}
               <div className="border-t border-border my-2" />
 
-              {/* SuperAdmin & Ketua only */}
-              {isFullAccess && (
+              {/* Permission-driven admin section */}
+              {hasAdminSection && (
                 <>
-                  <Link href="/admin/warga" className="nav-item">
-                    Warga
-                  </Link>
-                  <Link href="/admin/tentang-kami" className="nav-item">
-                    Konten & Gallery
-                  </Link>
-                  <Link href="/admin/karya-ilmiah" className="nav-item">
-                    Karya Ilmiah
-                  </Link>
-                  <Link href="/admin/pengaturan" className="nav-item">
-                    Pengaturan Sistem
-                  </Link>
+                  {canManageUsers && (
+                    <Link href="/admin/warga" className="nav-item">
+                      Warga
+                    </Link>
+                  )}
+                  {canManageContent && (
+                    <Link href="/admin/tentang-kami" className="nav-item">
+                      Konten & Gallery
+                    </Link>
+                  )}
+                  {canManageWorks && (
+                    <Link href="/admin/karya-ilmiah" className="nav-item">
+                      Karya Ilmiah
+                    </Link>
+                  )}
+                  {canViewAccessRequests && (
+                    <Link href="/admin/karya-ilmiah/permintaan-akses" className="nav-item">
+                      Permintaan Akses
+                    </Link>
+                  )}
+                  {canManageSystem && (
+                    <Link href="/admin/pengaturan" className="nav-item">
+                      Pengaturan Sistem
+                    </Link>
+                  )}
                 </>
               )}
 

@@ -24,14 +24,37 @@ export default async function KebersihanKelolaPage() {
     orderBy: { fullName: 'asc' },
   });
 
-  // Current active period summary
+  // Current active period summary with assignments
   const activePeriod = await db.piketPeriod.findFirst({
     where: { isActive: true },
     orderBy: { createdAt: 'desc' },
     include: {
       _count: { select: { assignments: true, kerjaBaktiDates: true } },
+      assignments: {
+        include: {
+          user: { select: { id: true, fullName: true } },
+          attendance: { select: { id: true, status: true } },
+        },
+        orderBy: [{ date: 'asc' }, { sector: 'asc' }],
+      },
+      kerjaBaktiDates: { orderBy: { date: 'asc' } },
     },
   });
+
+  // Build schedule table data for active period
+  let scheduleData: { date: string; sectors: { sector: number; fullName: string }[] }[] = [];
+  if (activePeriod) {
+    const map = new Map<string, { sector: number; fullName: string }[]>();
+    for (const a of activePeriod.assignments) {
+      const key = a.date.toISOString().slice(0, 10);
+      const list = map.get(key) ?? [];
+      list.push({ sector: a.sector, fullName: a.user.fullName });
+      map.set(key, list);
+    }
+    scheduleData = Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, sectors]) => ({ date, sectors }));
+  }
 
   // Existing pemberitahuan
   const announcements = await db.announcement.findMany({
@@ -60,6 +83,8 @@ export default async function KebersihanKelolaPage() {
         ...a,
         createdAt: a.createdAt.toISOString(),
       }))}
+      scheduleData={scheduleData}
+      sectorCount={activePeriod?.peoplePerDay ?? 0}
     />
   );
 }

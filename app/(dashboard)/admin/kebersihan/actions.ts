@@ -126,8 +126,39 @@ export async function deletePemberitahuan(id: string) {
 }
 
 /**
+ * Delete a piket period and everything generated under it (assignments,
+ * attendances, kerja bakti dates cascade via the schema). Fines already
+ * issued for the period are NOT deleted silently — block deletion if any
+ * exist, so we never strip a warga's outstanding denda by accident.
+ */
+export async function deletePiketPeriod(periodId: string) {
+  await authorizeManage();
+
+  const period = await db.piketPeriod.findUnique({
+    where: { id: periodId },
+    include: { _count: { select: { fines: true } } },
+  });
+
+  if (!period) {
+    throw new Error('Jadwal piket tidak ditemukan');
+  }
+
+  if (period._count.fines > 0) {
+    throw new Error(
+      'Jadwal tidak dapat dihapus karena sudah memiliki denda terkait. Tutup periode atau batalkan denda terlebih dahulu.'
+    );
+  }
+
+  // assignments, attendances, and kerja bakti dates are removed via onDelete: Cascade
+  await db.piketPeriod.delete({ where: { id: periodId } });
+
+  revalidatePath('/admin/kebersihan');
+  revalidatePath('/admin/kebersihan/kelola');
+}
+
+/**
  * Warga self check-in for a piket assignment they own (on its date).
- * Any logged-in warga can mark their own assignment present.
+ * Only allowed on the piket date between 01:00–11:00 WIB (Jakarta time).
  */
 export async function selfPresensi(assignmentId: string) {
   const session = await auth();
@@ -148,6 +179,20 @@ export async function selfPresensi(assignmentId: string) {
   }
   if (assignment.attendance) {
     throw new Error('Anda sudah melakukan presensi untuk jadwal ini');
+  }
+
+  // Validate time window: only on the piket date, 01:00–11:00 WIB (Jakarta)
+  const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+  const piketDate = new Date(assignment.date.toISOString().slice(0, 10) + 'T00:00:00+07:00');
+  const todayWib = new Date(nowWib.toDateString() + ' 00:00:00+07:00');
+
+  if (piketDate.getTime() !== todayWib.getTime()) {
+    throw new Error('Presensi hanya dapat dilakukan pada hari piket yang bersangkutan');
+  }
+
+  const hour = nowWib.getHours();
+  if (hour < 1 || hour >= 11) {
+    throw new Error('Presensi hanya dibuka pukul 01:00–11:00 WIB');
   }
 
   await db.piketAttendance.create({

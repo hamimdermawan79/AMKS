@@ -54,23 +54,20 @@ export async function can(
 
   // Check direct permission match
   if (userPermissions.has(permissionCode)) {
-    // For division-scoped permissions, check if scope matches
+    // For division-scoped permissions, narrow access by divisionScope.
     if (permissionCode.startsWith('division:manage:')) {
       const requiredDivision = permissionCode.split(':')[2].toUpperCase();
 
-      // SuperAdmin, Ketua, Sekretaris can manage all divisions
-      const hasGlobalAccess =
-        userPermissions.has('role:manage') ||
-        userPermissions.has('permission:manage');
+      // Read divisionScope from the DB record (authoritative) rather than the
+      // passed-in user, so a stale session JWT can't cause a false negative.
+      const effectiveScope = userWithRoles.divisionScope ?? user.divisionScope ?? null;
 
-      if (hasGlobalAccess) return true;
+      // Unscoped users (e.g. SUPERADMIN, KETUA) have no divisionScope, which
+      // means the permission alone grants access to ALL divisions.
+      if (!effectiveScope) return true;
 
-      // Division head can only manage their own division
-      if (scope && user.divisionScope) {
-        return user.divisionScope.toUpperCase() === requiredDivision.toUpperCase();
-      }
-
-      return user.divisionScope?.toUpperCase() === requiredDivision.toUpperCase();
+      // Scoped users (DIVISION_HEAD) can only manage their own division.
+      return effectiveScope.toUpperCase() === requiredDivision.toUpperCase();
     }
 
     return true;

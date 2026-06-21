@@ -43,9 +43,11 @@ const item = {
 export default function UserDashboard({
   session,
   showAdminButton,
+  divisionManageHref,
 }: {
   session: any;
   showAdminButton: boolean;
+  divisionManageHref?: string;
 }) {
   const greeting = useMemo(() => getGreeting(), []);
   const name = session?.user?.fullName ?? "Pengguna";
@@ -89,6 +91,17 @@ export default function UserDashboard({
             >
               <ShieldCheck className="h-4 w-4" />
               Akses Admin Panel
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          )}
+
+          {divisionManageHref && (
+            <Link
+              href={divisionManageHref}
+              className="group inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm font-medium text-primary shadow-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white hover:shadow-md"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Akses Panel Admin Divisi
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           )}
