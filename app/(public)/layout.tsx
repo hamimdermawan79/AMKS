@@ -12,63 +12,76 @@ export default function PublicLayout({
   return (
     <div className="min-h-screen flex flex-col bg-white">
       {/* Navigation */}
-      <motion.nav
+      <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="sticky top-0 z-50 glass border-b border-border"
+        className="fixed top-0 z-50 w-full pointer-events-none"
       >
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
+        <header className="relative w-full px-6 lg:px-10 py-6 flex justify-between items-start pointer-events-none">
+          {/* Logo */}
+          <div className="pointer-events-auto">
             <Link href="/" className="flex items-center gap-3 smooth-transition hover:opacity-80">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-10 h-10 rounded-xl bg-primary shadow-sm flex items-center justify-center text-white font-bold text-lg">
                 A
               </div>
               <div className="flex flex-col leading-none">
-                <span className="text-lg font-semibold text-foreground tracking-tight">AMKS</span>
-                <span className="text-[11px] text-muted-foreground">Asrama Mahasiswa Kab. Sambas</span>
+                <span className="text-lg font-semibold text-slate-800 tracking-tight">AMKS</span>
+                <span className="text-[11px] font-medium text-slate-500">Asrama Mahasiswa Kab. Sambas</span>
               </div>
             </Link>
+          </div>
 
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center gap-8">
-              <Link href="/karya-ilmiah" className="text-muted-foreground hover:text-primary smooth-transition font-medium">
-                Karya Ilmiah
-              </Link>
-              <Link href="/dokumentasi" className="text-muted-foreground hover:text-primary smooth-transition font-medium">
-                Dokumentasi
-              </Link>
+          {/* Floating Headbar */}
+          <nav className="pointer-events-auto hidden md:flex items-center gap-8 px-8 py-3.5 rounded-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-lg shadow-blue-900/5 absolute left-1/2 -translate-x-1/2 top-6">
+            <Link href="/karya-ilmiah" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
+              Karya Ilmiah
+            </Link>
+            <Link href="/dokumentasi" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
+              Dokumentasi
+            </Link>
 
-              {/* Tentang Kami - Dropdown */}
-              <div className="relative group">
-                <Link href="/tentang-kami" className="text-muted-foreground hover:text-primary smooth-transition font-medium flex items-center gap-1">
-                  Tentang Kami
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </Link>
-                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
-                  <div className="glass border border-border shadow-lg min-w-[200px] py-2">
-                    <Link href="/tentang-kami" className="block px-4 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-blue-50/50 smooth-transition">
-                      Profil Asrama
-                    </Link>
-                    <Link href="/tentang-kami/galeri" className="block px-4 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-blue-50/50 smooth-transition">
-                      Galeri Kegiatan
-                    </Link>
-                    <Link href="/tentang-kami/struktur" className="block px-4 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-blue-50/50 smooth-transition">
-                      Struktur Organisasi
-                    </Link>
-                  </div>
+            {/* Tentang Kami - Dropdown */}
+            <div className="relative group">
+              <Link href="/tentang-kami" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition flex items-center gap-1.5">
+                Tentang Kami
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </Link>
+              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
+                <div className="bg-white/60 backdrop-blur-2xl border border-white/60 shadow-xl shadow-blue-900/10 min-w-[200px] py-2 rounded-2xl">
+                  <Link href="/tentang-kami" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                    Profil Asrama
+                  </Link>
+                  <Link href="/tentang-kami/galeri" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                    Galeri Kegiatan
+                  </Link>
+                  <Link href="/tentang-kami/struktur" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                    Struktur Organisasi
+                  </Link>
                 </div>
               </div>
+            </div>
 
-              <Link href="/hubungi-kami" className="text-muted-foreground hover:text-primary smooth-transition font-medium">
-                Hubungi Kami
-              </Link>
+            <Link href="/hubungi-kami" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
+              Hubungi Kami
+            </Link>
+          </nav>
+
+          {/* Pemda Sambas Logo & Text (Right) */}
+          <div className="pointer-events-auto hidden lg:flex items-center gap-3 text-right">
+            <div className="flex flex-col leading-none justify-center h-10">
+              <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Pemerintah Daerah</span>
+              <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Kabupaten Sambas</span>
+              <span className="text-[10px] font-medium text-slate-500 mt-0.5">Kalimantan Barat</span>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-slate-400 text-xs font-medium border border-white overflow-hidden shadow-sm shrink-0">
+              {/* Nanti diubah menjadi image logo Pemda Sambas sebelum deploy */}
+              <span className="text-[10px] font-bold text-slate-300">Logo</span>
             </div>
           </div>
-        </div>
-      </motion.nav>
+        </header>
+      </motion.div>
 
       {/* Main Content */}
       <main className="flex-1">
@@ -126,7 +139,7 @@ export default function PublicLayout({
           </div>
 
           <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} AMKS. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} AMKS. Hak Cipta dilindungi.</p>
           </div>
         </div>
       </footer>

@@ -52,9 +52,19 @@ export default function HomePage() {
       {/* ===== HERO ===== */}
       <motion.section
         style={{ scale: heroScale, opacity: heroOpacity }}
-        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-slate-50 via-white to-white"
+        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(37,99,235,0.1),_transparent_60%)]" />
+        {/* Soft Blue Base Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-100/80 via-white to-slate-50/50" />
+        
+        {/* Abstract Blurry Blobs for Mesh Gradient Effect */}
+        <div className="pointer-events-none absolute -left-[10%] top-0 h-[700px] w-[700px] rounded-[40%_60%_70%_30%] bg-blue-500/30 mix-blend-multiply blur-[120px] animate-blob" />
+        <div className="pointer-events-none absolute left-[20%] -top-[20%] h-[600px] w-[600px] rounded-[60%_40%_30%_70%] bg-sky-300/40 mix-blend-multiply blur-[120px] animate-blob animation-delay-2000" />
+        <div className="pointer-events-none absolute -right-[10%] top-[20%] h-[600px] w-[600px] rounded-[50%_50%_60%_40%] bg-indigo-300/30 mix-blend-multiply blur-[100px] animate-blob animation-delay-4000" />
+        
+        {/* Optional Noise Texture Overlay */}
+        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
+
         {mounted && <FloatingOrbs />}
 
         <div className="container relative mx-auto px-6">
