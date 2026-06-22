@@ -1,0 +1,153 @@
+import { db } from '@/lib/db';
+import { sendWhatsAppMessage } from './whatsapp';
+import { NotificationType } from '@prisma/client';
+
+interface CreateNotificationPayload {
+  userId?: string | null;
+  title: string;
+  message: string;
+  type: NotificationType;
+  referenceId?: string | null;
+  scheduledFor?: Date | null;
+}
+
+export async function createNotification(payload: CreateNotificationPayload) {
+  try {
+    const notification = await db.notification.create({
+      data: {
+        userId: payload.userId || null,
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        referenceId: payload.referenceId || null,
+        scheduledFor: payload.scheduledFor || null,
+        isRead: false,
+        sentWa: false,
+      },
+    });
+
+    console.log(`✨ Notification created in DB: "${payload.title}" for user: ${payload.userId || 'Global'}`);
+    return notification;
+  } catch (error) {
+    console.error('Failed to create notification in DB:', error);
+    throw error;
+  }
+}
+
+export async function processNotificationQueue() {
+  try {
+    const now = new Date();
+    
+    // Fetch notifications that need WA sending
+    const pendingNotifications = await db.notification.findMany({
+      where: {
+        sentWa: false,
+        OR: [
+          { scheduledFor: null },
+          { scheduledFor: { lte: now } }
+        ]
+      },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+            phone: true,
+          }
+        }
+      },
+      take: 5, // Process in small batches to avoid rate limit / socket congestion
+    });
+
+    if (pendingNotifications.length === 0) return;
+
+    console.log(`✉️ Processing WA notification queue... Found ${pendingNotifications.length} pending.`);
+
+    for (const notif of pendingNotifications) {
+      let targetPhone = '';
+      
+      // If it has a specific user, send to their phone
+      if (notif.user?.phone) {
+        targetPhone = notif.user.phone;
+      } else {
+        // If it's a global announcement but has no userId, we skip WA sending or log it
+        // Note: Broadcast announcements are usually duplicated per active user or sent as single system logs.
+        // If no user is attached, we mark it sentWa: true (nothing to send via personal WA)
+        await db.notification.update({
+          where: { id: notif.id },
+          data: { sentWa: true, waMessageId: 'SKIPPED_NO_USER' },
+        });
+        continue;
+      }
+
+      // Format message with premium look (bold, emojis)
+      const formattedMessage = formatWaMessage(notif.title, notif.message, notif.type);
+      
+      console.log(`📤 Sending WA to ${notif.user?.fullName} (${targetPhone})...`);
+      const result = await sendWhatsAppMessage(targetPhone, formattedMessage);
+
+      if (result.success) {
+        await db.notification.update({
+          where: { id: notif.id },
+          data: {
+            sentWa: true,
+            waMessageId: result.messageId || 'SENT',
+          },
+        });
+        console.log(`✅ WA Sent successfully to ${notif.user?.fullName}`);
+      } else {
+        console.error(`❌ WA Failed to send to ${notif.user?.fullName}:`, result.error);
+        // We update with FAILED status but we can let it retry or mark it failed.
+        // Let's set waMessageId to error message and allow retry a limited number of times.
+        // To keep it simple, let's mark it as FAILED in waMessageId.
+        await db.notification.update({
+          where: { id: notif.id },
+          data: {
+            waMessageId: `FAILED: ${result.error?.slice(0, 50)}`,
+            // Set sentWa to true so it doesn't infinite loop, or let it retry once more by keeping it false
+            // But let's set it to true so it doesn't block the queue
+            sentWa: true,
+          },
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error running processNotificationQueue:', error);
+  }
+}
+
+function formatWaMessage(title: string, message: string, type: NotificationType): string {
+  let emoji = '🔔';
+  if (type === 'PIKET_REMINDER') emoji = '🧹';
+  else if (type === 'TAGIHAN_REMINDER') emoji = '💵';
+  else if (type === 'PENGUMUMAN') emoji = '📢';
+  
+  return `*${emoji} ${title.toUpperCase()} ${emoji}*
+
+${message}
+
+_Pesan otomatis dari Sistem Web Asrama AMKS. Mohon tidak membalas pesan ini._`;
+}
+
+// Background Worker state
+let workerInterval: NodeJS.Timeout | null = null;
+
+export function startNotificationWorker() {
+  if (workerInterval) return;
+
+  console.log('👷 Starting Notification background worker (every 10 seconds)...');
+  
+  // Run once immediately
+  processNotificationQueue();
+
+  workerInterval = setInterval(() => {
+    processNotificationQueue();
+  }, 10000); // 10 seconds interval
+}
+
+export function stopNotificationWorker() {
+  if (workerInterval) {
+    clearInterval(workerInterval);
+    workerInterval = null;
+    console.log('👷 Notification background worker stopped.');
+  }
+}

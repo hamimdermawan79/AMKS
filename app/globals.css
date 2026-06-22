@@ -228,3 +228,121 @@ body {
 .animate-slideIn {
   animation: slideIn 0.4s ease-out;
 }
+
+/* Printing styles for Monthly Report (Tugas 5) */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+  
+  @page {
+    margin: 0.8cm;
+    size: A4 portrait;
+  }
+  
+  /* Hide all elements by default */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Make only the print area and its contents visible */
+  .print-content,
+  .print-content * {
+    visibility: visible;
+  }
+  
+  /* Position the print content at top left */
+  .print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Simplify grid layout for print (side-by-side instead of stacked) */
+  .print-content .grid {
+    display: grid !important;
+    gap: 0.4rem !important;
+  }
+  
+  .print-content .grid-cols-2 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  
+  .print-content .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  /* Hide charts on print to save paper and space */
+  .print-content .recharts-responsive-container,
+  .print-content .recharts-wrapper,
+  .print-content .h-48 {
+    display: none !important;
+  }
+  
+  /* Compact cards */
+  .print-content .glass,
+  .print-content .glass-card {
+    background: transparent !important;
+    border: 1px solid #94a3b8 !important;
+    box-shadow: none !important;
+    padding: 0.4rem !important;
+    margin-bottom: 0.4rem !important;
+    border-radius: 6px !important;
+  }
+
+  /* Typography scale down */
+  .print-content h2 {
+    font-size: 14px !important;
+    margin-bottom: 0.2rem !important;
+  }
+  
+  .print-content h3 {
+    font-size: 11px !important;
+  }
+  
+  .print-content h4,
+  .print-content h5 {
+    font-size: 10px !important;
+    margin: 0 !important;
+    padding-bottom: 0.2rem !important;
+  }
+  
+  .print-content p {
+    font-size: 8px !important;
+  }
+  
+  /* Table styling */
+  .print-content table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  
+  .print-content table th,
+  .print-content table td {
+    padding: 0.2rem 0.4rem !important;
+    font-size: 9px !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+  
+  .print-content table tfoot tr td {
+    padding: 0.2rem 0.4rem !important;
+    font-weight: bold !important;
+  }
+  
+  /* Hide buttons or filters */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Remove scrollbars and overflows */
+  .print-content .table-container {
+    border: none !important;
+    overflow: visible !important;
+  }
+}

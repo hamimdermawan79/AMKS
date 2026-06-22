@@ -1,0 +1,221 @@
+'use server';
+
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { canFromSession } from '@/lib/rbac/can';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { createNotification } from '@/lib/notifications';
+
+// Helper to check bendahara permission
+async function authorizeFinance(permission: string) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error('Unauthorized');
+  }
+
+  const allowed = await canFromSession(permission);
+  if (!allowed) {
+    throw new Error('Anda tidak memiliki hak akses keuangan');
+  }
+  return session;
+}
+
+const transactionSchema = z.object({
+  type: z.enum(['PEMASUKAN', 'PENGELUARAN']),
+  category: z.string().min(1, 'Kategori wajib diisi'),
+  amount: z.number().int().min(1, 'Nominal harus lebih dari 0'),
+  description: z.string().optional(),
+  occurredAt: z.string().min(1, 'Tanggal wajib diisi'),
+});
+
+export async function addTransaction(data: {
+  type: 'PEMASUKAN' | 'PENGELUARAN';
+  category: string;
+  amount: number;
+  description?: string;
+  occurredAt: string;
+}) {
+  const session = await authorizeFinance('finance:transaction:create');
+  const v = transactionSchema.parse(data);
+
+  const tx = await db.transaction.create({
+    data: {
+      type: v.type,
+      category: v.category,
+      amount: v.amount,
+      description: v.description || '',
+      occurredAt: new Date(v.occurredAt),
+      createdById: session.user.id,
+    },
+  });
+
+  revalidatePath('/admin/keuangan');
+  return { success: true, id: tx.id };
+}
+
+export async function deleteTransaction(id: string) {
+  await authorizeFinance('finance:transaction:delete');
+
+  const existing = await db.transaction.findUnique({ where: { id } });
+  if (!existing) {
+    throw new Error('Transaksi tidak ditemukan');
+  }
+
+  // If transaction is linked to a bill, we should set the bill status back to BELUM_LUNAS
+  if (existing.relatedBillId) {
+    await db.bill.update({
+      where: { id: existing.relatedBillId },
+      data: {
+        status: 'BELUM_LUNAS',
+        settledAt: null,
+        settledById: null,
+      },
+    });
+  }
+
+  await db.transaction.delete({ where: { id } });
+
+  revalidatePath('/admin/keuangan');
+  return { success: true };
+}
+
+const billSchema = z.object({
+  userId: z.string().min(1, 'Warga wajib dipilih'),
+  type: z.enum(['DENDA_PIKET', 'IURAN', 'LAINNYA']),
+  title: z.string().min(1, 'Judul tagihan wajib diisi'),
+  amount: z.number().int().min(1, 'Nominal harus lebih dari 0'),
+  dueDate: z.string().optional().nullable(),
+  note: z.string().optional(),
+});
+
+export async function addBill(data: {
+  userId: string;
+  type: 'DENDA_PIKET' | 'IURAN' | 'LAINNYA';
+  title: string;
+  amount: number;
+  dueDate?: string | null;
+  note?: string;
+}) {
+  const session = await authorizeFinance('bill:update');
+  const v = billSchema.parse(data);
+
+  const due = v.dueDate ? new Date(v.dueDate) : null;
+
+  const bill = await db.bill.create({
+    data: {
+      userId: v.userId,
+      type: v.type,
+      title: v.title,
+      amount: v.amount,
+      status: 'BELUM_LUNAS',
+      dueDate: due,
+      note: v.note || '',
+    },
+  });
+
+  // Create notification in DB (which handles WA queues automatically)
+  try {
+    await createNotification({
+      userId: v.userId,
+      title: 'Tagihan Baru Diterbitkan',
+      message: `Terdapat tagihan baru untuk Anda sebesar Rp${v.amount.toLocaleString('id-ID')} dengan judul "${v.title}". Harap hubungi Bendahara untuk melakukan pelunasan.`,
+      type: 'TAGIHAN_REMINDER',
+      referenceId: bill.id,
+    });
+  } catch (err) {
+    console.error('Failed to create notification for new bill:', err);
+  }
+
+  revalidatePath('/admin/keuangan');
+  return { success: true, id: bill.id };
+}
+
+export async function settleBill(billId: string, note?: string) {
+  const session = await authorizeFinance('bill:update');
+
+  const bill = await db.bill.findUnique({
+    where: { id: billId },
+    include: { transaction: true },
+  });
+
+  if (!bill) {
+    throw new Error('Tagihan tidak ditemukan');
+  }
+
+  if (bill.status === 'LUNAS') {
+    throw new Error('Tagihan sudah lunas');
+  }
+
+  // Update bill status to LUNAS
+  await db.bill.update({
+    where: { id: billId },
+    data: {
+      status: 'LUNAS',
+      settledAt: new Date(),
+      settledById: session.user.id,
+      note: note ? `${bill.note || ''}\nCatatan Pelunasan: ${note}`.trim() : bill.note,
+    },
+  });
+
+  // Automatically create a corresponding PEMASUKAN transaction
+  const category = bill.type === 'DENDA_PIKET' ? 'Denda Piket' : bill.type === 'IURAN' ? 'Iuran Warga' : 'Lain-lain';
+  await db.transaction.create({
+    data: {
+      type: 'PEMASUKAN',
+      category,
+      amount: bill.amount,
+      description: `Pelunasan tagihan: ${bill.title}`,
+      occurredAt: new Date(),
+      relatedBillId: bill.id,
+      createdById: session.user.id,
+    },
+  });
+
+  // Create notification in DB (which handles WA queues automatically)
+  try {
+    await createNotification({
+      userId: bill.userId,
+      title: 'Konfirmasi Pembayaran Tagihan',
+      message: `Terima kasih! Tagihan Anda sebesar Rp${bill.amount.toLocaleString('id-ID')} untuk "${bill.title}" telah dikonfirmasi LUNAS oleh Bendahara.`,
+      type: 'TAGIHAN_REMINDER',
+      referenceId: bill.id,
+    });
+  } catch (err) {
+    console.error('Failed to create notification for settled bill:', err);
+  }
+
+  revalidatePath('/admin/keuangan');
+  return { success: true };
+}
+
+export async function cancelBill(billId: string) {
+  const session = await authorizeFinance('bill:update');
+
+  const bill = await db.bill.findUnique({
+    where: { id: billId },
+    include: { transaction: true },
+  });
+
+  if (!bill) {
+    throw new Error('Tagihan tidak ditemukan');
+  }
+
+  // Update bill status to DIBATALKAN
+  await db.bill.update({
+    where: { id: billId },
+    data: {
+      status: 'DIBATALKAN',
+    },
+  });
+
+  // If there was an associated transaction, delete it
+  if (bill.transaction) {
+    await db.transaction.delete({
+      where: { id: bill.transaction.id },
+    });
+  }
+
+  revalidatePath('/admin/keuangan');
+  return { success: true };
+}

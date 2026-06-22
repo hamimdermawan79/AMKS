@@ -106,6 +106,7 @@ model User {
   settledBills   Bill[]       @relation("BillSettler")
   transactions   Transaction[]
   auditLogs      AuditLog[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -417,4 +418,29 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@map("audit_logs")
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  userId        String?
+  title         String
+  message       String
+  type          NotificationType
+  referenceId   String?
+  isRead        Boolean  @default(false)
+  sentWa        Boolean  @default(false)
+  waMessageId   String?
+  createdAt     DateTime @default(now())
+  scheduledFor  DateTime?
+
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  PIKET_REMINDER
+  TAGIHAN_REMINDER
+  PENGUMUMAN
+  SYSTEM
 }
