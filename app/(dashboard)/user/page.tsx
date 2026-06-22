@@ -36,6 +36,62 @@ export default async function DashboardPage() {
       ? DIVISION_SLUGS[userWithRoles.divisionScope]
       : null;
 
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // Fetch upcoming activities
+  const [
+    myUpcomingPiket,
+    upcomingKerjaBakti,
+    upcomingSports,
+    upcomingGeneralActivity,
+    myUpcomingRohani,
+    pendingBills,
+  ] = await Promise.all([
+    db.piketAssignment.findFirst({
+      where: { userId: session?.user.id, date: { gte: now } },
+      orderBy: { date: 'asc' },
+    }),
+    db.piketKerjaBakti.findFirst({
+      where: { date: { gte: now } },
+      orderBy: { date: 'asc' },
+    }),
+    db.sportsActivity.findFirst({
+      where: { date: { gte: now } },
+      orderBy: { date: 'asc' },
+    }),
+    db.activity.findFirst({
+      where: { startAt: { gte: now } },
+      orderBy: { startAt: 'asc' },
+    }),
+    db.rohaniSchedule.findFirst({
+      where: { date: { gte: now } },
+      orderBy: { date: 'asc' },
+    }),
+    db.bill.findMany({
+      where: { userId: session?.user.id, status: 'BELUM_LUNAS' },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    }),
+  ]);
+
+  let rohaniMessage = null;
+  if (myUpcomingRohani && session?.user.id) {
+    if (myUpcomingRohani.imamMaghribId === session.user.id) rohaniMessage = "Anda Bertugas Sebagai Imam Maghrib";
+    else if (myUpcomingRohani.imamIshaId === session.user.id) rohaniMessage = "Anda Bertugas Sebagai Imam Isya";
+    else if (myUpcomingRohani.kultumById === session.user.id) rohaniMessage = "Anda Berkesempatan Mengisi Kultum";
+  }
+
+  const dashboardProps = {
+    session,
+    myUpcomingPiket: myUpcomingPiket ? { date: myUpcomingPiket.date.toISOString(), sector: myUpcomingPiket.sector } : null,
+    upcomingKerjaBakti: upcomingKerjaBakti ? upcomingKerjaBakti.date.toISOString() : null,
+    upcomingSports: upcomingSports ? { id: upcomingSports.id, title: upcomingSports.title, date: upcomingSports.date.toISOString() } : null,
+    upcomingGeneralActivity: upcomingGeneralActivity ? { id: upcomingGeneralActivity.id, title: upcomingGeneralActivity.title, date: upcomingGeneralActivity.startAt?.toISOString() || null, division: upcomingGeneralActivity.division } : null,
+    myUpcomingRohani: myUpcomingRohani ? { date: myUpcomingRohani.date.toISOString(), message: rohaniMessage } : null,
+    pendingBills: pendingBills.map(b => ({ id: b.id, title: b.title, amount: b.amount, type: b.type, dueDate: b.dueDate ? b.dueDate.toISOString() : null })),
+  };
+
   // SuperAdmin → full admin system overview
   if (isSuperAdmin) {
     return <AdminDashboard session={session} />;
@@ -43,14 +99,14 @@ export default async function DashboardPage() {
 
   // Ketua → user view + global admin access button (full access)
   if (isKetua) {
-    return <UserDashboard session={session} showAdminButton={true} />;
+    return <UserDashboard {...dashboardProps} showAdminButton={true} />;
   }
 
   // Ketua Divisi → user view + a button linking to their own division admin panel
   if (isDivisionHead && divisionSlug) {
     return (
       <UserDashboard
-        session={session}
+        {...dashboardProps}
         showAdminButton={false}
         divisionManageHref={`/admin/${divisionSlug}/kelola`}
       />
@@ -58,7 +114,7 @@ export default async function DashboardPage() {
   }
 
   // Everyone else — Warga, Sekretaris, Bendahara — plain user dashboard.
-  return <UserDashboard session={session} showAdminButton={false} />;
+  return <UserDashboard {...dashboardProps} showAdminButton={false} />;
 }
 
 // ==================== ADMIN DASHBOARD ====================

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -11,8 +11,12 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Clock,
+  ImagePlus,
   ShieldCheck,
   Sparkles,
+  Wallet,
+  X,
+  XCircle,
 } from "lucide-react";
 import { selfPresensi } from "./actions";
 
@@ -21,6 +25,7 @@ type Props = {
   hasPeriod: boolean;
   sectorCount: number;
   sectorLabels: string[];
+  finePerDay: number;
   scheduledDates: {
     date: string;
     sectors: {
@@ -75,29 +80,54 @@ function fmtDayMonth(iso: string) {
   };
 }
 
-function isPresensiOpen(isoDate: string): boolean {
-  const now = new Date();
-  // Jakarta = UTC+7; equivalent to getting current time in WIB
-  const wib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-  const piketDate = new Date(isoDate + "T00:00:00+07:00");
-
-  const todayWib = new Date(wib.toDateString() + " 00:00:00+07:00");
-  if (piketDate.getTime() !== todayWib.getTime()) return false;
-
-  const hour = wib.getHours();
-  return hour >= 1 && hour < 11;
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
 }
 
-function presensiStatus(isoDate: string, present: boolean): string {
+/** Current Jakarta (WIB, UTC+7) wall-clock as a Date whose local fields are WIB. */
+function nowWib(): Date {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+}
+
+/** YYYY-MM-DD key from WIB calendar fields (avoid toISOString date drift). */
+function wibDateKey(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+type PresensiStatus = "hadir" | "buka" | "tutup" | "belum";
+
+/**
+ * Presensi status for a piket date.
+ * Accepts either a full ISO string or a YYYY-MM-DD key (we slice to date-only).
+ * Window mirrors `selfPresensi` in actions.ts: only on the piket day, 01:00–11:00 WIB.
+ *  - hadir : sudah presensi
+ *  - buka  : hari piket, dalam jam 01:00–11:00 WIB
+ *  - tutup : hari piket terlewat / jam sudah lewat (tidak presensi)
+ *  - belum : hari piket belum tiba (atau belum jam buka di hari-H)
+ */
+function presensiStatus(iso: string, present: boolean): PresensiStatus {
   if (present) return "hadir";
-  if (!isPresensiOpen(isoDate)) {
-    const now = new Date();
-    const wib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-    const hour = wib.getHours();
-    if (hour < 1) return "belum";
-    return "tutup";
-  }
+
+  const wib = nowWib();
+  const todayKey = wibDateKey(wib);
+  const dateKey = iso.slice(0, 10);
+
+  if (dateKey > todayKey) return "belum";
+  if (dateKey < todayKey) return "tutup";
+
+  // Same WIB day: gate by the 01:00–11:00 window.
+  const hour = wib.getHours();
+  if (hour < 1) return "belum";
+  if (hour >= 11) return "tutup";
   return "buka";
+}
+
+function isPresensiOpen(iso: string): boolean {
+  return presensiStatus(iso, false) === "buka";
+}
+
+function formatRupiah(n: number): string {
+  return `Rp${n.toLocaleString("id-ID")}`;
 }
 
 /* ─── Week stripes ─── */
@@ -193,6 +223,7 @@ export default function KebersihanUserView({
   hasPeriod,
   sectorCount,
   sectorLabels,
+  finePerDay,
   scheduledDates,
   kerjaBaktiDates,
   announcements,
@@ -204,14 +235,61 @@ export default function KebersihanUserView({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  const handlePresensi = (assignmentId: string) => {
-    setError("");
+  // Presensi modal state: which assignment is being checked in.
+  const [modalAssignmentId, setModalAssignmentId] = useState<string | null>(null);
+  const [photoName, setPhotoName] = useState("");
+  const [agreement, setAgreement] = useState(false);
+  const [complaint, setComplaint] = useState("");
+  const [modalError, setModalError] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const openPresensiModal = (assignmentId: string) => {
+    setModalAssignmentId(assignmentId);
+    setPhotoName("");
+    setAgreement(false);
+    setComplaint("");
+    setModalError("");
+    if (photoInputRef.current) photoInputRef.current.value = "";
+  };
+
+  const closePresensiModal = () => {
+    setModalAssignmentId(null);
+  };
+
+  const photoSelected = photoName.length > 0;
+  const canSubmitPresensi =
+    photoSelected && agreement && complaint.trim().length > 0 && !isPending;
+
+  const handleSubmitPresensi = () => {
+    setModalError("");
+    const file = photoInputRef.current?.files?.[0];
+    if (!file) {
+      setModalError("Foto bukti piket wajib diunggah");
+      return;
+    }
+    if (!agreement) {
+      setModalError("Centang pernyataan kejujuran terlebih dahulu");
+      return;
+    }
+    if (!complaint.trim()) {
+      setModalError("Keluhan wajib diisi");
+      return;
+    }
+    if (!modalAssignmentId) return;
+
+    const fd = new FormData();
+    fd.set("assignmentId", modalAssignmentId);
+    fd.set("photo", file);
+    fd.set("complaint", complaint.trim());
+    fd.set("agreement", "true");
+
     startTransition(async () => {
       try {
-        await selfPresensi(assignmentId);
+        await selfPresensi(fd);
+        closePresensiModal();
         router.refresh();
       } catch (e: any) {
-        setError(e?.message ?? "Gagal melakukan presensi");
+        setModalError(e?.message ?? "Gagal melakukan presensi");
       }
     });
   };
@@ -219,6 +297,33 @@ export default function KebersihanUserView({
   const weeks = useMemo(() => splitWeeks(scheduledDates, kerjaBaktiDates), [scheduledDates, kerjaBaktiDates]);
   const sectorIndexes = useMemo(() => Array.from({ length: sectorCount }, (_, i) => i), [sectorCount]);
   const kerjaBaktiSet = useMemo(() => new Set(kerjaBaktiDates), [kerjaBaktiDates]);
+
+  // Riwayat piket: newest first, with a final status per assignment.
+  const history = useMemo(() => {
+    return [...myAssignments]
+      .map((a) => ({ ...a, status: presensiStatus(a.date, a.present) }))
+      .sort((x, y) => y.date.localeCompare(x.date));
+  }, [myAssignments]);
+
+  // Statistik: only finalized days count toward Piket / Tidak Piket.
+  // "belum" & "buka" are still pending and shown separately.
+  const stats = useMemo(() => {
+    let piket = 0;
+    let tidakPiket = 0;
+    let pending = 0;
+    for (const h of history) {
+      if (h.status === "hadir") piket++;
+      else if (h.status === "tutup") tidakPiket++;
+      else pending++;
+    }
+    return {
+      piket,
+      tidakPiket,
+      pending,
+      total: history.length,
+      estimasiDenda: tidakPiket * finePerDay,
+    };
+  }, [history, finePerDay]);
 
   return (
     <div className="space-y-8">
@@ -233,14 +338,24 @@ export default function KebersihanUserView({
           </p>
         </div>
         {canManage && (
-          <Link
-            href="/admin/kebersihan/kelola"
-            className="group inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm font-medium text-primary shadow-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white hover:shadow-md"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Akses Layanan Admin
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/admin/kebersihan/kelola"
+              className="group inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm font-medium text-primary shadow-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white hover:shadow-md"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Akses Layanan Admin
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <Link
+              href="/admin/kebersihan/laporan"
+              className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-foreground shadow-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white hover:shadow-md"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Laporan & Denda
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
         )}
       </div>
 
@@ -278,25 +393,45 @@ export default function KebersihanUserView({
                   </span>
                   .
                 </p>
-                {myNextPiket.present ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Sudah presensi
-                  </span>
-                ) : isPresensiOpen(myNextPiket.date) ? (
-                  <button
-                    onClick={() => handlePresensi(myNextPiket.assignmentId)}
-                    disabled={isPending}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"
-                  >
-                    <ClipboardCheck className="h-4 w-4" />
-                    Presensi Piket di sini
-                  </button>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" />
-                    Presensi dibuka pukul 01:00–11:00 WIB pada hari piket
-                  </span>
-                )}
+                {(() => {
+                  const status = presensiStatus(myNextPiket.date, myNextPiket.present);
+                  if (status === "hadir") {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Sudah presensi
+                      </span>
+                    );
+                  }
+                  if (status === "buka") {
+                    return (
+                      <button
+                        onClick={() => openPresensiModal(myNextPiket.assignmentId)}
+                        disabled={isPending}
+                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"
+                      >
+                        <ClipboardCheck className="h-4 w-4" />
+                        Presensi di sini
+                      </button>
+                    );
+                  }
+                  // status === "belum" | "tutup": window not open
+                  return (
+                    <div className="space-y-1.5">
+                      <button
+                        disabled
+                        className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-muted-foreground"
+                      >
+                        <Clock className="h-4 w-4" />
+                        Presensi Tutup
+                      </button>
+                      <p className="text-xs text-muted-foreground">
+                        {status === "belum"
+                          ? "Presensi dibuka pukul 01:00–11:00 WIB pada hari piket Anda."
+                          : "Batas waktu presensi (01:00–11:00 WIB) sudah terlewat."}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -471,7 +606,7 @@ export default function KebersihanUserView({
                                 </span>
                                 {cell.isMe && !cell.present && isPresensiOpen(date) && (
                                   <button
-                                    onClick={() => handlePresensi(cell.assignmentId)}
+                                    onClick={() => openPresensiModal(cell.assignmentId)}
                                     disabled={isPending}
                                     className="rounded-md bg-primary px-2 py-0.5 text-[10px] font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
                                   >
@@ -501,58 +636,220 @@ export default function KebersihanUserView({
         )}
       </div>
 
-      {/* ===== PRESENSI PIKET SAYA (horizontal) ===== */}
+      {/* ===== RIWAYAT & STATISTIK PIKET SAYA ===== */}
       <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
-        <h2 className="mb-5 font-semibold text-foreground">Presensi Piket Saya</h2>
+        <h2 className="mb-5 font-semibold text-foreground">Riwayat Piket Saya</h2>
+
         {myAssignments.length > 0 ? (
-          <div className="flex flex-wrap gap-3">
-            {myAssignments.map((a) => {
-              const status = presensiStatus(a.date, a.present);
-              return (
-                <div
-                  key={a.assignmentId}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-white px-4 py-2.5 shadow-sm"
-                >
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-muted-foreground">
-                    {new Date(a.date).getDate()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">
-                      {fmtDate(a.date, { weekday: "short", day: "numeric", month: "short" })}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {sectorLabels[a.sector] ?? a.sector + 1}
-                    </p>
-                  </div>
-                  {status === "hadir" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-                      <CheckCircle2 className="h-3 w-3" /> Hadir
-                    </span>
-                  ) : status === "buka" ? (
-                    <button
-                      onClick={() => handlePresensi(a.assignmentId)}
-                      disabled={isPending}
-                      className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
-                    >
-                      <ClipboardCheck className="h-3.5 w-3.5" />
-                      Presensi
-                    </button>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {status === "belum" ? "Belum" : "Tutup"}
-                    </span>
-                  )}
+          <>
+            {/* Statistik */}
+            <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Piket
                 </div>
-              );
-            })}
-          </div>
+                <p className="mt-1 text-2xl font-bold text-emerald-700">{stats.piket}</p>
+              </div>
+              <div className="rounded-xl border border-red-100 bg-red-50/60 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-red-700">
+                  <XCircle className="h-3.5 w-3.5" /> Tidak Piket
+                </div>
+                <p className="mt-1 text-2xl font-bold text-red-700">{stats.tidakPiket}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" /> Belum Terlaksana
+                </div>
+                <p className="mt-1 text-2xl font-bold text-muted-foreground">{stats.pending}</p>
+              </div>
+              <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <Wallet className="h-3.5 w-3.5" /> Estimasi Denda
+                </div>
+                <p className="mt-1 text-lg font-bold text-amber-700">
+                  {formatRupiah(stats.estimasiDenda)}
+                </p>
+              </div>
+            </div>
+
+            {stats.tidakPiket > 0 && (
+              <p className="mb-5 text-xs text-muted-foreground">
+                Estimasi denda dihitung dari {stats.tidakPiket} hari tidak piket ×{" "}
+                {formatRupiah(finePerDay)}/hari. Angka final ditetapkan saat periode ditutup oleh
+                pengurus.
+              </p>
+            )}
+
+            {/* Log riwayat */}
+            <div className="flex flex-wrap gap-3">
+              {history.map((a) => {
+                const d = fmtDayMonth(a.date);
+                // Hijau = Piket, Merah = Tidak Piket, Abu = belum waktunya / sedang buka.
+                const tone =
+                  a.status === "hadir"
+                    ? "border-emerald-200 bg-emerald-50/60"
+                    : a.status === "tutup"
+                    ? "border-red-200 bg-red-50/60"
+                    : "border-slate-200 bg-slate-50";
+                return (
+                  <div
+                    key={a.assignmentId}
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 shadow-sm ${tone}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        {d.dayName}, {d.dayNum} {d.monthName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {sectorLabels[a.sector] ?? a.sector + 1}
+                      </p>
+                    </div>
+                    {a.status === "hadir" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" /> Piket
+                      </span>
+                    ) : a.status === "tutup" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+                        <XCircle className="h-3 w-3" /> Tidak Piket
+                      </span>
+                    ) : a.status === "buka" ? (
+                      <button
+                        onClick={() => openPresensiModal(a.assignmentId)}
+                        disabled={isPending}
+                        className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+                      >
+                        <ClipboardCheck className="h-3.5 w-3.5" />
+                        Presensi
+                      </button>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-200/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                        <Clock className="h-3 w-3" /> Belum
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">
             Anda tidak memiliki jadwal piket pada periode ini.
           </p>
         )}
       </div>
+
+      {/* ===== MODAL PRESENSI (bukti + pernyataan + keluhan) ===== */}
+      {modalAssignmentId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => !isPending && closePresensiModal()}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border bg-white shadow-xl"
+          >
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-xl bg-primary/10 p-2 text-primary">
+                  <ClipboardCheck className="h-5 w-5" />
+                </div>
+                <h3 className="font-semibold text-foreground">Presensi Piket</h3>
+              </div>
+              <button
+                onClick={() => !isPending && closePresensiModal()}
+                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-slate-100"
+                aria-label="Tutup"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              {/* Foto bukti */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Tambahkan Bukti Anda Telah Piket
+                </label>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? "")}
+                  className="hidden"
+                  id="piket-photo-input"
+                />
+                <label
+                  htmlFor="piket-photo-input"
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border border-dashed px-4 py-3 text-sm transition-colors ${
+                    photoSelected
+                      ? "border-emerald-300 bg-emerald-50/60 text-emerald-700"
+                      : "border-border bg-slate-50/60 text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  <ImagePlus className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">
+                    {photoSelected ? photoName : "Pilih foto (JPG/PNG/WEBP, maks 10 MB)"}
+                  </span>
+                </label>
+              </div>
+
+              {/* Keluhan */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Sampaikan Keluhan Anda disini
+                </label>
+                <textarea
+                  value={complaint}
+                  onChange={(e) => setComplaint(e.target.value)}
+                  rows={3}
+                  placeholder="Tuliskan keluhan/komplain selama piket..."
+                  className="w-full resize-none rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </div>
+
+              {/* Pernyataan kejujuran */}
+              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-slate-50/60 p-3 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={agreement}
+                  onChange={(e) => setAgreement(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-border"
+                />
+                <span>
+                  Saya Telah Melakukan Piket, dan Saya Mengisi Form Ini Dengan Kejujuran
+                  Penuh
+                </span>
+              </label>
+
+              {modalError && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {modalError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
+              <button
+                onClick={() => !isPending && closePresensiModal()}
+                disabled={isPending}
+                className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-slate-50 disabled:opacity-60"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSubmitPresensi}
+                disabled={!canSubmitPresensi}
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ClipboardCheck className="h-4 w-4" />
+                {isPending ? "Memproses..." : "Presensi"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

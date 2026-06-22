@@ -26,7 +26,8 @@
       "Bash(npx tsc *)",
       "Bash(tasklist)",
       "PowerShell(Get-CimInstance *)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(node -e \"console.log\\('jspdf', require\\('jspdf/package.json'\\).version\\); console.log\\('html2canvas', require\\('html2canvas/package.json'\\).version\\)\")"
     ]
   }
 }

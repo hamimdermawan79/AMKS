@@ -154,7 +154,7 @@ export default async function DashboardLayout({
         {/* Header bar */}
         <header className="glass border-b border-border/80 py-4 px-8 flex items-center justify-between flex-shrink-0 z-20">
           <div className="text-sm text-muted-foreground flex items-center gap-2">
-            Selamat datang, <span className="font-semibold text-foreground">{session.user.fullName}</span>
+            <span className="font-semibold text-foreground">{session.user.fullName}</span>
             <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full border border-slate-200 uppercase font-bold tracking-wider">
               {session.user.jabatan || 'Warga'}
             </span>

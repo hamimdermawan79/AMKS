@@ -93,6 +93,60 @@ const INDO_MONTHS = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+const formatRpHelper = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(amount);
+};
+
+const DebtorRow = ({ deb }: { deb: any }) => {
+  const [selectedBillId, setSelectedBillId] = useState<string>(deb.bills[0]?.id || '');
+  // make sure selectedBillId exists in bills, else fallback to first bill
+  const selectedBill = deb.bills.find((b: any) => b.id === selectedBillId) || deb.bills[0];
+
+  if (!selectedBill) return null;
+
+  return (
+    <tr className="hover:bg-slate-50/50">
+      <td className="py-2 px-3 font-semibold text-foreground">{deb.name}</td>
+      <td className="py-2 px-3 font-bold text-slate-700">{formatRpHelper(deb.totalAmount)}</td>
+      <td className="py-2 px-3">
+        {deb.bills.length > 1 ? (
+          <select 
+            value={selectedBill.id} 
+            onChange={e => setSelectedBillId(e.target.value)}
+            className="text-xs p-1 border border-slate-200 rounded bg-white shadow-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+          >
+            {deb.bills.map((b: any) => (
+              <option key={b.id} value={b.id}>{b.type} - {formatRpHelper(b.amount)}</option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-xs">{deb.bills[0].type}</span>
+        )}
+      </td>
+      <td className="py-2 px-3 font-bold text-foreground">{formatRpHelper(selectedBill.amount)}</td>
+      <td className="py-2 px-3 text-slate-600 text-[11px]">{selectedBill.overdueLabel}</td>
+      <td className="py-2 px-3 text-right">
+        {selectedBill.urgency === '🟢' && (
+          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">Lancar</span>
+        )}
+        {selectedBill.urgency === '🟡' && (
+          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">Overdue 1-30h</span>
+        )}
+        {selectedBill.urgency === '🟠' && (
+          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200 shadow-sm">Overdue 31-90h</span>
+        )}
+        {selectedBill.urgency === '🔴' && (
+          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm animate-pulse">Overdue &gt;90h</span>
+        )}
+      </td>
+    </tr>
+  );
+};
+
 export default function KeuanganClient({
   transactions: initialTransactions,
   bills: initialBills,
@@ -572,54 +626,65 @@ export default function KeuanganClient({
       });
     const categoryPengList = Object.values(categoryPengMap).sort((a, b) => b.amount - a.amount);
 
-    const overdueDebtors = billsBelumLunas.map((b) => {
+    const debtorsMap: Record<string, {
+      userId: string;
+      name: string;
+      bills: {
+        id: string;
+        type: string;
+        amount: number;
+        dueDate: string | null;
+        overdueLabel: string;
+        urgency: string;
+        diffDays: number;
+      }[];
+      totalAmount: number;
+    }> = {};
+
+    billsBelumLunas.forEach((b) => {
+      const uId = b.user?.id || (b as any).userId;
+      if (!uId) return;
+
+      if (!debtorsMap[uId]) {
+        debtorsMap[uId] = {
+          userId: uId,
+          name: b.user.fullName,
+          bills: [],
+          totalAmount: 0
+        };
+      }
+
       const today = new Date();
       const todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+      let overdueLabel = 'Belum Jatuh Tempo';
+      let urgency = '🟢';
+      let diffDays = 0;
 
-      if (!b.dueDate) {
-        return {
-          id: b.id,
-          name: b.user.fullName,
-          type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
-          amount: b.amount,
-          dueDate: null,
-          overdueLabel: 'Belum Jatuh Tempo',
-          urgency: '🟢',
-          diffDays: 0
-        };
+      if (b.dueDate) {
+        const due = new Date(b.dueDate);
+        const dueMs = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
+        diffDays = Math.floor((todayMs - dueMs) / (1000 * 60 * 60 * 24));
+        if (diffDays > 0) {
+          overdueLabel = `${diffDays} hari`;
+          urgency = '🔴';
+          if (diffDays <= 30) urgency = '🟡';
+          else if (diffDays <= 90) urgency = '🟠';
+        }
       }
 
-      const due = new Date(b.dueDate);
-      const dueMs = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
-      const diffDays = Math.floor((todayMs - dueMs) / (1000 * 60 * 60 * 24));
-
-      if (diffDays <= 0) {
-        return {
-          id: b.id,
-          name: b.user.fullName,
-          type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
-          amount: b.amount,
-          dueDate: b.dueDate,
-          overdueLabel: 'Belum Jatuh Tempo',
-          urgency: '🟢',
-          diffDays
-        };
-      } else {
-        let urgency = '🔴';
-        if (diffDays <= 30) urgency = '🟡';
-        else if (diffDays <= 90) urgency = '🟠';
-        return {
-          id: b.id,
-          name: b.user.fullName,
-          type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
-          amount: b.amount,
-          dueDate: b.dueDate,
-          overdueLabel: `${diffDays} hari`,
-          urgency,
-          diffDays
-        };
-      }
+      debtorsMap[uId].bills.push({
+        id: b.id,
+        type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
+        amount: b.amount,
+        dueDate: b.dueDate,
+        overdueLabel,
+        urgency,
+        diffDays
+      });
+      debtorsMap[uId].totalAmount += b.amount;
     });
+
+    const overdueDebtors = Object.values(debtorsMap).sort((a, b) => b.totalAmount - a.totalAmount);
 
     const sortedTxs = [...filteredTxs].sort(
       (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
@@ -1841,44 +1906,97 @@ export default function KeuanganClient({
                                               <th className="p-3">Nominal</th>
                                               <th className="p-3">Tenggat</th>
                                               <th className="p-3">Status</th>
-                                              <th className="p-3 pr-4">Dibuat</th>
+                                              <th className="p-3">Dibuat</th>
+                                              <th className="p-3 pr-4 text-right">Aksi</th>
                                             </tr>
                                           </thead>
-                                          <tbody className="divide-y divide-border/40">
-                                            {led.billsList.map((b) => (
-                                              <tr key={b.id} className="hover:bg-slate-50/30">
-                                                <td className="p-3 pl-4 font-medium text-foreground">
-                                                  {b.title}
-                                                  {b.note && (
-                                                    <div className="text-[9px] text-muted-foreground mt-0.5 font-normal">
-                                                      {b.note}
+                                            <tbody className="divide-y divide-border/40">
+                                              {led.billsList.map((b) => {
+                                                const isLate = b.status === 'BELUM_LUNAS' && b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+                                                const displayAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
+                                                return (
+                                                <tr key={b.id} className="hover:bg-slate-50/30">
+                                                  <td className="p-3 pl-4 font-medium text-foreground">
+                                                    {b.title}
+                                                    {b.note && (
+                                                      <div className="text-[9px] text-muted-foreground mt-0.5 font-normal">
+                                                        {b.note}
+                                                      </div>
+                                                    )}
+                                                  </td>
+                                                  <td className="p-3">
+                                                    <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
+                                                      {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
+                                                    </span>
+                                                  </td>
+                                                  <td className="p-3 font-semibold text-slate-700">
+                                                    {formatRp(displayAmount)}
+                                                    {isLate && <div className="text-[9px] text-red-600 font-semibold">+20% Telat</div>}
+                                                  </td>
+                                                  <td className="p-3 text-slate-500">{formatDate(b.dueDate)}</td>
+                                                  <td className="p-3">
+                                                    <span
+                                                      className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
+                                                        b.status === 'LUNAS'
+                                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                          : b.status === 'DIBATALKAN'
+                                                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                          : isLate 
+                                                          ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                                                          : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                                                      }`}
+                                                    >
+                                                      {b.status === 'BELUM_LUNAS' ? (isLate ? 'NUNGGAK' : 'BELUM LUNAS') : b.status}
+                                                    </span>
+                                                  </td>
+                                                  <td className="p-3 text-slate-400">{formatDate(b.createdAt)}</td>
+                                                  <td className="p-3 pr-4 text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                      {b.status === 'BELUM_LUNAS' && permissions.canUpdateBill && (
+                                                        <>
+                                                          <button
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              setSelectedBillId(b.id);
+                                                              setSettleAmount(displayAmount);
+                                                              setSettleNote('');
+                                                              setSettleModalOpen(true);
+                                                            }}
+                                                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                            title="Konfirmasi Lunas"
+                                                          >
+                                                            <CheckCircle2 className="h-4 w-4" />
+                                                          </button>
+                                                          <button
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              handleCancelBill(b.id);
+                                                            }}
+                                                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Batalkan Tagihan"
+                                                          >
+                                                            <XCircle className="h-4 w-4" />
+                                                          </button>
+                                                          {isLate && (
+                                                            <button
+                                                              onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleExtendDueDate(b.id);
+                                                              }}
+                                                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                              title="Beri Izin Telat (Perpanjang Awal Bulan Depan)"
+                                                            >
+                                                              <Clock className="h-4 w-4" />
+                                                            </button>
+                                                          )}
+                                                        </>
+                                                      )}
                                                     </div>
-                                                  )}
-                                                </td>
-                                                <td className="p-3">
-                                                  <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
-                                                    {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
-                                                  </span>
-                                                </td>
-                                                <td className="p-3 font-semibold text-slate-700">{formatRp(b.amount)}</td>
-                                                <td className="p-3 text-slate-500">{formatDate(b.dueDate)}</td>
-                                                <td className="p-3">
-                                                  <span
-                                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
-                                                      b.status === 'LUNAS'
-                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                        : b.status === 'DIBATALKAN'
-                                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                                        : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
-                                                    }`}
-                                                  >
-                                                    {b.status === 'BELUM_LUNAS' ? 'BELUM LUNAS' : b.status}
-                                                  </span>
-                                                </td>
-                                                <td className="p-3 text-slate-400 pr-4">{formatDate(b.createdAt)}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
+                                                  </td>
+                                                </tr>
+                                                );
+                                              })}
+                                            </tbody>
                                         </table>
                                       </div>
                                     )}
@@ -2206,41 +2324,23 @@ export default function KeuanganClient({
                     <thead>
                       <tr>
                         <th className="py-2 px-3">Nama</th>
+                        <th className="py-2 px-3">Total Tagihan</th>
                         <th className="py-2 px-3">Jenis Tagihan</th>
                         <th className="py-2 px-3">Nominal</th>
-                        <th className="py-2 px-3">Lama Overdue</th>
-                        <th className="py-2 px-3 text-right">Urgency</th>
+                        <th className="py-2 px-3">Durasi Waktu</th>
+                        <th className="py-2 px-3 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {monthlyReport.overdueDebtors.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 italic text-muted-foreground text-emerald-600 font-medium">
+                          <td colSpan={6} className="text-center py-8 italic text-muted-foreground text-emerald-600 font-medium">
                             Semua tagihan terbit periode ini telah lunas! 🎉
                           </td>
                         </tr>
                       ) : (
                         monthlyReport.overdueDebtors.map((deb, idx) => (
-                          <tr key={idx}>
-                            <td className="py-2 px-3 font-semibold text-foreground">{deb.name}</td>
-                            <td className="py-2 px-3">{deb.type}</td>
-                            <td className="py-2 px-3 font-bold text-foreground">{formatRp(deb.amount)}</td>
-                            <td className="py-2 px-3 text-slate-600">{deb.overdueLabel}</td>
-                            <td className="py-2 px-3 text-right">
-                              {deb.urgency === '🟢' && (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">🟢 Lancar</span>
-                              )}
-                              {deb.urgency === '🟡' && (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">🟡 Overdue 1-30h</span>
-                              )}
-                              {deb.urgency === '🟠' && (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200">🟠 Overdue 31-90h</span>
-                              )}
-                              {deb.urgency === '🔴' && (
-                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">🔴 Overdue &gt;90h</span>
-                              )}
-                            </td>
-                          </tr>
+                          <DebtorRow key={idx} deb={deb} />
                         ))
                       )}
                     </tbody>

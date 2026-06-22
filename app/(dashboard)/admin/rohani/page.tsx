@@ -27,7 +27,10 @@ export default async function RohaniPage() {
 
   // Query active users for queue status
   const activeUsers = await db.user.findMany({
-    where: { status: 'AKTIF' },
+    where: { 
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+    },
     select: {
       id: true,
       fullName: true,

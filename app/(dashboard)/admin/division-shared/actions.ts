@@ -49,7 +49,10 @@ export async function addAnnouncementAction(division: Division, data: {
   // Broadcast announcement to all active warga
   try {
     const activeUsers = await db.user.findMany({
-      where: { status: 'AKTIF' },
+      where: { 
+        status: 'AKTIF',
+        roles: { none: { role: { name: 'SUPERADMIN' } } },
+      },
       select: { id: true },
     });
 

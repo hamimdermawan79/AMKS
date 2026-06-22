@@ -15,7 +15,10 @@ export default async function KeolahragaanPage() {
 
   // Query Warga
   const wargaList = await db.user.findMany({
-    where: { status: 'AKTIF' },
+    where: { 
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+    },
     select: {
       id: true,
       fullName: true,

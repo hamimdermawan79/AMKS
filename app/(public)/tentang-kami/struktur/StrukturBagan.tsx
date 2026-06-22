@@ -42,9 +42,10 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
   const sekretaris = users.filter((u) => getRole(u) === 'SEKRETARIS');
   const bendahara = users.filter((u) => getRole(u) === 'BENDAHARA');
   const divHeads = users.filter((u) => getRole(u) === 'DIVISION_HEAD');
+  const warga = users.filter((u) => getRole(u) === 'WARGA');
   const hasMiddle = sekretaris.length > 0 || bendahara.length > 0;
 
-  if (!ketua && !hasMiddle && divHeads.length === 0) {
+  if (!ketua && !hasMiddle && divHeads.length === 0 && warga.length === 0) {
     return null;
   }
 
@@ -165,6 +166,24 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
           </div>
         </div>
       )}
+
+      {/* ===== BOTTOM: WARGA ASRAMA ===== */}
+      {warga.length > 0 && (
+        <div className="mt-16 border-t border-slate-100 pt-10">
+          <div className="relative z-10">
+            <h3 className="mb-8 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Warga Asrama
+            </h3>
+            <div className="grid grid-cols-2 gap-y-8 gap-x-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {warga.map((u, i) => (
+                <motion.div key={u.id} custom={i + 6} variants={cardItem} className="flex flex-col items-center">
+                  <PersonCard user={u} label="Warga" small />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -172,13 +191,19 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
 function PersonCard({
   user,
   label,
+  small = false,
 }: {
   user: { fullName: string; jabatan: string | null; photoUrl: string | null };
   label: string;
+  small?: boolean;
 }) {
+  const sizeClass = small ? "h-16 w-16" : "h-24 w-24";
+  const textSizeClass = small ? "text-xl" : "text-3xl";
+  const nameClass = small ? "text-xs" : "text-sm";
+
   return (
     <div className="text-center">
-      <div className="mx-auto mb-3 h-24 w-24 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white shadow-sm">
+      <div className={`mx-auto mb-3 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white shadow-sm ${sizeClass}`}>
         {user.photoUrl ? (
           <img
             src={user.photoUrl}
@@ -186,15 +211,15 @@ function PersonCard({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-muted-foreground">
-            {user.fullName.charAt(0)}
+          <div className={`flex h-full w-full items-center justify-center font-bold text-muted-foreground ${textSizeClass}`}>
+            {user.fullName.charAt(0).toUpperCase()}
           </div>
         )}
       </div>
-      <p className="text-sm font-semibold leading-snug text-foreground">
+      <p className={`font-semibold leading-snug text-foreground ${nameClass}`}>
         {user.fullName}
       </p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{user.jabatan || label}</p>
+      {!small && <p className="mt-0.5 text-xs text-muted-foreground">{user.jabatan || label}</p>}
     </div>
   );
 }

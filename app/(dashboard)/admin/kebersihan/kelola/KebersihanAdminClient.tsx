@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
+  BarChart3,
   Bell,
   CalendarRange,
   Plus,
@@ -267,6 +269,14 @@ export default function KebersihanAdminClient({
             Buat jadwal piket, kelola peserta, dan kirim pemberitahuan.
           </p>
         </div>
+        <Link
+          href="/admin/kebersihan/laporan"
+          className="group inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm font-medium text-primary shadow-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white hover:shadow-md"
+        >
+          <BarChart3 className="h-4 w-4" />
+          Laporan & Denda
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Link>
       </div>
 
       {/* Active period summary */}

@@ -3,11 +3,46 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { canFromSession } from '@/lib/rbac/can';
-import { generatePiketSchedule } from '@/lib/piket/generate';
+import { generatePiketSchedule, closePiketPeriod } from '@/lib/piket/generate';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
+import { randomUUID } from 'crypto';
 
 const KEBERSIHAN_PERM = 'division:manage:kebersihan';
+
+const PIKET_UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'piket');
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
+const ALLOWED_PHOTO_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+/**
+ * Simpan foto bukti piket ke public/uploads/piket.
+ * Mengembalikan path publik (mis. /uploads/piket/xxx.jpg), atau null bila tidak ada berkas.
+ */
+async function savePiketPhoto(file: File | null): Promise<string> {
+  if (!file || file.size === 0) {
+    throw new Error('Foto bukti piket wajib diunggah');
+  }
+  if (!ALLOWED_PHOTO_TYPES.has(file.type)) {
+    throw new Error('Foto harus berformat JPG, PNG, atau WEBP');
+  }
+  if (file.size > MAX_PHOTO_BYTES) {
+    throw new Error('Ukuran foto maksimal 10 MB');
+  }
+
+  await mkdir(PIKET_UPLOAD_DIR, { recursive: true });
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const filename = `${randomUUID()}.${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(path.join(PIKET_UPLOAD_DIR, filename), buffer);
+
+  return `/uploads/piket/${filename}`;
+}
 
 /**
  * Authorize the current session for Kebersihan management.
@@ -30,7 +65,10 @@ async function authorizeManage() {
 export async function fetchWargaForPicker() {
   await authorizeManage();
   return db.user.findMany({
-    where: { status: 'AKTIF' },
+    where: { 
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+    },
     select: { id: true, fullName: true, username: true },
     orderBy: { fullName: 'asc' },
   });
@@ -165,11 +203,29 @@ export async function deletePiketPeriod(periodId: string) {
 /**
  * Warga self check-in for a piket assignment they own (on its date).
  * Only allowed on the piket date between 01:00–11:00 WIB (Jakarta time).
+ *
+ * Wajib menyertakan: foto bukti, pernyataan kejujuran (agreement), dan keluhan.
+ * Dipanggil dari form (FormData) karena ada unggahan berkas.
  */
-export async function selfPresensi(assignmentId: string) {
+export async function selfPresensi(formData: FormData) {
   const session = await auth();
   if (!session?.user) {
     throw new Error('Unauthorized');
+  }
+
+  const assignmentId = String(formData.get('assignmentId') ?? '');
+  const complaint = String(formData.get('complaint') ?? '').trim();
+  const agreement = formData.get('agreement') === 'true';
+  const photo = formData.get('photo');
+
+  if (!assignmentId) {
+    throw new Error('Jadwal piket tidak valid');
+  }
+  if (!agreement) {
+    throw new Error('Anda harus menyetujui pernyataan kejujuran sebelum presensi');
+  }
+  if (!complaint) {
+    throw new Error('Keluhan wajib diisi');
   }
 
   const assignment = await db.piketAssignment.findUnique({
@@ -201,13 +257,140 @@ export async function selfPresensi(assignmentId: string) {
     throw new Error('Presensi hanya dibuka pukul 01:00–11:00 WIB');
   }
 
+  // Simpan foto bukti (wajib) sebelum menulis attendance
+  const photoUrl = await savePiketPhoto(photo instanceof File ? photo : null);
+
   await db.piketAttendance.create({
     data: {
       assignmentId: assignment.id,
       status: 'HADIR',
       markedById: session.user.id,
+      photoUrl,
+      complaint,
     },
   });
 
   revalidatePath('/admin/kebersihan');
+}
+
+/**
+ * Tutup periode piket: finalisasi denda (buat Fine + Bill untuk warga yang tidak
+ * piket) dan tandai periode non-aktif. Idempoten — periode yang sudah ditutup
+ * (isActive=false) ditolak agar denda tidak terbit ganda.
+ */
+export async function closePeriodAction(periodId: string) {
+  await authorizeManage();
+
+  const period = await db.piketPeriod.findUnique({
+    where: { id: periodId },
+    select: { id: true, isActive: true },
+  });
+
+  if (!period) {
+    throw new Error('Periode piket tidak ditemukan');
+  }
+  if (!period.isActive) {
+    throw new Error('Periode ini sudah ditutup sebelumnya');
+  }
+
+  const result = await closePiketPeriod(periodId);
+
+  revalidatePath('/admin/kebersihan');
+  revalidatePath('/admin/kebersihan/kelola');
+  revalidatePath('/admin/kebersihan/laporan');
+  revalidatePath('/admin/keuangan');
+
+  return result;
+}
+
+const finePaymentSchema = z.object({
+  fineId: z.string().min(1, 'Denda tidak valid'),
+  amount: z.number().int().min(1, 'Nominal pembayaran harus lebih dari 0'),
+  note: z.string().optional(),
+});
+
+/**
+ * Catat pembayaran / cicilan denda piket.
+ * - Membuat satu Transaction PEMASUKAN (kategori "Denda Piket") tanpa relasi Bill
+ *   (relasi Bill↔Transaction bersifat 1:1; cicilan bisa banyak), lalu mencatat
+ *   FinePayment yang menunjuk transaksi tersebut.
+ * - Bila total terbayar >= nominal denda, Bill terkait diset LUNAS (jika ada &
+ *   belum lunas). Tidak menyentuh settleBill agar modul keuangan tak berubah.
+ */
+export async function recordFinePayment(data: {
+  fineId: string;
+  amount: number;
+  note?: string;
+}) {
+  const session = await authorizeManage();
+  const v = finePaymentSchema.parse(data);
+
+  const fine = await db.fine.findUnique({
+    where: { id: v.fineId },
+    include: {
+      payments: { select: { amount: true } },
+      bill: { select: { id: true, status: true } },
+      user: { select: { fullName: true } },
+    },
+  });
+
+  if (!fine) {
+    throw new Error('Denda tidak ditemukan');
+  }
+
+  const alreadyPaid = fine.payments.reduce((sum, p) => sum + p.amount, 0);
+  const remaining = fine.amount - alreadyPaid;
+  if (remaining <= 0) {
+    throw new Error('Denda ini sudah lunas');
+  }
+  if (v.amount > remaining) {
+    throw new Error(
+      `Nominal melebihi sisa denda (sisa Rp${remaining.toLocaleString('id-ID')})`
+    );
+  }
+
+  // 1) Catat pemasukan keuangan untuk pembayaran ini.
+  const tx = await db.transaction.create({
+    data: {
+      type: 'PEMASUKAN',
+      category: 'Denda Piket',
+      amount: v.amount,
+      description: `Pembayaran denda piket: ${fine.user.fullName}${v.note ? ` — ${v.note}` : ''}`,
+      occurredAt: new Date(),
+      createdById: session.user.id,
+    },
+  });
+
+  // 2) Catat cicilan denda yang menunjuk transaksi tersebut.
+  await db.finePayment.create({
+    data: {
+      fineId: fine.id,
+      amount: v.amount,
+      note: v.note || null,
+      recordedById: session.user.id,
+      paymentTxId: tx.id,
+    },
+  });
+
+  // 3) Bila lunas, sinkronkan status Bill (jika ada).
+  const paidNow = alreadyPaid + v.amount;
+  if (paidNow >= fine.amount && fine.bill && fine.bill.status !== 'LUNAS') {
+    await db.bill.update({
+      where: { id: fine.bill.id },
+      data: {
+        status: 'LUNAS',
+        settledAt: new Date(),
+        settledById: session.user.id,
+      },
+    });
+  }
+
+  revalidatePath('/admin/kebersihan/laporan');
+  revalidatePath('/admin/keuangan');
+
+  return {
+    paid: paidNow,
+    remaining: fine.amount - paidNow,
+    settled: paidNow >= fine.amount,
+  };
 }

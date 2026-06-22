@@ -104,6 +104,7 @@ model User {
   piketAssignments PiketAssignment[]
   markedAttendances PiketAttendance[] @relation("AttendanceMarker")
   fines          Fine[]
+  recordedFinePayments FinePayment[] @relation("FinePaymentRecorder")
   bills          Bill[]       @relation("BillOwner")
   settledBills   Bill[]       @relation("BillSettler")
   transactions   Transaction[]
@@ -338,6 +339,8 @@ model PiketAttendance {
   status       AttendanceStatus
   markedAt     DateTime         @default(now())
   markedById   String?
+  photoUrl     String?          // bukti foto piket (path publik /uploads/piket/...)
+  complaint    String?          // keluhan warga saat presensi
   assignment   PiketAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   markedBy     User?            @relation("AttendanceMarker", fields: [markedById], references: [id])
 
@@ -345,18 +348,37 @@ model PiketAttendance {
 }
 
 model Fine {
-  id         String      @id @default(cuid())
+  id         String        @id @default(cuid())
   userId     String
   periodId   String
   daysMissed Int
   amount     Int
   billId     String?
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  period     PiketPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  bill       Bill?       @relation(fields: [billId], references: [id])
-  createdAt  DateTime    @default(now())
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period     PiketPeriod   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  bill       Bill?         @relation(fields: [billId], references: [id])
+  payments   FinePayment[]
+  createdAt  DateTime      @default(now())
 
   @@map("fines")
+}
+
+/// Pembayaran/cicilan denda piket. Satu Fine bisa punya banyak pembayaran
+/// (cicilan). Total terbayar = sum(payment.amount). Berdiri terpisah dari
+/// relasi Bill 1:1 agar modul Keuangan yang sudah ada tidak ikut diubah.
+model FinePayment {
+  id           String   @id @default(cuid())
+  fineId       String
+  amount       Int
+  note         String?
+  paidAt       DateTime @default(now())
+  recordedById String?
+  fine         Fine     @relation(fields: [fineId], references: [id], onDelete: Cascade)
+  recordedBy   User?    @relation("FinePaymentRecorder", fields: [recordedById], references: [id])
+  transaction  Transaction? @relation(fields: [paymentTxId], references: [id])
+  paymentTxId  String? @unique
+
+  @@map("fine_payments")
 }
 
 model Bill {
@@ -397,6 +419,7 @@ model Transaction {
   relatedBill      Bill?           @relation(fields: [relatedBillId], references: [id])
   createdBy        User            @relation(fields: [createdById], references: [id])
   sportsActivity   SportsActivity? @relation(fields: [sportsActivityId], references: [id])
+  finePayment      FinePayment?   @relation
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 

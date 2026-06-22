@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { canFromSession } from '@/lib/rbac/can';
 import { db } from '@/lib/db';
 import KeuanganClient from './KeuanganClient';
+import KeuanganUserView from './KeuanganUserView';
 
 export default async function KeuanganPage() {
   const session = await auth();
@@ -13,9 +14,42 @@ export default async function KeuanganPage() {
 
   // Permission checks
   const hasFinanceAccess = await canFromSession('finance:read');
+
+  // ── USER VIEW: show personal bills for users without finance access ──
   if (!hasFinanceAccess) {
-    redirect('/user');
+    const myBills = await db.bill.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const totalUtang = myBills
+      .filter((b) => b.status === 'BELUM_LUNAS')
+      .reduce((sum, b) => sum + b.amount, 0);
+
+    const totalLunas = myBills
+      .filter((b) => b.status === 'LUNAS')
+      .reduce((sum, b) => sum + b.amount, 0);
+
+    return (
+      <KeuanganUserView
+        canManage={false}
+        bills={myBills.map((b) => ({
+          id: b.id,
+          type: b.type,
+          title: b.title,
+          amount: b.amount,
+          status: b.status,
+          dueDate: b.dueDate ? b.dueDate.toISOString() : null,
+          note: b.note,
+          createdAt: b.createdAt.toISOString(),
+        }))}
+        totalUtang={totalUtang}
+        totalLunas={totalLunas}
+      />
+    );
   }
+
+  // ── ADMIN VIEW: full finance management ──
 
   const canCreateTx = await canFromSession('finance:transaction:create');
   const canDeleteTx = await canFromSession('finance:transaction:delete');
@@ -43,10 +77,11 @@ export default async function KeuanganPage() {
     },
   });
 
-  // Fetch all active citizens for creating new bills
+  // Fetch all active citizens for creating new bills (excluding SUPERADMIN)
   const users = await db.user.findMany({
     where: {
       status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
     },
     select: {
       id: true,

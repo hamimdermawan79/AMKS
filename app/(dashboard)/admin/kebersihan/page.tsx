@@ -101,6 +101,7 @@ export default async function KebersihanPage() {
       hasPeriod={!!period}
       sectorCount={sectorCount}
       sectorLabels={sectorLabels}
+      finePerDay={period?.finePerDay ?? 0}
       scheduledDates={scheduledDates}
       kerjaBaktiDates={kerjaBaktiDates}
       announcements={announcements.map((a) => ({

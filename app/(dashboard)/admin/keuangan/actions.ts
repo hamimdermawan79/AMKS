@@ -221,7 +221,7 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
     : bill.type === 'DENDA_OLAHRAGA'
     ? 'Denda Olahraga'
     : 'Lain-lain';
-  await db.transaction.create({
+  const tx = await db.transaction.create({
     data: {
       type: 'PEMASUKAN',
       category,
@@ -232,6 +232,32 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
       createdById: session.user.id,
     },
   });
+
+  // [Two-Way Sync] Jika jenis tagihan adalah DENDA_PIKET,
+  // maka catat FinePayment secara otomatis agar laporan denda di Kebersihan sinkron
+  if (bill.type === 'DENDA_PIKET') {
+    const fines = await db.fine.findMany({
+      where: { billId: bill.id },
+      include: { payments: true }
+    });
+
+    for (const fine of fines) {
+      const alreadyPaid = fine.payments.reduce((sum, p) => sum + p.amount, 0);
+      const remaining = fine.amount - alreadyPaid;
+      
+      if (remaining > 0) {
+        await db.finePayment.create({
+          data: {
+            fineId: fine.id,
+            amount: remaining,
+            note: note ? `Dilunasi dari modul Keuangan: ${note}` : 'Dilunasi otomatis dari modul Keuangan',
+            recordedById: session.user.id,
+            paymentTxId: tx.id,
+          }
+        });
+      }
+    }
+  }
 
   // Create notification in DB (which handles WA queues automatically)
   try {
@@ -274,6 +300,13 @@ export async function cancelBill(billId: string) {
   if (bill.transaction) {
     await db.transaction.delete({
       where: { id: bill.transaction.id },
+    });
+  }
+
+  // [Two-Way Sync] Jika jenis tagihan DENDA_PIKET dibatalkan, hapus denda terkait di Kebersihan
+  if (bill.type === 'DENDA_PIKET') {
+    await db.fine.deleteMany({
+      where: { billId: bill.id },
     });
   }
 

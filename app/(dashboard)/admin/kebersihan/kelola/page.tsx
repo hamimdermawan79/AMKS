@@ -17,9 +17,12 @@ export default async function KebersihanKelolaPage() {
     redirect('/admin/kebersihan');
   }
 
-  // Active warga for the participant picker
+  // Fetch users for Piket assignment (active only, excluding SUPERADMIN)
   const warga = await db.user.findMany({
-    where: { status: 'AKTIF' },
+    where: { 
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+    },
     select: { id: true, fullName: true, username: true },
     orderBy: { fullName: 'asc' },
   });

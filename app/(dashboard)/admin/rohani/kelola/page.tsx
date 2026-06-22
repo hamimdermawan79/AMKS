@@ -30,7 +30,10 @@ export default async function RohaniKelolaPage() {
 
   // Query active users for queue status
   const activeUsers = await db.user.findMany({
-    where: { status: 'AKTIF' },
+    where: { 
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+    },
     select: {
       id: true,
       fullName: true,
