@@ -137,8 +137,8 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
         </div>
       )}
 
-      {/* ===== BOTTOM: KETUA DIVISI ===== */}
-      {divHeads.length > 0 && (
+      {/* ===== BOTTOM: KETUA DIVISI & ANGGOTA ===== */}
+      {(divHeads.length > 0 || warga.length > 0) && (
         <div className="mt-4">
           <div className="relative z-0 mx-auto hidden max-w-3xl md:block">
             {/* Horizontal bar above divisi */}
@@ -149,37 +149,48 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
           </div>
 
           <div className="relative z-10 mt-4">
-            <h3 className="mb-6 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Ketua Divisi
-            </h3>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {divHeads.map((u, i) => {
-                const cfg = u.divisionScope ? divisiConfig[String(u.divisionScope)] : null;
+              {Object.entries(divisiConfig).map(([divisiId, cfg], colIdx) => {
+                const head = divHeads.find(h => h.divisionScope === divisiId);
+                const anggota = warga.filter(w => w.divisionScope === divisiId);
+                
+                // Jika tidak ada ketua maupun anggota di divisi ini, lewati
+                if (!head && anggota.length === 0) return null;
+
                 return (
-                  <motion.div key={u.id} custom={i + 3} variants={cardItem} className="flex flex-col items-center">
+                  <div key={divisiId} className="flex flex-col items-center">
                     <div className="mb-3 h-6 w-0.5 bg-slate-200" />
-                    <PersonCard user={u} label={cfg?.label || 'Ketua Divisi'} />
-                  </motion.div>
+                    
+                    {/* Render Ketua Divisi if exists, otherwise a placeholder */}
+                    <h3 className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                      {cfg.label}
+                    </h3>
+                    
+                    {head && (
+                      <motion.div custom={colIdx + 3} variants={cardItem} className="flex flex-col items-center w-full">
+                        <PersonCard user={head} label="Ketua Divisi" />
+                      </motion.div>
+                    )}
+
+                    {/* Render Anggota Divisi */}
+                    {anggota.length > 0 && (
+                      <div className="mt-6 flex flex-col items-center w-full">
+                        <div className="h-6 w-0.5 bg-slate-200 mb-4" />
+                        <h4 className="mb-4 text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                          Anggota
+                        </h4>
+                        <div className="flex flex-col gap-4 w-full">
+                          {anggota.map((u, i) => (
+                            <motion.div key={u.id} custom={colIdx + 6 + i} variants={cardItem} className="flex flex-col items-center">
+                              <PersonCard user={u} label="Warga" small />
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== BOTTOM: WARGA ASRAMA ===== */}
-      {warga.length > 0 && (
-        <div className="mt-16 border-t border-slate-100 pt-10">
-          <div className="relative z-10">
-            <h3 className="mb-8 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Warga Asrama
-            </h3>
-            <div className="grid grid-cols-2 gap-y-8 gap-x-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-              {warga.map((u, i) => (
-                <motion.div key={u.id} custom={i + 6} variants={cardItem} className="flex flex-col items-center">
-                  <PersonCard user={u} label="Warga" small />
-                </motion.div>
-              ))}
             </div>
           </div>
         </div>
