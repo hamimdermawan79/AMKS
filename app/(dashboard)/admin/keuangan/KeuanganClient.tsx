@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp,
@@ -20,6 +20,8 @@ import {
   AlertCircle,
   HelpCircle,
   X,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -36,6 +38,7 @@ import {
   ComposedChart,
   Bar,
   Line,
+  BarChart,
 } from 'recharts';
 import { addTransaction, deleteTransaction, addBill, settleBill, cancelBill } from './actions';
 
@@ -85,6 +88,11 @@ interface KeuanganClientProps {
   monthlyData: { month: string; year: number; pemasukan: number; pengeluaran: number }[];
 }
 
+const INDO_MONTHS = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
 export default function KeuanganClient({
   transactions: initialTransactions,
   bills: initialBills,
@@ -125,6 +133,18 @@ export default function KeuanganClient({
   
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [bills, setBills] = useState<Bill[]>(initialBills);
+
+  // States for Bills filtering (Tugas 3A)
+  const [billSearch, setBillSearch] = useState('');
+  const [billStatusFilter, setBillStatusFilter] = useState<'ALL' | 'BELUM_LUNAS' | 'LUNAS' | 'DIBATALKAN'>('ALL');
+  const [billTypeFilter, setBillTypeFilter] = useState<'ALL' | 'IURAN' | 'DENDA_PIKET' | 'LAINNYA'>('ALL');
+
+  // State for expanded ledger rows (Tugas 4B)
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+
+  // States for Monthly Summary (Tugas 5)
+  const [monthlyReportMonth, setMonthlyReportMonth] = useState<number>(new Date().getMonth());
+  const [monthlyReportYear, setMonthlyReportYear] = useState<number>(new Date().getFullYear());
 
   // Modals
   const [txModalOpen, setTxModalOpen] = useState(false);
@@ -331,6 +351,9 @@ export default function KeuanganClient({
         fullName: string;
         unpaid: number;
         paid: number;
+        dendaPiket: number;
+        iuran: number;
+        lainnya: number;
         billsList: Bill[];
       }
     > = {};
@@ -341,6 +364,9 @@ export default function KeuanganClient({
         fullName: u.fullName,
         unpaid: 0,
         paid: 0,
+        dendaPiket: 0,
+        iuran: 0,
+        lainnya: 0,
         billsList: [],
       };
     });
@@ -353,6 +379,9 @@ export default function KeuanganClient({
           fullName: b.user.fullName,
           unpaid: 0,
           paid: 0,
+          dendaPiket: 0,
+          iuran: 0,
+          lainnya: 0,
           billsList: [],
         };
       }
@@ -360,6 +389,13 @@ export default function KeuanganClient({
       ledgers[uId].billsList.push(b);
       if (b.status === 'BELUM_LUNAS') {
         ledgers[uId].unpaid += b.amount;
+        if (b.type === 'DENDA_PIKET') {
+          ledgers[uId].dendaPiket += b.amount;
+        } else if (b.type === 'IURAN') {
+          ledgers[uId].iuran += b.amount;
+        } else {
+          ledgers[uId].lainnya += b.amount;
+        }
       } else if (b.status === 'LUNAS') {
         ledgers[uId].paid += b.amount;
       }
@@ -369,6 +405,235 @@ export default function KeuanganClient({
       .map(([id, val]) => ({ id, ...val }))
       .sort((a, b) => b.unpaid - a.unpaid); // Sort by highest debt first
   };
+
+  // Filtered bills calculation (Tugas 3A)
+  const filteredBills = bills.filter((b) => {
+    if (billSearch.trim() !== '') {
+      const name = b.user?.fullName?.toLowerCase() || '';
+      if (!name.includes(billSearch.toLowerCase())) {
+        return false;
+      }
+    }
+    if (billStatusFilter !== 'ALL') {
+      if (b.status !== billStatusFilter) {
+        return false;
+      }
+    }
+    if (billTypeFilter !== 'ALL') {
+      if (b.type !== billTypeFilter) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Calculate aging summary cards (Tugas 3B)
+  const getAgingSummary = () => {
+    const today = new Date();
+    const todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+    let activeCount = 0;
+    let activeAmount = 0;
+    let overdue1_30Count = 0;
+    let overdue1_30Amount = 0;
+    let overdue31_90Count = 0;
+    let overdue31_90Amount = 0;
+    let overdueOver90Count = 0;
+    let overdueOver90Amount = 0;
+
+    bills.forEach((b) => {
+      if (b.status !== 'BELUM_LUNAS') return;
+
+      if (!b.dueDate) {
+        activeCount++;
+        activeAmount += b.amount;
+        return;
+      }
+
+      const due = new Date(b.dueDate);
+      const dueMs = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
+      
+      const diffDays = Math.floor((todayMs - dueMs) / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) {
+        activeCount++;
+        activeAmount += b.amount;
+      } else if (diffDays >= 1 && diffDays <= 30) {
+        overdue1_30Count++;
+        overdue1_30Amount += b.amount;
+      } else if (diffDays >= 31 && diffDays <= 90) {
+        overdue31_90Count++;
+        overdue31_90Amount += b.amount;
+      } else if (diffDays > 90) {
+        overdueOver90Count++;
+        overdueOver90Amount += b.amount;
+      }
+    });
+
+    return {
+      active: { count: activeCount, amount: activeAmount },
+      overdue1_30: { count: overdue1_30Count, amount: overdue1_30Amount },
+      overdue31_90: { count: overdue31_90Count, amount: overdue31_90Amount },
+      overdueOver90: { count: overdueOver90Count, amount: overdueOver90Amount },
+    };
+  };
+
+  const agingSummary = getAgingSummary();
+
+  // Top 10 Debtor calculation (Tugas 3C)
+  const getTopDebtors = () => {
+    const debtorsMap: Record<string, { id: string; name: string; amount: number }> = {};
+
+    bills.forEach((b) => {
+      if (b.status !== 'BELUM_LUNAS') return;
+      const uId = b.user.id;
+      if (!debtorsMap[uId]) {
+        debtorsMap[uId] = {
+          id: uId,
+          name: b.user.fullName,
+          amount: 0,
+        };
+      }
+      debtorsMap[uId].amount += b.amount;
+    });
+
+    return Object.values(debtorsMap)
+      .filter((d) => d.amount > 0)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+  };
+
+  const topDebtors = getTopDebtors();
+
+  // Filtered data for Monthly Report (Tugas 5)
+  const getMonthlyReportData = () => {
+    const filteredTxs = transactions.filter((t) => {
+      const d = new Date(t.occurredAt);
+      return d.getFullYear() === monthlyReportYear && d.getMonth() === monthlyReportMonth;
+    });
+
+    const monthlyPemasukan = filteredTxs
+      .filter((t) => t.type === 'PEMASUKAN')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const monthlyPengeluaran = filteredTxs
+      .filter((t) => t.type === 'PENGELUARAN')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const monthlySaldo = monthlyPemasukan - monthlyPengeluaran;
+
+    const monthlyBills = bills.filter((b) => {
+      const d = new Date(b.createdAt);
+      return d.getFullYear() === monthlyReportYear && d.getMonth() === monthlyReportMonth;
+    });
+
+    const billsLunas = monthlyBills.filter((b) => b.status === 'LUNAS');
+    const billsBelumLunas = monthlyBills.filter((b) => b.status === 'BELUM_LUNAS');
+
+    const totalBillsAmount = monthlyBills.reduce((sum, b) => sum + b.amount, 0);
+    const lunasAmount = billsLunas.reduce((sum, b) => sum + b.amount, 0);
+    const belumLunasAmount = billsBelumLunas.reduce((sum, b) => sum + b.amount, 0);
+
+    const scarcityRate = totalBillsAmount > 0 ? (lunasAmount / totalBillsAmount) * 100 : 100;
+
+    const categoryPemMap: Record<string, { category: string; count: number; amount: number }> = {};
+    filteredTxs
+      .filter((t) => t.type === 'PEMASUKAN')
+      .forEach((t) => {
+        const cat = t.category || 'Lain-lain';
+        if (!categoryPemMap[cat]) {
+          categoryPemMap[cat] = { category: cat, count: 0, amount: 0 };
+        }
+        categoryPemMap[cat].count++;
+        categoryPemMap[cat].amount += t.amount;
+      });
+    const categoryPemList = Object.values(categoryPemMap).sort((a, b) => b.amount - a.amount);
+
+    const categoryPengMap: Record<string, { category: string; count: number; amount: number }> = {};
+    filteredTxs
+      .filter((t) => t.type === 'PENGELUARAN')
+      .forEach((t) => {
+        const cat = t.category || 'Lain-lain';
+        if (!categoryPengMap[cat]) {
+          categoryPengMap[cat] = { category: cat, count: 0, amount: 0 };
+        }
+        categoryPengMap[cat].count++;
+        categoryPengMap[cat].amount += t.amount;
+      });
+    const categoryPengList = Object.values(categoryPengMap).sort((a, b) => b.amount - a.amount);
+
+    const overdueDebtors = billsBelumLunas.map((b) => {
+      const today = new Date();
+      const todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+
+      if (!b.dueDate) {
+        return {
+          id: b.id,
+          name: b.user.fullName,
+          type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
+          amount: b.amount,
+          dueDate: null,
+          overdueLabel: 'Belum Jatuh Tempo',
+          urgency: '🟢',
+          diffDays: 0
+        };
+      }
+
+      const due = new Date(b.dueDate);
+      const dueMs = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
+      const diffDays = Math.floor((todayMs - dueMs) / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) {
+        return {
+          id: b.id,
+          name: b.user.fullName,
+          type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
+          amount: b.amount,
+          dueDate: b.dueDate,
+          overdueLabel: 'Belum Jatuh Tempo',
+          urgency: '🟢',
+          diffDays
+        };
+      } else {
+        let urgency = '🔴';
+        if (diffDays <= 30) urgency = '🟡';
+        else if (diffDays <= 90) urgency = '🟠';
+        return {
+          id: b.id,
+          name: b.user.fullName,
+          type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
+          amount: b.amount,
+          dueDate: b.dueDate,
+          overdueLabel: `${diffDays} hari`,
+          urgency,
+          diffDays
+        };
+      }
+    });
+
+    const sortedTxs = [...filteredTxs].sort(
+      (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
+    );
+
+    return {
+      txs: sortedTxs,
+      pemasukan: monthlyPemasukan,
+      pengeluaran: monthlyPengeluaran,
+      saldo: monthlySaldo,
+      totalBillsAmount,
+      lunasAmount,
+      belumLunasAmount,
+      totalBillsCount: monthlyBills.length,
+      lunasCount: billsLunas.length,
+      belumLunasCount: billsBelumLunas.length,
+      kolektibilitas: scarcityRate,
+      categoryPemList,
+      categoryPengList,
+      overdueDebtors,
+    };
+  };
+
+  const monthlyReport = getMonthlyReportData();
 
   // Handlers
   const handleAddTransaction = async (e: React.FormEvent) => {
@@ -637,6 +902,14 @@ export default function KeuanganClient({
             }`}
           >
             Buku Pembantu Warga
+          </button>
+          <button
+            onClick={() => setActiveTab('monthly')}
+            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+              activeTab === 'monthly' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            📋 Rangkuman Bulanan
           </button>
         </div>
 
@@ -1095,86 +1368,271 @@ export default function KeuanganClient({
         )}
 
         {activeTab === 'bills' && (
-          <div className="bg-white border border-border rounded-xl overflow-hidden shadow-sm">
-            <div className="table-container">
-              <table className="table w-full">
-                <thead>
-                  <tr>
-                    <th>Warga</th>
-                    <th>Jenis</th>
-                    <th>Judul Tagihan</th>
-                    <th>Nominal</th>
-                    <th>Tenggat</th>
-                    <th>Status</th>
-                    <th className="text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bills.length === 0 ? (
+          <div className="space-y-6">
+            <div className="bg-white border border-border rounded-xl overflow-hidden shadow-sm">
+              {/* Filter Bar (Tugas 3A) */}
+              <div className="p-4 bg-slate-50/50 border-b border-border flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+                <div className="w-full lg:w-72">
+                  <input
+                    type="text"
+                    placeholder="Cari nama warga..."
+                    value={billSearch}
+                    onChange={(e) => setBillSearch(e.target.value)}
+                    className="input text-sm w-full"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* Filter Status */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
+                    <span className="text-xs font-semibold text-muted-foreground">Status:</span>
+                    <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold">
+                      {(
+                        [
+                          { value: 'ALL', label: 'Semua' },
+                          { value: 'BELUM_LUNAS', label: 'Belum Lunas' },
+                          { value: 'LUNAS', label: 'Lunas' },
+                          { value: 'DIBATALKAN', label: 'Dibatalkan' },
+                        ] as const
+                      ).map((statusOption) => (
+                        <button
+                          key={statusOption.value}
+                          type="button"
+                          onClick={() => setBillStatusFilter(statusOption.value)}
+                          className={`px-2.5 py-1.5 rounded-md transition-all whitespace-nowrap ${
+                            billStatusFilter === statusOption.value
+                              ? 'bg-white shadow-sm text-primary font-semibold'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {statusOption.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Filter Jenis */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
+                    <span className="text-xs font-semibold text-muted-foreground">Jenis:</span>
+                    <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold">
+                      {(
+                        [
+                          { value: 'ALL', label: 'Semua' },
+                          { value: 'IURAN', label: 'Iuran' },
+                          { value: 'DENDA_PIKET', label: 'Denda Piket' },
+                          { value: 'LAINNYA', label: 'Lainnya' },
+                        ] as const
+                      ).map((typeOption) => (
+                        <button
+                          key={typeOption.value}
+                          type="button"
+                          onClick={() => setBillTypeFilter(typeOption.value)}
+                          className={`px-2.5 py-1.5 rounded-md transition-all whitespace-nowrap ${
+                            billTypeFilter === typeOption.value
+                              ? 'bg-white shadow-sm text-primary font-semibold'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {typeOption.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Aging Summary Cards (Tugas 3B) */}
+              <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50/10 border-b border-border">
+                {/* Card 1: Belum Jatuh Tempo */}
+                <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-100 flex flex-col justify-between">
+                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">Belum Jatuh Tempo</span>
+                  <div className="mt-1">
+                    <div className="text-sm font-extrabold text-blue-900">{formatRp(agingSummary.active.amount)}</div>
+                    <div className="text-[10px] font-medium text-blue-600/80 mt-0.5">{agingSummary.active.count} tagihan</div>
+                  </div>
+                </div>
+
+                {/* Card 2: Overdue 1-30 Hari */}
+                <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-100 flex flex-col justify-between">
+                  <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Overdue 1-30 hari</span>
+                  <div className="mt-1">
+                    <div className="text-sm font-extrabold text-amber-900">{formatRp(agingSummary.overdue1_30.amount)}</div>
+                    <div className="text-[10px] font-medium text-amber-600/80 mt-0.5">{agingSummary.overdue1_30.count} tagihan</div>
+                  </div>
+                </div>
+
+                {/* Card 3: Overdue 31-90 Hari */}
+                <div className="p-3 bg-orange-50/80 rounded-xl border border-orange-100 flex flex-col justify-between">
+                  <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">Overdue 31-90 hari</span>
+                  <div className="mt-1">
+                    <div className="text-sm font-extrabold text-orange-900">{formatRp(agingSummary.overdue31_90.amount)}</div>
+                    <div className="text-[10px] font-medium text-orange-600/80 mt-0.5">{agingSummary.overdue31_90.count} tagihan</div>
+                  </div>
+                </div>
+
+                {/* Card 4: Overdue > 90 Hari */}
+                <div className="p-3 bg-red-50/80 rounded-xl border border-red-100 flex flex-col justify-between">
+                  <span className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Overdue &gt; 90 hari</span>
+                  <div className="mt-1">
+                    <div className="text-sm font-extrabold text-red-900">{formatRp(agingSummary.overdueOver90.amount)}</div>
+                    <div className="text-[10px] font-medium text-red-600/80 mt-0.5">{agingSummary.overdueOver90.count} tagihan</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="table-container">
+                <table className="table w-full">
+                  <thead>
                     <tr>
-                      <td colSpan={7} className="text-center py-12 italic text-muted-foreground">
-                        Belum ada daftar tagihan warga.
-                      </td>
+                      <th>Warga</th>
+                      <th>Jenis</th>
+                      <th>Judul Tagihan</th>
+                      <th>Nominal</th>
+                      <th>Tenggat</th>
+                      <th>Status</th>
+                      <th className="text-right">Aksi</th>
                     </tr>
-                  ) : (
-                    bills.map((b) => (
-                      <tr key={b.id}>
-                        <td className="font-semibold text-foreground">{b.user.fullName}</td>
-                        <td>
-                          <span className="badge bg-slate-100 text-slate-800 border border-slate-200">
-                            {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="font-medium text-foreground">{b.title}</div>
-                          {b.note && <div className="text-[10px] text-muted-foreground line-clamp-1">{b.note}</div>}
-                        </td>
-                        <td className="font-bold text-foreground">{formatRp(b.amount)}</td>
-                        <td>{formatDate(b.dueDate)}</td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              b.status === 'LUNAS'
-                                ? 'badge-success'
-                                : b.status === 'DIBATALKAN'
-                                ? 'badge-danger'
-                                : 'badge-warning animate-pulse'
-                            }`}
-                          >
-                            {b.status === 'BELUM_LUNAS' ? 'BELUM LUNAS' : b.status}
-                          </span>
-                        </td>
-                        <td className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {b.status === 'BELUM_LUNAS' && permissions.canUpdateBill && (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setSelectedBillId(b.id);
-                                    setSettleNote('');
-                                    setSettleModalOpen(true);
-                                  }}
-                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                  title="Konfirmasi Lunas"
-                                >
-                                  <CheckCircle2 className="h-4.5 w-4.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleCancelBill(b.id)}
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Batalkan Tagihan"
-                                >
-                                  <XCircle className="h-4.5 w-4.5" />
-                                </button>
-                              </>
-                            )}
-                          </div>
+                  </thead>
+                  <tbody>
+                    {filteredBills.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="text-center py-12 italic text-muted-foreground">
+                          {bills.length === 0
+                            ? 'Belum ada daftar tagihan warga.'
+                            : 'Tidak ada tagihan yang cocok dengan filter.'}
                         </td>
                       </tr>
-                    ))
+                    ) : (
+                      filteredBills.map((b) => (
+                        <tr key={b.id}>
+                          <td className="font-semibold text-foreground">{b.user.fullName}</td>
+                          <td>
+                            <span className="badge bg-slate-100 text-slate-800 border border-slate-200">
+                              {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="font-medium text-foreground">{b.title}</div>
+                            {b.note && <div className="text-[10px] text-muted-foreground line-clamp-1">{b.note}</div>}
+                          </td>
+                          <td className="font-bold text-foreground">{formatRp(b.amount)}</td>
+                          <td>{formatDate(b.dueDate)}</td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                b.status === 'LUNAS'
+                                  ? 'badge-success'
+                                  : b.status === 'DIBATALKAN'
+                                  ? 'badge-danger'
+                                  : 'badge-warning animate-pulse'
+                              }`}
+                            >
+                              {b.status === 'BELUM_LUNAS' ? 'BELUM LUNAS' : b.status}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <div className="flex justify-end gap-1">
+                              {b.status === 'BELUM_LUNAS' && permissions.canUpdateBill && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBillId(b.id);
+                                      setSettleNote('');
+                                      setSettleModalOpen(true);
+                                    }}
+                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                    title="Konfirmasi Lunas"
+                                  >
+                                    <CheckCircle2 className="h-4.5 w-4.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancelBill(b.id)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Batalkan Tagihan"
+                                  >
+                                    <XCircle className="h-4.5 w-4.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Top 10 Debtor Chart (Tugas 3C) */}
+            <div className="glass p-6 rounded-2xl border border-border/40 shadow-sm space-y-4">
+              <div>
+                <h3 className="font-bold text-foreground text-md">Top 10 Warga Penunggak Terbesar</h3>
+                <p className="text-xs text-muted-foreground">Warga dengan akumulasi tagihan belum lunas terbesar.</p>
+              </div>
+
+              {topDebtors.length === 0 ? (
+                <div className="py-12 text-center text-sm font-semibold text-emerald-600 bg-emerald-50/50 rounded-xl border border-emerald-100 flex flex-col items-center justify-center gap-2">
+                  <span className="text-2xl">🎉</span>
+                  <span>Tidak ada tunggakan — semua tagihan lunas!</span>
+                </div>
+              ) : (
+                <div className="h-96 w-full pt-4">
+                  {mounted ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={topDebtors}
+                        margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                      >
+                        <defs>
+                          <linearGradient id="colorDebtorGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.8} />
+                            <stop offset="100%" stopColor="#ef4444" stopOpacity={0.9} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                        <XAxis
+                          type="number"
+                          stroke="#94a3b8"
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(val) => `Rp${(val / 1000).toLocaleString('id-ID')}k`}
+                        />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          stroke="#475569"
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                          width={100}
+                        />
+                        <Tooltip
+                          formatter={(value: any) => [formatRp(Number(value)), 'Total Tunggakan']}
+                          contentStyle={{
+                            background: '#fff',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                          }}
+                        />
+                        <Bar
+                          dataKey="amount"
+                          fill="url(#colorDebtorGradient)"
+                          radius={[0, 8, 8, 0]}
+                          barSize={18}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                    </div>
                   )}
-                </tbody>
-              </table>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1183,34 +1641,578 @@ export default function KeuanganClient({
           <div className="space-y-6">
             <div className="bg-white border border-border rounded-xl overflow-hidden shadow-sm">
               <div className="p-4 bg-slate-50 border-b border-border font-semibold text-foreground text-sm">
-                Rekap Pembayaran & Tunggakan Warga
+                Rekap Pembayaran & Tunggakan Warga (Klik baris untuk melihat detail tagihan)
               </div>
               <div className="table-container">
                 <table className="table w-full">
                   <thead>
                     <tr>
-                      <th>Nama Warga</th>
+                      <th className="pl-6">Nama Warga</th>
+                      <th>Denda Piket</th>
+                      <th>Iuran</th>
+                      <th>Lainnya</th>
                       <th>Total Tunggakan</th>
-                      <th>Total Telah Dibayar</th>
-                      <th>Jumlah Tagihan</th>
+                      <th>Total Dibayar</th>
+                      <th className="pr-6">Kolektibilitas</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {getUserLedgers().map((led) => (
-                      <tr key={led.id} className="hover:bg-slate-50/50">
-                        <td className="font-semibold text-foreground">{led.fullName}</td>
-                        <td className={`font-bold ${led.unpaid > 0 ? 'text-amber-600' : 'text-slate-500'}`}>
-                          {formatRp(led.unpaid)}
-                        </td>
-                        <td className="font-semibold text-emerald-600">{formatRp(led.paid)}</td>
-                        <td className="text-xs text-muted-foreground">{led.billsList.length} tagihan terbit</td>
-                      </tr>
-                    ))}
+                    {getUserLedgers().map((led) => {
+                      const isExpanded = expandedUserId === led.id;
+                      const totalBills = led.paid + led.unpaid;
+                      const kolektibilitas = totalBills > 0 ? (led.paid / totalBills) * 100 : 100;
+
+                      let barColor = 'bg-red-500';
+                      if (kolektibilitas > 80) {
+                        barColor = 'bg-emerald-500';
+                      } else if (kolektibilitas >= 50) {
+                        barColor = 'bg-amber-500';
+                      }
+
+                      return (
+                        <Fragment key={led.id}>
+                          <tr
+                            className="hover:bg-slate-50/50 cursor-pointer transition-colors"
+                            onClick={() => setExpandedUserId(isExpanded ? null : led.id)}
+                          >
+                            <td className="font-semibold text-foreground flex items-center gap-2 pl-6 py-4">
+                              <span className="p-1 hover:bg-slate-100 rounded transition-colors flex items-center justify-center">
+                                {isExpanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </span>
+                              {led.fullName}
+                            </td>
+                            <td className="text-slate-600">{formatRp(led.dendaPiket)}</td>
+                            <td className="text-slate-600">{formatRp(led.iuran)}</td>
+                            <td className="text-slate-600">{formatRp(led.lainnya)}</td>
+                            <td className={`font-bold ${led.unpaid > 0 ? 'text-amber-600' : 'text-slate-500'}`}>
+                              {formatRp(led.unpaid)}
+                            </td>
+                            <td className="font-semibold text-emerald-600">{formatRp(led.paid)}</td>
+                            <td className="pr-6">
+                              <div className="flex items-center gap-2">
+                                <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className={`h-1.5 rounded-full ${barColor}`}
+                                    style={{ width: `${kolektibilitas}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
+                                  {kolektibilitas.toFixed(0)}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Expanded Details Row */}
+                          {isExpanded && (
+                            <tr className="bg-slate-50/30">
+                              <td colSpan={7} className="p-4 pl-6 pr-6">
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="border border-border/60 rounded-xl bg-white shadow-sm overflow-hidden mb-2">
+                                    <div className="p-3 bg-slate-50 border-b border-border text-xs font-bold text-slate-700">
+                                      Detail Tagihan {led.fullName} ({led.billsList.length} tagihan)
+                                    </div>
+                                    {led.billsList.length === 0 ? (
+                                      <div className="p-4 text-center text-xs text-muted-foreground italic">
+                                        Tidak ada catatan tagihan untuk warga ini.
+                                      </div>
+                                    ) : (
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full text-xs text-left">
+                                          <thead className="bg-slate-50/70 border-b border-border/60 text-[10px] font-bold text-muted-foreground uppercase">
+                                            <tr>
+                                              <th className="p-3 pl-4">Judul Tagihan</th>
+                                              <th className="p-3">Jenis</th>
+                                              <th className="p-3">Nominal</th>
+                                              <th className="p-3">Tenggat</th>
+                                              <th className="p-3">Status</th>
+                                              <th className="p-3 pr-4">Dibuat</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-border/40">
+                                            {led.billsList.map((b) => (
+                                              <tr key={b.id} className="hover:bg-slate-50/30">
+                                                <td className="p-3 pl-4 font-medium text-foreground">
+                                                  {b.title}
+                                                  {b.note && (
+                                                    <div className="text-[9px] text-muted-foreground mt-0.5 font-normal">
+                                                      {b.note}
+                                                    </div>
+                                                  )}
+                                                </td>
+                                                <td className="p-3">
+                                                  <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px]">
+                                                    {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
+                                                  </span>
+                                                </td>
+                                                <td className="p-3 font-semibold text-slate-700">{formatRp(b.amount)}</td>
+                                                <td className="p-3 text-slate-500">{formatDate(b.dueDate)}</td>
+                                                <td className="p-3">
+                                                  <span
+                                                    className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
+                                                      b.status === 'LUNAS'
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        : b.status === 'DIBATALKAN'
+                                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                        : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                                                    }`}
+                                                  >
+                                                    {b.status === 'BELUM_LUNAS' ? 'BELUM LUNAS' : b.status}
+                                                  </span>
+                                                </td>
+                                                <td className="p-3 text-slate-400 pr-4">{formatDate(b.createdAt)}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'monthly' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6 print-content"
+          >
+            {/* Header Laporan (no-print controls) */}
+            <div className="glass p-6 rounded-2xl border border-border/40 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 no-print">
+              <div>
+                <h3 className="font-bold text-foreground text-lg">Laporan Rangkuman Bulanan</h3>
+                <p className="text-xs text-muted-foreground">Pilih bulan dan tahun untuk menghasilkan laporan periodik keuangan asrama.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-muted-foreground">Bulan:</span>
+                  <select
+                    value={monthlyReportMonth}
+                    onChange={(e) => setMonthlyReportMonth(Number(e.target.value))}
+                    className="input text-sm bg-white py-1 px-2.5 max-w-[150px] focus:ring-1 focus:ring-primary focus:border-transparent"
+                  >
+                    {INDO_MONTHS.map((m, idx) => (
+                      <option key={idx} value={idx}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-muted-foreground">Tahun:</span>
+                  <select
+                    value={monthlyReportYear}
+                    onChange={(e) => setMonthlyReportYear(Number(e.target.value))}
+                    className="input text-sm bg-white py-1 px-2.5 max-w-[100px] focus:ring-1 focus:ring-primary focus:border-transparent"
+                  >
+                    {[2022, 2023, 2024, 2025, 2026].map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="btn btn-secondary text-xs flex items-center gap-1.5 font-semibold py-2 px-4 shadow-sm"
+                >
+                  <span>🖨</span>
+                  <span>Cetak Laporan</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Print Header (hanya muncul saat cetak) */}
+            <div className="hidden print:block text-center space-y-2 pb-6 border-b border-slate-300">
+              <h2 className="text-2xl font-bold uppercase tracking-wider text-slate-800">Laporan Rangkuman Bulanan Keuangan AMKS</h2>
+              <p className="text-sm font-semibold text-slate-600">
+                Periode: {INDO_MONTHS[monthlyReportMonth]} {monthlyReportYear}
+              </p>
+              <p className="text-[10px] text-slate-400">Dicetak otomatis oleh Sistem Keuangan Asrama pada {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+
+            {/* Section 1: 4 Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Pemasukan */}
+              <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Pemasukan</span>
+                  <div className="text-xl font-bold text-emerald-600">{formatRp(monthlyReport.pemasukan)}</div>
+                  <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PEMASUKAN').length} transaksi</div>
+                </div>
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+              </div>
+
+              {/* Pengeluaran */}
+              <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Pengeluaran</span>
+                  <div className="text-xl font-bold text-red-600">{formatRp(monthlyReport.pengeluaran)}</div>
+                  <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PENGELUARAN').length} transaksi</div>
+                </div>
+                <div className="p-2.5 bg-red-50 text-red-600 rounded-lg">
+                  <TrendingDown className="h-5 w-5" />
+                </div>
+              </div>
+
+              {/* Saldo Sisa */}
+              <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Saldo Bersih</span>
+                  <div className={`text-xl font-bold ${monthlyReport.saldo >= 0 ? 'text-primary' : 'text-red-700'}`}>
+                    {formatRp(monthlyReport.saldo)}
+                  </div>
+                  <div className="text-[9px] text-muted-foreground">Selisih kas masuk-keluar</div>
+                </div>
+                <div className="p-2.5 bg-blue-50 text-primary rounded-lg">
+                  <Wallet className="h-5 w-5" />
+                </div>
+              </div>
+
+              {/* Kolektibilitas */}
+              <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Kolektibilitas Tagihan</span>
+                  <div className="text-xl font-bold text-amber-600">{monthlyReport.kolektibilitas.toFixed(0)}%</div>
+                  <div className="text-[9px] text-muted-foreground">{monthlyReport.lunasCount} dari {monthlyReport.totalBillsCount} tagihan lunas</div>
+                </div>
+                <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Rincian per Kategori */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Rincian Pemasukan */}
+              <div className="glass p-5 rounded-2xl border border-border/40 shadow-sm space-y-4">
+                <h4 className="font-bold text-foreground text-sm border-b border-border/50 pb-2 flex items-center justify-between">
+                  <span>Rincian Kategori Pemasukan</span>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">PEMASUKAN</span>
+                </h4>
+                
+                <div className="table-container">
+                  <table className="table w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th className="py-2 px-3">Kategori</th>
+                        <th className="py-2 px-3 text-center">Jumlah Transaksi</th>
+                        <th className="py-2 px-3 text-right">Total Nominal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyReport.categoryPemList.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="text-center py-6 italic text-muted-foreground">Belum ada pemasukan di bulan ini.</td>
+                        </tr>
+                      ) : (
+                        monthlyReport.categoryPemList.map((cat, idx) => (
+                          <tr key={idx}>
+                            <td className="py-2 px-3 font-semibold text-foreground">{cat.category}</td>
+                            <td className="py-2 px-3 text-center">{cat.count} tx</td>
+                            <td className="py-2 px-3 text-right font-bold text-emerald-600">{formatRp(cat.amount)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    {monthlyReport.categoryPemList.length > 0 && (
+                      <tfoot>
+                        <tr className="bg-slate-50 border-t border-border font-bold">
+                          <td className="py-2 px-3">Total Pemasukan</td>
+                          <td className="py-2 px-3 text-center">{monthlyReport.categoryPemList.reduce((sum, c) => sum + c.count, 0)} tx</td>
+                          <td className="py-2 px-3 text-right text-emerald-600">{formatRp(monthlyReport.pemasukan)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+
+                {/* Donut Chart Pemasukan */}
+                {monthlyReport.categoryPemList.length > 0 && (
+                  <div className="h-48 w-full flex items-center justify-center relative">
+                    {mounted ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={monthlyReport.categoryPemList.map(c => ({ name: c.category, value: c.amount }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={35}
+                            outerRadius={55}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {monthlyReport.categoryPemList.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={PEMASUKAN_COLORS[index % PEMASUKAN_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatRp(Number(value))} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Rincian Pengeluaran */}
+              <div className="glass p-5 rounded-2xl border border-border/40 shadow-sm space-y-4">
+                <h4 className="font-bold text-foreground text-sm border-b border-border/50 pb-2 flex items-center justify-between">
+                  <span>Rincian Kategori Pengeluaran</span>
+                  <span className="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded">PENGELUARAN</span>
+                </h4>
+                
+                <div className="table-container">
+                  <table className="table w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th className="py-2 px-3">Kategori</th>
+                        <th className="py-2 px-3 text-center">Jumlah Transaksi</th>
+                        <th className="py-2 px-3 text-right">Total Nominal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyReport.categoryPengList.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="text-center py-6 italic text-muted-foreground">Belum ada pengeluaran di bulan ini.</td>
+                        </tr>
+                      ) : (
+                        monthlyReport.categoryPengList.map((cat, idx) => (
+                          <tr key={idx}>
+                            <td className="py-2 px-3 font-semibold text-foreground">{cat.category}</td>
+                            <td className="py-2 px-3 text-center">{cat.count} tx</td>
+                            <td className="py-2 px-3 text-right font-bold text-red-600">{formatRp(cat.amount)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    {monthlyReport.categoryPengList.length > 0 && (
+                      <tfoot>
+                        <tr className="bg-slate-50 border-t border-border font-bold">
+                          <td className="py-2 px-3">Total Pengeluaran</td>
+                          <td className="py-2 px-3 text-center">{monthlyReport.categoryPengList.reduce((sum, c) => sum + c.count, 0)} tx</td>
+                          <td className="py-2 px-3 text-right text-red-600">{formatRp(monthlyReport.pengeluaran)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+
+                {/* Donut Chart Pengeluaran */}
+                {monthlyReport.categoryPengList.length > 0 && (
+                  <div className="h-48 w-full flex items-center justify-center relative">
+                    {mounted ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={monthlyReport.categoryPengList.map(c => ({ name: c.category, value: c.amount }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={35}
+                            outerRadius={55}
+                            paddingAngle={3}
+                            dataKey="value"
+                          >
+                            {monthlyReport.categoryPengList.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={PENGELUARAN_COLORS[index % PENGELUARAN_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatRp(Number(value))} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Section 3: Rekap Tunggakan */}
+            <div className="glass p-6 rounded-2xl border border-border/40 shadow-sm space-y-6">
+              <div>
+                <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-amber-500" />
+                  Rekap Tunggakan & Kolektibilitas Bulan {INDO_MONTHS[monthlyReportMonth]} {monthlyReportYear}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">Analisis status penagihan iuran dan denda yang diterbitkan pada bulan ini.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-medium text-slate-700">
+                <div className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl">
+                  <span className="text-[10px] text-muted-foreground block font-bold uppercase tracking-wider mb-1">Total Tagihan Terbit</span>
+                  <span className="text-base font-extrabold text-foreground">{formatRp(monthlyReport.totalBillsAmount)}</span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">Jumlah: {monthlyReport.totalBillsCount} tagihan</span>
+                </div>
+                <div className="p-3 bg-emerald-50/40 border border-emerald-100 rounded-xl">
+                  <span className="text-[10px] text-emerald-600 block font-bold uppercase tracking-wider mb-1">Sudah Lunas</span>
+                  <span className="text-base font-extrabold text-emerald-600">{formatRp(monthlyReport.lunasAmount)}</span>
+                  <span className="text-[10px] text-emerald-500/80 block mt-0.5">Jumlah: {monthlyReport.lunasCount} tagihan</span>
+                </div>
+                <div className="p-3 bg-amber-50/40 border border-amber-100 rounded-xl">
+                  <span className="text-[10px] text-amber-600 block font-bold uppercase tracking-wider mb-1">Masih Tunggak</span>
+                  <span className="text-base font-extrabold text-amber-600">{formatRp(monthlyReport.belumLunasAmount)}</span>
+                  <span className="text-[10px] text-amber-500/80 block mt-0.5">Jumlah: {monthlyReport.belumLunasCount} tagihan</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-bold text-slate-700">
+                  <span>Tingkat Kolektibilitas Tagihan Terbit</span>
+                  <span>{monthlyReport.kolektibilitas.toFixed(1)}%</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-4 overflow-hidden relative shadow-inner">
+                  <div
+                    className="h-full rounded-full transition-all duration-500 bg-amber-500"
+                    style={{ width: `${monthlyReport.kolektibilitas}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center text-[10px] font-extrabold text-slate-700">
+                    {monthlyReport.kolektibilitas.toFixed(1)}% Kolektibilitas
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabel warga yang masih menunggak iuran bulan itu */}
+              <div className="space-y-3 pt-2">
+                <h5 className="text-xs font-bold text-foreground">Daftar Warga yang Belum Melunasi Tagihan Terbit Periode Ini</h5>
+                <div className="table-container">
+                  <table className="table w-full text-xs">
+                    <thead>
+                      <tr>
+                        <th className="py-2 px-3">Nama</th>
+                        <th className="py-2 px-3">Jenis Tagihan</th>
+                        <th className="py-2 px-3">Nominal</th>
+                        <th className="py-2 px-3">Lama Overdue</th>
+                        <th className="py-2 px-3 text-right">Urgency</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyReport.overdueDebtors.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="text-center py-8 italic text-muted-foreground text-emerald-600 font-medium">
+                            Semua tagihan terbit periode ini telah lunas! 🎉
+                          </td>
+                        </tr>
+                      ) : (
+                        monthlyReport.overdueDebtors.map((deb, idx) => (
+                          <tr key={idx}>
+                            <td className="py-2 px-3 font-semibold text-foreground">{deb.name}</td>
+                            <td className="py-2 px-3">{deb.type}</td>
+                            <td className="py-2 px-3 font-bold text-foreground">{formatRp(deb.amount)}</td>
+                            <td className="py-2 px-3 text-slate-600">{deb.overdueLabel}</td>
+                            <td className="py-2 px-3 text-right">
+                              {deb.urgency === '🟢' && (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">🟢 Lancar</span>
+                              )}
+                              {deb.urgency === '🟡' && (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">🟡 Overdue 1-30h</span>
+                              )}
+                              {deb.urgency === '🟠' && (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200">🟠 Overdue 31-90h</span>
+                              )}
+                              {deb.urgency === '🔴' && (
+                                <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">🔴 Overdue &gt;90h</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Tabel Detail Transaksi Bulan */}
+            <div className="glass p-6 rounded-2xl border border-border/40 shadow-sm space-y-4">
+              <div>
+                <h4 className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  Detail Seluruh Transaksi Bulan {INDO_MONTHS[monthlyReportMonth]} {monthlyReportYear}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">Daftar lengkap pemasukan dan pengeluaran kas yang dibukukan pada periode ini.</p>
+              </div>
+
+              <div className="table-container">
+                <table className="table w-full text-xs">
+                  <thead>
+                    <tr>
+                      <th className="py-3 px-4">Tanggal</th>
+                      <th className="py-3 px-4">Tipe</th>
+                      <th className="py-3 px-4">Kategori</th>
+                      <th className="py-3 px-4 text-right">Nominal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyReport.txs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-12 italic text-muted-foreground">
+                          Belum ada transaksi arus kas pada periode ini.
+                        </td>
+                      </tr>
+                    ) : (
+                      monthlyReport.txs.map((tx) => (
+                        <tr key={tx.id}>
+                          <td className="py-3 px-4">{formatDate(tx.occurredAt)}</td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`badge ${
+                                tx.type === 'PEMASUKAN' ? 'badge-success' : 'badge-danger'
+                              }`}
+                            >
+                              {tx.type}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-foreground">{tx.category}</td>
+                          <td className="py-3 px-4 text-right font-bold ${tx.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-red-600'}">
+                            {tx.type === 'PEMASUKAN' ? '+' : '-'} {formatRp(tx.amount)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  {monthlyReport.txs.length > 0 && (
+                    <tfoot className="bg-slate-50 border-t border-border font-semibold text-slate-700">
+                      <tr>
+                        <td colSpan={4} className="py-2.5 px-4 text-right">Total Pemasukan</td>
+                        <td className="py-2.5 px-4 text-right text-emerald-600">{formatRp(monthlyReport.pemasukan)}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="py-2.5 px-4 text-right">Total Pengeluaran</td>
+                        <td className="py-2.5 px-4 text-right text-red-600">{formatRp(monthlyReport.pengeluaran)}</td>
+                      </tr>
+                      <tr className="border-t border-slate-300 font-extrabold text-sm text-foreground bg-slate-100/50">
+                        <td colSpan={4} className="py-3 px-4 text-right">Saldo Bersih</td>
+                        <td className={`py-3 px-4 text-right ${monthlyReport.saldo >= 0 ? 'text-primary' : 'text-red-700'}`}>
+                          {formatRp(monthlyReport.saldo)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </motion.div>
         )}
       </div>
 
