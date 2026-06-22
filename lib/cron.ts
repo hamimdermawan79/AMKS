@@ -140,6 +140,178 @@ export async function checkUpcomingBills() {
   }
 }
 
+
+/**
+ * Automatically check today's and yesterday's piket assignments that have passed 11:00 WIB.
+ * If they don't have an attendance record, mark them as TIDAK_HADIR, issue a 10,000 fine,
+ * and create a bill.
+ */
+export async function checkMissedPikets() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+    const currentHour = nowWib.getHours();
+    
+    // We only process if it's past 11:00 WIB
+    if (currentHour < 11) {
+      console.log('⏰ Skipping checkMissedPikets: current time is before 11:00 WIB.');
+      return;
+    }
+
+    // Get active period
+    const activePeriod = await db.piketPeriod.findFirst({
+      where: { isActive: true },
+    });
+    if (!activePeriod) return;
+
+    // Get today's start and end date (in WIB)
+    const today = new Date(nowWib);
+    today.setHours(0, 0, 0, 0);
+
+    // Let's check any assignments on or before today
+    const unpaidAssignments = await db.piketAssignment.findMany({
+      where: {
+        periodId: activePeriod.id,
+        date: {
+          lte: today,
+        },
+        attendance: null,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    console.log(`⏰ Found ${unpaidAssignments.length} assignments to process for missed picket status.`);
+
+    for (const assign of unpaidAssignments) {
+      // Create attendance as TIDAK_HADIR
+      await db.piketAttendance.create({
+        data: {
+          assignmentId: assign.id,
+          status: 'TIDAK_HADIR',
+          markedById: null, // marked by system
+        },
+      });
+
+      const fineAmount = activePeriod.finePerDay || 10000;
+
+      // Create fine record
+      const fine = await db.fine.create({
+        data: {
+          userId: assign.userId,
+          periodId: activePeriod.id,
+          daysMissed: 1,
+          amount: fineAmount,
+        },
+      });
+
+      // Create bill
+      const bill = await db.bill.create({
+        data: {
+          userId: assign.userId,
+          type: 'DENDA_PIKET',
+          title: `Denda Piket (${new Date(assign.date).toLocaleDateString('id-ID')})`,
+          amount: fineAmount,
+          status: 'BELUM_LUNAS',
+          division: 'KEBERSIHAN',
+          note: `Terlambat / tidak melakukan presensi piket pada tanggal ${new Date(assign.date).toLocaleDateString('id-ID')} sebelum pukul 11:00 WIB.`,
+        },
+      });
+
+      // Link fine to bill
+      await db.fine.update({
+        where: { id: fine.id },
+        data: { billId: bill.id },
+      });
+
+      // Create Notification
+      await createNotification({
+        userId: assign.userId,
+        title: 'Denda Piket Otomatis Terbit',
+        message: `Anda dikenakan denda piket sebesar Rp${fineAmount.toLocaleString('id-ID')} karena terlambat / tidak melakukan presensi piket pada tanggal ${new Date(assign.date).toLocaleDateString('id-ID')} sebelum 11:00 WIB. Harap segera melunasi ke Bendahara.`,
+        type: 'TAGIHAN_REMINDER',
+        referenceId: bill.id,
+      });
+      
+      console.log(`✅ Automated denda issued for ${assign.user.fullName} on date ${assign.date.toLocaleDateString()}`);
+    }
+  } catch (error) {
+    console.error('Failed to run checkMissedPikets:', error);
+  }
+}
+
+/**
+ * Check piket assignments for today (H-0).
+ * If the assignment date is today and they haven't marked attendance yet,
+ * and we haven't sent a reminder in the last 3 hours, send a WhatsApp reminder.
+ */
+export async function checkHourlyPiketReminders() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+    const currentHour = nowWib.getHours();
+    
+    // Reminders are only relevant on the piket day between 05:00 WIB and 11:00 WIB (when presensi closes)
+    if (currentHour < 5 || currentHour >= 11) {
+      return;
+    }
+
+    const today = new Date(nowWib);
+    today.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(nowWib);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const assignments = await db.piketAssignment.findMany({
+      where: {
+        date: {
+          gte: today,
+          lte: endOfToday,
+        },
+        attendance: null, // Hasn't checked in yet
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    console.log(`⏰ Checking hourly reminders for ${assignments.length} people assigned today...`);
+
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+
+    for (const assign of assignments) {
+      // Check if we sent a reminder in the last 3 hours for this specific assignment
+      const recentReminder = await db.notification.findFirst({
+        where: {
+          userId: assign.userId,
+          type: 'PIKET_REMINDER',
+          referenceId: `SPAM:${assign.id}`,
+          createdAt: {
+            gte: threeHoursAgo,
+          },
+        },
+      });
+
+      if (recentReminder) {
+        console.log(`🧹 Skipping reminder for ${assign.user.fullName} - sent recently.`);
+        continue;
+      }
+
+      // Send/enqueue reminder notification
+      const timeRemaining = 11 - currentHour;
+      await createNotification({
+        userId: assign.userId,
+        title: 'PENGINGAT PIKET: Segera Presensi!',
+        message: `PENTING! Halo ${assign.user.fullName}, Anda terjadwal piket HARI INI. Harap segera lakukan presensi piket di dashboard sebelum pukul 11:00 WIB (tersisa kurang lebih ${timeRemaining} jam lagi). Jika terlambat, Anda akan dikenakan denda otomatis sebesar Rp10.000. Terima kasih!`,
+        type: 'PIKET_REMINDER',
+        referenceId: `SPAM:${assign.id}`,
+      });
+      
+      console.log(`✉️ Queued hourly reminder for ${assign.user.fullName}`);
+    }
+  } catch (error) {
+    console.error('Failed to run checkHourlyPiketReminders:', error);
+  }
+}
+
 let cronInterval: NodeJS.Timeout | null = null;
 
 export function startCronJobs() {
@@ -150,11 +322,15 @@ export function startCronJobs() {
   // Run checks immediately on startup
   checkUpcomingPiketAssignments();
   checkUpcomingBills();
+  checkMissedPikets();
+  checkHourlyPiketReminders();
 
   // Run checks every hour
   cronInterval = setInterval(() => {
     checkUpcomingPiketAssignments();
     checkUpcomingBills();
+    checkMissedPikets();
+    checkHourlyPiketReminders();
   }, 1000 * 60 * 60); // 1 hour
 }
 
@@ -165,3 +341,4 @@ export function stopCronJobs() {
     console.log('⏰ Cron jobs worker stopped.');
   }
 }
+

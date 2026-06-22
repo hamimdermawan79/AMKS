@@ -82,7 +82,7 @@ export async function deleteTransaction(id: string) {
 
 const billSchema = z.object({
   userId: z.string().min(1, 'Warga wajib dipilih'),
-  type: z.enum(['DENDA_PIKET', 'IURAN', 'LAINNYA']),
+  type: z.enum(['DENDA_PIKET', 'IURAN', 'LAINNYA', 'IURAN_OLAHRAGA', 'DENDA_OLAHRAGA']),
   title: z.string().min(1, 'Judul tagihan wajib diisi'),
   amount: z.number().int().min(1, 'Nominal harus lebih dari 0'),
   dueDate: z.string().optional().nullable(),
@@ -91,7 +91,7 @@ const billSchema = z.object({
 
 export async function addBill(data: {
   userId: string;
-  type: 'DENDA_PIKET' | 'IURAN' | 'LAINNYA';
+  type: 'DENDA_PIKET' | 'IURAN' | 'LAINNYA' | 'IURAN_OLAHRAGA' | 'DENDA_OLAHRAGA';
   title: string;
   amount: number;
   dueDate?: string | null;
@@ -212,7 +212,15 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
   });
 
   // Automatically create a corresponding PEMASUKAN transaction
-  const category = bill.type === 'DENDA_PIKET' ? 'Denda Piket' : bill.type === 'IURAN' ? 'Iuran Warga' : 'Lain-lain';
+  const category = bill.type === 'DENDA_PIKET' 
+    ? 'Denda Piket' 
+    : bill.type === 'IURAN' 
+    ? 'Iuran Warga' 
+    : bill.type === 'IURAN_OLAHRAGA'
+    ? 'Iuran Olahraga'
+    : bill.type === 'DENDA_OLAHRAGA'
+    ? 'Denda Olahraga'
+    : 'Lain-lain';
   await db.transaction.create({
     data: {
       type: 'PEMASUKAN',

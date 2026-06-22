@@ -2,16 +2,19 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { canFromSession } from '@/lib/rbac/can';
 import { db } from '@/lib/db';
-import RohaniManager from './RohaniManager';
+import RohaniManager from '../RohaniManager';
 
-export default async function RohaniPage() {
+export default async function RohaniKelolaPage() {
   const session = await auth();
 
   if (!session?.user) {
     redirect('/login');
   }
 
-  const canManage = await canFromSession('division:manage:rohani', 'ROHANI');
+  const allowed = await canFromSession('division:manage:rohani', 'ROHANI');
+  if (!allowed) {
+    redirect('/admin/rohani');
+  }
 
   // Query schedules
   const schedules = await db.rohaniSchedule.findMany({
@@ -78,8 +81,8 @@ export default async function RohaniPage() {
     <RohaniManager
       schedules={schedules}
       queues={sortedQueues.map(({ oldestDutyTime, ...rest }) => rest)}
-      isAdmin={canManage}
-      isKelolaMode={false}
+      isAdmin={true}
+      isKelolaMode={true}
       currentUserId={session.user.id}
     />
   );

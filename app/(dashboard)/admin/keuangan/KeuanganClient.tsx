@@ -53,7 +53,7 @@ interface Transaction {
 
 interface Bill {
   id: string;
-  type: 'DENDA_PIKET' | 'IURAN' | 'LAINNYA';
+  type: 'DENDA_PIKET' | 'IURAN' | 'LAINNYA' | 'IURAN_OLAHRAGA' | 'DENDA_OLAHRAGA';
   title: string;
   amount: number;
   status: 'BELUM_LUNAS' | 'LUNAS' | 'DIBATALKAN';
@@ -137,7 +137,7 @@ export default function KeuanganClient({
   // States for Bills filtering (Tugas 3A)
   const [billSearch, setBillSearch] = useState('');
   const [billStatusFilter, setBillStatusFilter] = useState<'ALL' | 'BELUM_LUNAS' | 'LUNAS' | 'DIBATALKAN'>('ALL');
-  const [billTypeFilter, setBillTypeFilter] = useState<'ALL' | 'IURAN' | 'DENDA_PIKET' | 'LAINNYA'>('ALL');
+  const [billTypeFilter, setBillTypeFilter] = useState<'ALL' | 'IURAN' | 'DENDA_PIKET' | 'LAINNYA' | 'IURAN_OLAHRAGA' | 'DENDA_OLAHRAGA'>('ALL');
 
   // State for expanded ledger rows (Tugas 4B)
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
@@ -167,7 +167,7 @@ export default function KeuanganClient({
   
   const [newBill, setNewBill] = useState({
     userId: '',
-    type: 'IURAN' as 'DENDA_PIKET' | 'IURAN' | 'LAINNYA',
+    type: 'IURAN' as 'DENDA_PIKET' | 'IURAN' | 'LAINNYA' | 'IURAN_OLAHRAGA' | 'DENDA_OLAHRAGA',
     title: '',
     amount: '',
     dueDate: '',
@@ -1501,8 +1501,10 @@ export default function KeuanganClient({
                       {(
                         [
                           { value: 'ALL', label: 'Semua' },
-                          { value: 'IURAN', label: 'Iuran' },
+                          { value: 'IURAN', label: 'Iuran Warga' },
                           { value: 'DENDA_PIKET', label: 'Denda Piket' },
+                          { value: 'IURAN_OLAHRAGA', label: 'Iuran Olahraga' },
+                          { value: 'DENDA_OLAHRAGA', label: 'Denda Olahraga' },
                           { value: 'LAINNYA', label: 'Lainnya' },
                         ] as const
                       ).map((typeOption) => (

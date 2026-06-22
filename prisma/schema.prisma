@@ -33,6 +33,8 @@ enum BillType {
   DENDA_PIKET
   IURAN
   LAINNYA
+  IURAN_OLAHRAGA
+  DENDA_OLAHRAGA
 }
 
 enum BillStatus {
@@ -107,6 +109,10 @@ model User {
   transactions   Transaction[]
   auditLogs      AuditLog[]
   notifications  Notification[]
+  sportsAttendances SportsAttendance[]
+  maghribSchedules  RohaniSchedule[]    @relation("ImamMaghrib")
+  ishaSchedules     RohaniSchedule[]    @relation("ImamIsha")
+  kultumSchedules   RohaniSchedule[]    @relation("KultumBy")
 
   @@map("users")
 }
@@ -354,40 +360,45 @@ model Fine {
 }
 
 model Bill {
-  id          String     @id @default(cuid())
-  userId      String
-  type        BillType
-  title       String
-  amount      Int
-  status      BillStatus @default(BELUM_LUNAS)
-  dueDate     DateTime?
-  settledAt   DateTime?
-  settledById String?
-  note        String?
-  user        User       @relation("BillOwner", fields: [userId], references: [id], onDelete: Cascade)
-  settledBy   User?      @relation("BillSettler", fields: [settledById], references: [id])
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id               String            @id @default(cuid())
+  userId           String
+  type             BillType
+  title            String
+  amount           Int
+  status           BillStatus        @default(BELUM_LUNAS)
+  dueDate          DateTime?
+  settledAt        DateTime?
+  settledById      String?
+  note             String?
+  division         Division?
+  user             User              @relation("BillOwner", fields: [userId], references: [id], onDelete: Cascade)
+  settledBy        User?             @relation("BillSettler", fields: [settledById], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  fines       Fine[]
-  transaction Transaction?
+  fines            Fine[]
+  transaction      Transaction?
+  sportsAttendance SportsAttendance?
 
   @@map("bills")
 }
 
 model Transaction {
-  id            String   @id @default(cuid())
-  type          TxType
-  category      String?
-  amount        Int
-  description   String?
-  occurredAt    DateTime
-  relatedBillId String?  @unique
-  createdById   String
-  relatedBill   Bill?    @relation(fields: [relatedBillId], references: [id])
-  createdBy     User     @relation(fields: [createdById], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String          @id @default(cuid())
+  type             TxType
+  category         String?
+  amount           Int
+  description      String?
+  occurredAt       DateTime
+  relatedBillId    String?         @unique
+  createdById      String
+  division         Division?
+  sportsActivityId String?
+  relatedBill      Bill?           @relation(fields: [relatedBillId], references: [id])
+  createdBy        User            @relation(fields: [createdById], references: [id])
+  sportsActivity   SportsActivity? @relation(fields: [sportsActivityId], references: [id])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   @@map("transactions")
 }
@@ -444,3 +455,50 @@ enum NotificationType {
   PENGUMUMAN
   SYSTEM
 }
+
+model SportsActivity {
+  id           String             @id @default(cuid())
+  title        String
+  date         DateTime
+  feeAmount    Int                @default(5000)
+  fineAmount   Int                @default(5000)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  attendance   SportsAttendance[]
+  transactions Transaction[]
+
+  @@map("sports_activities")
+}
+
+model SportsAttendance {
+  id               String           @id @default(cuid())
+  sportsActivityId String
+  userId           String
+  status           AttendanceStatus // HADIR, TIDAK_HADIR, IZIN
+  billId           String?          @unique
+  sportsActivity   SportsActivity   @relation(fields: [sportsActivityId], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bill             Bill?            @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@unique([sportsActivityId, userId])
+  @@map("sports_attendances")
+}
+
+model RohaniSchedule {
+  id            String   @id @default(cuid())
+  date          DateTime // Must be a Thursday
+  startVerse    Int
+  endVerse      Int
+  currentSurah  String
+  imamMaghribId String
+  imamIshaId    String
+  kultumById    String
+  imamMaghrib   User     @relation("ImamMaghrib", fields: [imamMaghribId], references: [id], onDelete: Cascade)
+  imamIsha      User     @relation("ImamIsha", fields: [imamIshaId], references: [id], onDelete: Cascade)
+  kultumBy      User     @relation("KultumBy", fields: [kultumById], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("rohani_schedules")
+}
+

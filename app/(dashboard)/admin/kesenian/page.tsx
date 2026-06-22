@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { canFromSession } from '@/lib/rbac/can';
 import { db } from '@/lib/db';
-import DivisionClient from '../division-shared/DivisionClient';
+import KesenianManager from './KesenianManager';
 
 export default async function KesenianPage() {
   const session = await auth();
@@ -13,6 +13,7 @@ export default async function KesenianPage() {
 
   const canManage = await canFromSession('division:manage:kesenian', 'KESENIAN');
 
+  // Query Kesenian announcements
   const announcements = await db.announcement.findMany({
     where: { division: 'KESENIAN' },
     orderBy: [
@@ -21,6 +22,7 @@ export default async function KesenianPage() {
     ],
   });
 
+  // Query Kesenian activities (entertainment events)
   const activities = await db.activity.findMany({
     where: { division: 'KESENIAN' },
     orderBy: {
@@ -28,23 +30,20 @@ export default async function KesenianPage() {
     },
   });
 
+  // Query general posts (since kesenian manages active publications/posts of the dorm)
+  const posts = await db.post.findMany({
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 10,
+  });
+
   return (
-    <DivisionClient
-      division="KESENIAN"
-      divisionLabel="Kesenian"
-      description="Mengembangkan minat, bakat, dan kreativitas warga asrama di bidang seni musik, rupa, tari, sastra, serta mengelola pertunjukan budaya berkala."
-      themeColor="purple"
-      announcements={announcements.map((a) => ({
-        ...a,
-        createdAt: a.createdAt.toISOString(),
-      }))}
-      activities={activities.map((a) => ({
-        ...a,
-        startAt: a.startAt ? a.startAt.toISOString() : null,
-        endAt: a.endAt ? a.endAt.toISOString() : null,
-      }))}
+    <KesenianManager
+      posts={posts}
+      activities={activities}
+      announcements={announcements}
       canManage={canManage}
     />
   );
 }
-

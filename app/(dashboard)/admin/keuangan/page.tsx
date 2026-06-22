@@ -209,13 +209,23 @@ return (
 
       <KeuanganClient
         transactions={transactions.map((t) => ({
-          ...t,
+          id: t.id,
+          type: t.type,
+          category: t.category,
+          amount: t.amount,
+          description: t.description,
           occurredAt: t.occurredAt.toISOString(),
         }))}
         bills={bills.map((b) => ({
-          ...b,
+          id: b.id,
+          type: b.type,
+          title: b.title,
+          amount: b.amount,
+          status: b.status,
           dueDate: b.dueDate ? b.dueDate.toISOString() : null,
+          note: b.note,
           createdAt: b.createdAt.toISOString(),
+          user: b.user,
         }))}
         users={users}
         permissions={{

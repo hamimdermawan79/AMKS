@@ -2,16 +2,19 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { canFromSession } from '@/lib/rbac/can';
 import { db } from '@/lib/db';
-import SportsManager from './SportsManager';
+import SportsManager from '../SportsManager';
 
-export default async function KeolahragaanPage() {
+export default async function KeolahragaanKelolaPage() {
   const session = await auth();
 
   if (!session?.user) {
     redirect('/login');
   }
 
-  const canManage = await canFromSession('division:manage:keolahragaan', 'KEOLAHRAGAAN');
+  const allowed = await canFromSession('division:manage:keolahragaan', 'KEOLAHRAGAAN');
+  if (!allowed) {
+    redirect('/admin/keolahragaan');
+  }
 
   // Query Warga
   const wargaList = await db.user.findMany({
@@ -87,8 +90,8 @@ export default async function KeolahragaanPage() {
         note: d.note,
         user: d.user,
       }))}
-      isAdmin={canManage}
-      isKelolaMode={false}
+      isAdmin={true}
+      isKelolaMode={true}
     />
   );
 }
