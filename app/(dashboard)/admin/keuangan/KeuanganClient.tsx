@@ -40,7 +40,7 @@ import {
   Line,
   BarChart,
 } from 'recharts';
-import { addTransaction, deleteTransaction, addBill, settleBill, cancelBill } from './actions';
+import { addTransaction, deleteTransaction, addBill, addBulkIuran, settleBill, cancelBill, extendBillDueDate } from './actions';
 
 interface Transaction {
   id: string;
@@ -154,6 +154,7 @@ export default function KeuanganClient({
   // Selected Bill for settlement
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [settleNote, setSettleNote] = useState('');
+  const [settleAmount, setSettleAmount] = useState<number>(0);
 
   // Form states
   const [newTx, setNewTx] = useState({
@@ -172,6 +173,12 @@ export default function KeuanganClient({
     dueDate: '',
     note: '',
   });
+
+  const [customTxCategory, setCustomTxCategory] = useState('');
+  
+  const [bulkBillData, setBulkBillData] = useState<Record<string, { selected: boolean; withWifi: boolean }>>({});
+  const [bulkBillTitle, setBulkBillTitle] = useState('');
+  const [bulkBillDueDate, setBulkBillDueDate] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -454,19 +461,22 @@ export default function KeuanganClient({
       const dueMs = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
       
       const diffDays = Math.floor((todayMs - dueMs) / (1000 * 60 * 60 * 24));
+      
+      const isLate = diffDays > 0 && b.type === 'IURAN';
+      const actualAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
 
       if (diffDays <= 0) {
         activeCount++;
-        activeAmount += b.amount;
+        activeAmount += actualAmount;
       } else if (diffDays >= 1 && diffDays <= 30) {
         overdue1_30Count++;
-        overdue1_30Amount += b.amount;
+        overdue1_30Amount += actualAmount;
       } else if (diffDays >= 31 && diffDays <= 90) {
         overdue31_90Count++;
-        overdue31_90Amount += b.amount;
+        overdue31_90Amount += actualAmount;
       } else if (diffDays > 90) {
         overdueOver90Count++;
-        overdueOver90Amount += b.amount;
+        overdueOver90Amount += actualAmount;
       }
     });
 
@@ -639,7 +649,14 @@ export default function KeuanganClient({
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseInt(newTx.amount);
-    if (isNaN(amountNum) || amountNum <= 0 || !newTx.category) return;
+    
+    // Resolve category
+    let finalCategory = newTx.category;
+    if (finalCategory === 'Lain-lain') {
+      finalCategory = customTxCategory;
+    }
+
+    if (isNaN(amountNum) || amountNum <= 0 || !finalCategory) return;
 
     setSubmitting(true);
     setError(null);
@@ -654,7 +671,7 @@ export default function KeuanganClient({
         const added: Transaction = {
           id: res.id!,
           type: newTx.type,
-          category: newTx.category,
+          category: finalCategory,
           amount: amountNum,
           description: newTx.description || null,
           occurredAt: new Date(newTx.occurredAt).toISOString(),
@@ -668,6 +685,7 @@ export default function KeuanganClient({
           description: '',
           occurredAt: new Date().toISOString().split('T')[0],
         });
+        setCustomTxCategory('');
         setTxModalOpen(false);
       }
     } catch (err: any) {
@@ -742,6 +760,41 @@ export default function KeuanganClient({
     }
   };
 
+  const handleAddBulkBill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    const usersToBill = Object.entries(bulkBillData)
+      .filter(([_, data]) => data.selected)
+      .map(([userId, data]) => ({
+        userId,
+        amount: data.withWifi ? 80000 : 50000,
+      }));
+
+    if (usersToBill.length === 0) {
+      setError('Pilih minimal satu warga untuk ditagih.');
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await addBulkIuran({
+        title: bulkBillTitle,
+        dueDate: bulkBillDueDate || null,
+        users: usersToBill,
+      });
+
+      if (res.success) {
+        // Just reload the page to get the updated list of bills, it's safer and easier than manually assembling them
+        window.location.reload();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Gagal membuat tagihan massal');
+      setSubmitting(false);
+    }
+  };
+
   const handleSettleBill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBillId) return;
@@ -750,7 +803,7 @@ export default function KeuanganClient({
     setError(null);
 
     try {
-      const res = await settleBill(selectedBillId, settleNote);
+      const res = await settleBill(selectedBillId, settleNote, settleAmount);
       if (res.success) {
         setBills((prev) =>
           prev.map((b) =>
@@ -758,6 +811,7 @@ export default function KeuanganClient({
               ? {
                   ...b,
                   status: 'LUNAS' as const,
+                  amount: settleAmount,
                   note: settleNote
                     ? `${b.note || ''}\nPelunasan: ${settleNote}`.trim()
                     : b.note,
@@ -780,7 +834,7 @@ export default function KeuanganClient({
             id: `temp-${Date.now()}`,
             type: 'PEMASUKAN',
             category,
-            amount: billObj.amount,
+            amount: settleAmount,
             description: `Pelunasan tagihan: ${billObj.title}`,
             occurredAt: new Date().toISOString(),
           };
@@ -789,12 +843,25 @@ export default function KeuanganClient({
 
         setSettleNote('');
         setSelectedBillId(null);
+        setSettleAmount(0);
         setSettleModalOpen(false);
       }
     } catch (err: any) {
       setError(err.message || 'Gagal melunasi tagihan');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleExtendDueDate = async (id: string) => {
+    if (!confirm('Berikan izin telat bayar (tanpa denda) hingga awal bulan depan?')) return;
+    try {
+      const res = await extendBillDueDate(id);
+      if (res.success) {
+        window.location.reload();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal memperpanjang waktu tagihan');
     }
   };
 
@@ -932,12 +999,29 @@ export default function KeuanganClient({
             <button
               onClick={() => {
                 setError(null);
+                
+                // Initialize bulk bill data
+                const initData: Record<string, { selected: boolean; withWifi: boolean }> = {};
+                users.forEach(u => {
+                  initData[u.id] = { selected: true, withWifi: true };
+                });
+                setBulkBillData(initData);
+                
+                // set default title
+                const now = new Date();
+                const monthName = now.toLocaleString('id-ID', { month: 'long' });
+                setBulkBillTitle(`Iuran Bulanan ${monthName} ${now.getFullYear()}`);
+                
+                // set default due date to the 20th of the current month
+                const due = new Date(now.getFullYear(), now.getMonth(), 20);
+                setBulkBillDueDate(due.toISOString().split('T')[0]);
+                
                 setBillModalOpen(true);
               }}
               className="btn btn-primary text-sm flex items-center gap-1.5"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
-              Buat Tagihan
+              Buat Tagihan Bulanan
             </button>
           )}
         </div>
@@ -1503,61 +1587,81 @@ export default function KeuanganClient({
                         </td>
                       </tr>
                     ) : (
-                      filteredBills.map((b) => (
-                        <tr key={b.id}>
-                          <td className="font-semibold text-foreground">{b.user.fullName}</td>
-                          <td>
-                            <span className="badge bg-slate-100 text-slate-800 border border-slate-200">
-                              {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="font-medium text-foreground">{b.title}</div>
-                            {b.note && <div className="text-[10px] text-muted-foreground line-clamp-1">{b.note}</div>}
-                          </td>
-                          <td className="font-bold text-foreground">{formatRp(b.amount)}</td>
-                          <td>{formatDate(b.dueDate)}</td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                b.status === 'LUNAS'
-                                  ? 'badge-success'
-                                  : b.status === 'DIBATALKAN'
-                                  ? 'badge-danger'
-                                  : 'badge-warning animate-pulse'
-                              }`}
-                            >
-                              {b.status === 'BELUM_LUNAS' ? 'BELUM LUNAS' : b.status}
-                            </span>
-                          </td>
-                          <td className="text-right">
-                            <div className="flex justify-end gap-1">
-                              {b.status === 'BELUM_LUNAS' && permissions.canUpdateBill && (
-                                <>
-                                  <button
-                                    onClick={() => {
-                                      setSelectedBillId(b.id);
-                                      setSettleNote('');
-                                      setSettleModalOpen(true);
-                                    }}
-                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                    title="Konfirmasi Lunas"
-                                  >
-                                    <CheckCircle2 className="h-4.5 w-4.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleCancelBill(b.id)}
-                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Batalkan Tagihan"
-                                  >
-                                    <XCircle className="h-4.5 w-4.5" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                      filteredBills.map((b) => {
+                        const isLate = b.status === 'BELUM_LUNAS' && b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+                        const displayAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
+
+                        return (
+                          <tr key={b.id}>
+                            <td className="font-semibold text-foreground">{b.user.fullName}</td>
+                            <td>
+                              <span className="badge bg-slate-100 text-slate-800 border border-slate-200">
+                                {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="font-medium text-foreground">{b.title}</div>
+                              {b.note && <div className="text-[10px] text-muted-foreground line-clamp-1">{b.note}</div>}
+                            </td>
+                            <td className="font-bold text-foreground">
+                              {formatRp(displayAmount)}
+                              {isLate && <div className="text-[10px] text-red-600 font-semibold">+20% Bunga Telat</div>}
+                            </td>
+                            <td>{formatDate(b.dueDate)}</td>
+                            <td>
+                              <span
+                                className={`badge ${
+                                  b.status === 'LUNAS'
+                                    ? 'badge-success'
+                                    : b.status === 'DIBATALKAN'
+                                    ? 'badge-danger'
+                                    : isLate
+                                    ? 'bg-red-100 text-red-800 border border-red-200 animate-pulse'
+                                    : 'badge-warning'
+                                }`}
+                              >
+                                {b.status === 'BELUM_LUNAS' ? (isLate ? 'NUNGGAK (JATUH TEMPO)' : 'BELUM LUNAS') : b.status}
+                              </span>
+                            </td>
+                            <td className="text-right">
+                              <div className="flex justify-end gap-1">
+                                {b.status === 'BELUM_LUNAS' && permissions.canUpdateBill && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedBillId(b.id);
+                                        setSettleAmount(displayAmount);
+                                        setSettleNote('');
+                                        setSettleModalOpen(true);
+                                      }}
+                                      className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                      title="Konfirmasi Lunas"
+                                    >
+                                      <CheckCircle2 className="h-4.5 w-4.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleCancelBill(b.id)}
+                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                      title="Batalkan Tagihan"
+                                    >
+                                      <XCircle className="h-4.5 w-4.5" />
+                                    </button>
+                                    {isLate && (
+                                      <button
+                                        onClick={() => handleExtendDueDate(b.id)}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Beri Izin Telat (Perpanjang Awal Bulan Depan)"
+                                      >
+                                        <Clock className="h-4.5 w-4.5" />
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -2274,15 +2378,53 @@ export default function KeuanganClient({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Kategori</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={newTx.category}
                     onChange={(e) => setNewTx({ ...newTx, category: e.target.value })}
-                    placeholder="Contoh: Iuran Warga, Konsumsi, Listrik, dll..."
                     className="input text-sm"
-                  />
+                  >
+                    <option value="">-- Pilih Kategori --</option>
+                    {newTx.type === 'PENGELUARAN' ? (
+                      <>
+                        <option value="Uang Sampah">Uang Sampah</option>
+                        <option value="Uang WiFi">Uang WiFi</option>
+                        <option value="Uang Divisi Kebersihan">Uang Divisi Kebersihan</option>
+                        <option value="Uang Divisi Kesenian">Uang Divisi Kesenian</option>
+                        <option value="Uang Divisi Olahraga">Uang Divisi Olahraga</option>
+                        <option value="Uang Divisi Keamanan">Uang Divisi Keamanan</option>
+                        <option value="Uang Kerja Bakti">Uang Kerja Bakti</option>
+                        <option value="Uang Rapat RT">Uang Rapat RT</option>
+                        <option value="Uang Rapat Bulanan">Uang Rapat Bulanan</option>
+                        <option value="Uang Air Galon">Uang Air Galon</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Kas">Kas</option>
+                        <option value="WiFi">WiFi</option>
+                        <option value="Hutang">Hutang</option>
+                        <option value="Uang Sumbangan">Uang Sumbangan</option>
+                        <option value="Denda">Denda</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                      </>
+                    )}
+                  </select>
                 </div>
+
+                {newTx.category === 'Lain-lain' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Tulis Kategori Secara Manual</label>
+                    <input
+                      type="text"
+                      required
+                      value={customTxCategory}
+                      onChange={(e) => setCustomTxCategory(e.target.value)}
+                      placeholder="Contoh: Beli Sapu, dll..."
+                      className="input text-sm"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Nominal (Rupiah)</label>
@@ -2375,81 +2517,102 @@ export default function KeuanganClient({
                 </div>
               )}
 
-              <form onSubmit={handleAddBill} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Pilih Warga</label>
-                  <select
-                    required
-                    value={newBill.userId}
-                    onChange={(e) => setNewBill({ ...newBill, userId: e.target.value })}
-                    className="input text-sm bg-white"
-                  >
-                    <option value="">-- Pilih Warga Asrama --</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.fullName} ({u.username})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Jenis Tagihan</label>
-                  <select
-                    required
-                    value={newBill.type}
-                    onChange={(e) => setNewBill({ ...newBill, type: e.target.value as any })}
-                    className="input text-sm bg-white"
-                  >
-                    <option value="IURAN">Iuran Bulanan / Wajib</option>
-                    <option value="DENDA_PIKET">Denda Piket</option>
-                    <option value="LAINNYA">Lain-lain / Sekali Bayar</option>
-                  </select>
-                </div>
-
+              <form onSubmit={handleAddBulkBill} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Judul Tagihan</label>
                   <input
                     type="text"
                     required
-                    value={newBill.title}
-                    onChange={(e) => setNewBill({ ...newBill, title: e.target.value })}
-                    placeholder="Contoh: Iuran Asrama Juni 2026..."
+                    value={bulkBillTitle}
+                    onChange={(e) => setBulkBillTitle(e.target.value)}
+                    placeholder="Contoh: Iuran Bulanan Juni 2026"
                     className="input text-sm"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Nominal Tagihan (Rupiah)</label>
-                  <input
-                    type="number"
-                    required
-                    value={newBill.amount}
-                    onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
-                    placeholder="Masukkan nominal tagihan..."
-                    className="input text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Tenggat Waktu / Due Date (Opsional)</label>
+                  <label className="text-xs font-semibold text-muted-foreground">Tenggat Waktu / Due Date</label>
                   <input
                     type="date"
-                    value={newBill.dueDate}
-                    onChange={(e) => setNewBill({ ...newBill, dueDate: e.target.value })}
+                    required
+                    value={bulkBillDueDate}
+                    onChange={(e) => setBulkBillDueDate(e.target.value)}
                     className="input text-sm"
                   />
+                  <p className="text-[10px] text-muted-foreground">Lewat dari tanggal ini, nominal pelunasan akan berbunga 20% otomatis.</p>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Catatan / Detail (Opsional)</label>
-                  <textarea
-                    rows={2}
-                    value={newBill.note}
-                    onChange={(e) => setNewBill({ ...newBill, note: e.target.value })}
-                    placeholder="Detail tambahan mengenai tagihan..."
-                    className="input text-sm resize-none"
-                  />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-muted-foreground">Pilih Warga & Status WiFi</label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...bulkBillData };
+                          Object.keys(updated).forEach(k => updated[k].selected = true);
+                          setBulkBillData(updated);
+                        }}
+                        className="text-[10px] bg-slate-100 px-2 py-1 rounded font-semibold hover:bg-slate-200"
+                      >
+                        Pilih Semua
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = { ...bulkBillData };
+                          Object.keys(updated).forEach(k => updated[k].selected = false);
+                          setBulkBillData(updated);
+                        }}
+                        className="text-[10px] bg-slate-100 px-2 py-1 rounded font-semibold hover:bg-slate-200"
+                      >
+                        Batal Semua
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="max-h-[220px] overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
+                    {users.map(u => {
+                      const isSelected = bulkBillData[u.id]?.selected || false;
+                      const withWifi = bulkBillData[u.id]?.withWifi ?? true;
+                      return (
+                        <div key={u.id} className={`flex items-center justify-between p-2 rounded-md transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-slate-100'}`}>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                setBulkBillData(prev => ({
+                                  ...prev,
+                                  [u.id]: { ...prev[u.id], selected: e.target.checked }
+                                }));
+                              }}
+                              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                            />
+                            <span className="text-sm font-medium">{u.fullName}</span>
+                          </div>
+                          
+                          {isSelected && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-muted-foreground font-semibold">Rp {withWifi ? '80.000' : '50.000'}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setBulkBillData(prev => ({
+                                    ...prev,
+                                    [u.id]: { ...prev[u.id], withWifi: !withWifi }
+                                  }));
+                                }}
+                                className={`px-2 py-1 rounded-full font-bold text-[10px] transition-colors ${withWifi ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+                              >
+                                {withWifi ? 'Di Asrama (+WiFi)' : 'Tidak di Asrama (-WiFi)'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
@@ -2466,7 +2629,7 @@ export default function KeuanganClient({
                     className="btn btn-primary text-sm flex items-center gap-1.5"
                   >
                     {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Buat Tagihan
+                    Buat Tagihan Massal
                   </button>
                 </div>
               </form>
@@ -2519,6 +2682,18 @@ export default function KeuanganClient({
                 <p className="text-sm text-muted-foreground">
                   Konfirmasi bahwa tagihan ini telah dibayarkan secara manual (tunai/transfer) oleh warga ke kas asrama. Perubahan ini akan otomatis mencatat arus kas masuk (*Pemasukan*).
                 </p>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Nominal Dibayarkan (Rupiah)</label>
+                  <input
+                    type="number"
+                    required
+                    value={settleAmount}
+                    onChange={(e) => setSettleAmount(Number(e.target.value))}
+                    className="input text-sm font-bold text-foreground"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Nominal ini otomatis menyertakan bunga 20% jika tagihan sudah lewat tenggat waktu.</p>
+                </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Catatan Tambahan (Opsional)</label>

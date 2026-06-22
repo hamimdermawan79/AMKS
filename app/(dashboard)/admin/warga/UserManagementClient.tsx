@@ -224,7 +224,9 @@ export default function UserManagementClient({
                   <div className="flex flex-wrap gap-1">
                     {user.roles.map((r) => (
                       <span key={r.role.id} className="badge badge-info text-xs">
-                        {r.role.label}
+                        {r.role.name === 'DIVISION_HEAD' && user.divisionScope
+                          ? `${r.role.label} ${user.divisionScope}`
+                          : r.role.label}
                       </span>
                     ))}
                   </div>

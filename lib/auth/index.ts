@@ -33,6 +33,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             status: true,
             jabatan: true,
             divisionScope: true,
+            roles: {
+              include: {
+                role: true,
+              },
+            },
           },
         });
 
@@ -51,7 +56,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           username: user.username,
           fullName: user.fullName,
           status: user.status,
-          jabatan: user.jabatan,
+          jabatan: user.jabatan || user.roles.map(r => {
+            if (r.role.name === 'DIVISION_HEAD' && user.divisionScope) {
+              return `${r.role.label} ${user.divisionScope}`;
+            }
+            return r.role.label;
+          }).join(', ') || null,
           divisionScope: user.divisionScope,
         };
       },

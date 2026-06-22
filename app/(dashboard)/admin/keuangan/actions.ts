@@ -131,7 +131,57 @@ export async function addBill(data: {
   return { success: true, id: bill.id };
 }
 
-export async function settleBill(billId: string, note?: string) {
+const bulkIuranSchema = z.object({
+  title: z.string().min(1, 'Judul tagihan wajib diisi'),
+  dueDate: z.string().optional().nullable(),
+  users: z.array(z.object({
+    userId: z.string(),
+    amount: z.number().int(),
+  })),
+});
+
+export async function addBulkIuran(data: {
+  title: string;
+  dueDate?: string | null;
+  users: { userId: string; amount: number }[];
+}) {
+  const session = await authorizeFinance('bill:update');
+  const v = bulkIuranSchema.parse(data);
+
+  const due = v.dueDate ? new Date(v.dueDate) : null;
+
+  // Use a transaction or create multiple individually
+  for (const u of v.users) {
+    const bill = await db.bill.create({
+      data: {
+        userId: u.userId,
+        type: 'IURAN',
+        title: v.title,
+        amount: u.amount,
+        status: 'BELUM_LUNAS',
+        dueDate: due,
+        note: 'Dibuat secara massal',
+      },
+    });
+
+    try {
+      await createNotification({
+        userId: u.userId,
+        title: 'Tagihan Baru Diterbitkan',
+        message: `Terdapat tagihan baru untuk Anda sebesar Rp${u.amount.toLocaleString('id-ID')} dengan judul "${v.title}". Harap hubungi Bendahara untuk melakukan pelunasan.`,
+        type: 'TAGIHAN_REMINDER',
+        referenceId: bill.id,
+      });
+    } catch (err) {
+      console.error('Failed to create notification for bulk bill:', err);
+    }
+  }
+
+  revalidatePath('/admin/keuangan');
+  return { success: true };
+}
+
+export async function settleBill(billId: string, note?: string, amountOverride?: number) {
   const session = await authorizeFinance('bill:update');
 
   const bill = await db.bill.findUnique({
@@ -147,11 +197,14 @@ export async function settleBill(billId: string, note?: string) {
     throw new Error('Tagihan sudah lunas');
   }
 
+  const finalAmount = amountOverride ?? bill.amount;
+
   // Update bill status to LUNAS
   await db.bill.update({
     where: { id: billId },
     data: {
       status: 'LUNAS',
+      amount: finalAmount, // Update the DB amount if late fee is included
       settledAt: new Date(),
       settledById: session.user.id,
       note: note ? `${bill.note || ''}\nCatatan Pelunasan: ${note}`.trim() : bill.note,
@@ -164,7 +217,7 @@ export async function settleBill(billId: string, note?: string) {
     data: {
       type: 'PEMASUKAN',
       category,
-      amount: bill.amount,
+      amount: finalAmount,
       description: `Pelunasan tagihan: ${bill.title}`,
       occurredAt: new Date(),
       relatedBillId: bill.id,
@@ -216,6 +269,28 @@ export async function cancelBill(billId: string) {
     });
   }
 
+  revalidatePath('/admin/keuangan');
+  return { success: true };
+}
+
+export async function extendBillDueDate(billId: string) {
+  const session = await authorizeFinance('bill:update');
+  
+  const bill = await db.bill.findUnique({ where: { id: billId } });
+  if (!bill) throw new Error('Tagihan tidak ditemukan');
+  
+  const now = new Date();
+  // Next month, day 1
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  
+  await db.bill.update({
+    where: { id: billId },
+    data: {
+      dueDate: nextMonth,
+      note: `${bill.note || ''}\n(Izin telat: diperpanjang tanpa denda hingga awal bulan)`.trim(),
+    }
+  });
+  
   revalidatePath('/admin/keuangan');
   return { success: true };
 }
