@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { createNotification } from '@/lib/notifications';
 
 interface GeneratePiketOptions {
   startDate: Date;
@@ -36,6 +37,12 @@ export async function generatePiketSchedule(options: GeneratePiketOptions) {
 
   if (!participantIds || participantIds.length === 0) {
     throw new Error('Tidak ada warga yang dipilih untuk piket');
+  }
+
+  if (participantIds.length < peoplePerDay) {
+    throw new Error(
+      `Jumlah warga yang dipilih (${participantIds.length} orang) kurang dari jumlah petugas per hari (${peoplePerDay} orang). Silakan pilih warga lebih banyak atau kurangi jumlah petugas per hari.`
+    );
   }
 
   // Step 1: Create the period record
@@ -204,22 +211,14 @@ export async function closePiketPeriod(periodId: string) {
       data: { billId: bill.id },
     });
 
-    // Enqueue WA notification
-    const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { phone: true, fullName: true },
+    // Create Notification (which handles WA queues automatically)
+    await createNotification({
+      userId,
+      title: 'Denda Piket Terbit',
+      message: `Anda memiliki tagihan denda piket baru sebesar Rp${amount.toLocaleString('id-ID')} karena tidak piket selama ${daysMissed} hari pada periode ini. Silakan melakukan pelunasan ke Bendahara.`,
+      type: 'TAGIHAN_REMINDER',
+      referenceId: bill.id,
     });
-
-    if (user) {
-      await db.waMessage.create({
-        data: {
-          toPhone: user.phone,
-          body: `Halo ${user.fullName}, Anda memiliki tagihan denda piket sebesar Rp${amount.toLocaleString()} untuk ${daysMissed} hari tidak piket. Silakan segera melunasi. Terima kasih.`,
-          relatedType: 'bill',
-          relatedId: bill.id,
-        },
-      });
-    }
 
     finesCreated.push(userId);
   }

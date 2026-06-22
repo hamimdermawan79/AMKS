@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { handleLogout } from './logout-action';
+import NotificationBell from '@/components/ui/notification-bell';
 
 export default async function DashboardLayout({
   children,
@@ -80,6 +81,13 @@ export default async function DashboardLayout({
                   <Link href="/admin/karya-ilmiah" className="nav-item">
                     Karya Ilmiah
                   </Link>
+
+                  {/* Divider */}
+                  <div className="border-t border-border my-2" />
+
+                  <Link href="/admin/whatsapp" className="nav-item">
+                    WhatsApp Bot
+                  </Link>
                   <Link href="/admin/pengaturan" className="nav-item">
                     Pengaturan Sistem
                   </Link>
@@ -105,8 +113,21 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="container mx-auto px-6 py-8">
+      <main className="flex-1 overflow-auto flex flex-col bg-slate-50/20">
+        {/* Header bar */}
+        <header className="glass border-b border-border/80 py-4 px-8 flex items-center justify-between flex-shrink-0 z-20">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            Selamat datang, <span className="font-semibold text-foreground">{session.user.fullName}</span>
+            <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full border border-slate-200 uppercase font-bold tracking-wider">
+              {session.user.jabatan || 'Warga'}
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <NotificationBell userId={session.user.id} />
+          </div>
+        </header>
+
+        <div className="container mx-auto px-6 py-8 flex-1">
           {children}
         </div>
       </main>

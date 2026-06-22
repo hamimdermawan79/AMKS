@@ -58,6 +58,12 @@ export async function createSchedule(data: {
   const session = await authorizeManage();
   const v = createScheduleSchema.parse(data);
 
+  if (v.participantIds.length < v.peoplePerDay) {
+    throw new Error(
+      `Jumlah warga yang dipilih (${v.participantIds.length} orang) kurang dari jumlah petugas per hari (${v.peoplePerDay} orang).`
+    );
+  }
+
   const start = new Date(v.startDate);
   const end = new Date(v.endDate);
   if (end < start) {
