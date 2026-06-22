@@ -71,6 +71,9 @@ export default function UserDashboard({
 
         <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="max-w-xl">
+            <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full border border-slate-200 uppercase font-bold tracking-wider mb-3 inline-flex items-center gap-2 shadow-sm backdrop-blur-sm">
+              {roleNames.find((r: string) => r !== 'WARGA') || 'Warga'}
+            </span>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-white/80 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span>{greeting}</span>
@@ -95,16 +98,7 @@ export default function UserDashboard({
             </Link>
           )}
 
-          {divisionManageHref && (
-            <Link
-              href={divisionManageHref}
-              className="group inline-flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-5 py-3 text-sm font-medium text-primary shadow-sm transition-all duration-300 hover:border-primary hover:bg-primary hover:text-white hover:shadow-md"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              Akses Panel Admin Divisi
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          )}
+          
         </div>
       </motion.div>
 
@@ -119,7 +113,7 @@ export default function UserDashboard({
         <StatCard
           icon={<ShieldCheck className="h-5 w-5 text-blue-600" />}
           label="Jabatan"
-          value={session?.user?.jabatan || "Warga"}
+          value={roleNames.find((r: string) => r !== 'WARGA') || 'Warga'}
           badgeTone="blue"
         />
         <StatCard
