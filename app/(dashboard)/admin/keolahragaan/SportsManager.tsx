@@ -66,6 +66,7 @@ type Props = {
     status: 'BELUM_LUNAS' | 'LUNAS' | 'DIBATALKAN';
     createdAt: Date;
     note: string | null;
+    userId: string;
     user: {
       fullName: string;
       username: string;
@@ -73,9 +74,10 @@ type Props = {
   }[];
   isAdmin: boolean;
   isKelolaMode?: boolean;
+  currentUserId?: string;
 };
 
-export default function SportsManager({ wargaList, activities, transactions, dendaList, isAdmin, isKelolaMode }: Props) {
+export default function SportsManager({ wargaList, activities, transactions, dendaList, isAdmin, isKelolaMode, currentUserId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<'kegiatan' | 'kas' | 'denda'>('kegiatan');
@@ -504,10 +506,17 @@ export default function SportsManager({ wargaList, activities, transactions, den
                 </tr>
               </thead>
               <tbody className="divide-y divide-border text-sm">
-                {dendaList.map((denda) => (
-                  <tr key={denda.id} className="hover:bg-slate-50/50">
+                {dendaList.map((denda) => {
+                  const isMyDenda = currentUserId && denda.userId === currentUserId;
+                  return (
+                  <tr key={denda.id} className={isMyDenda ? 'bg-amber-50 border-l-4 border-amber-400' : 'hover:bg-slate-50/50'}>
                     <td className="px-5 py-3.5">
-                      <div className="font-medium text-foreground">{denda.user?.fullName || 'Warga'}</div>
+                      <div className={`font-medium ${isMyDenda ? 'text-amber-700' : 'text-foreground'} flex items-center gap-1.5`}>
+                        {denda.user?.fullName || 'Warga'}
+                        {isMyDenda && (
+                          <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white">Saya</span>
+                        )}
+                      </div>
                       <div className="text-xs text-muted-foreground">@{denda.user?.username || 'user'}</div>
                     </td>
                     <td className="px-5 py-3.5 font-medium text-foreground">{denda.title}</td>
@@ -536,7 +545,8 @@ export default function SportsManager({ wargaList, activities, transactions, den
                       {denda.note || '—'}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
 
                 {dendaList.length === 0 && (
                   <tr>

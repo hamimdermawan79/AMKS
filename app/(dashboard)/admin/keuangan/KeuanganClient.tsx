@@ -86,6 +86,7 @@ interface KeuanganClientProps {
   agingData: { label: string; count: number; amount: number }[];
   previousMonthTotals: { pemasukan: number; pengeluaran: number };
   monthlyData: { month: string; year: number; pemasukan: number; pengeluaran: number }[];
+  currentUserId?: string;
 }
 
 const INDO_MONTHS = [
@@ -157,6 +158,7 @@ export default function KeuanganClient({
   categoryBreakdown,
   agingData,
   monthlyData,
+  currentUserId,
 }: KeuanganClientProps) {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState('chart');
@@ -1657,10 +1659,16 @@ export default function KeuanganClient({
                       filteredBills.map((b) => {
                         const isLate = b.status === 'BELUM_LUNAS' && b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
                         const displayAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
+                        const isMyRow = currentUserId && b.user.id === currentUserId;
 
                         return (
-                          <tr key={b.id}>
-                            <td className="font-semibold text-foreground">{b.user.fullName}</td>
+                          <tr key={b.id} className={isMyRow ? 'bg-amber-50 border-l-4 border-amber-400' : ''}>
+                            <td className="font-semibold text-foreground">
+                              <span className={isMyRow ? 'text-amber-700' : ''}>{b.user.fullName}</span>
+                              {isMyRow && (
+                                <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white">Saya</span>
+                              )}
+                            </td>
                             <td>
                               <span className="badge bg-slate-100 text-slate-800 border border-slate-200">
                                 {b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya'}
@@ -1840,10 +1848,11 @@ export default function KeuanganClient({
                         barColor = 'bg-amber-500';
                       }
 
+                      const isMyLedger = currentUserId && led.id === currentUserId;
                       return (
                         <Fragment key={led.id}>
                           <tr
-                            className="hover:bg-slate-50/50 cursor-pointer transition-colors"
+                            className={`cursor-pointer transition-colors ${isMyLedger ? 'bg-amber-50 border-l-4 border-amber-400 hover:bg-amber-100/60' : 'hover:bg-slate-50/50'}`}
                             onClick={() => setExpandedUserId(isExpanded ? null : led.id)}
                           >
                             <td className="font-semibold text-foreground flex items-center gap-2 pl-6 py-4">
@@ -1854,7 +1863,10 @@ export default function KeuanganClient({
                                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                 )}
                               </span>
-                              {led.fullName}
+                              <span className={isMyLedger ? 'text-amber-700' : ''}>{led.fullName}</span>
+                              {isMyLedger && (
+                                <span className="inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-white">Saya</span>
+                              )}
                             </td>
                             <td className="text-slate-600">{formatRp(led.dendaPiket)}</td>
                             <td className="text-slate-600">{formatRp(led.iuran)}</td>

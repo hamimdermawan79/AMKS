@@ -273,6 +273,7 @@ return (
         agingData={agingData}
         previousMonthTotals={previousMonthTotals}
         monthlyData={monthlyData}
+        currentUserId={session.user.id}
       />
     </div>
   );

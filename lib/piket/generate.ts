@@ -75,18 +75,25 @@ export async function generatePiketSchedule(options: GeneratePiketOptions) {
     current.setDate(current.getDate() + 1);
   }
 
-  // Step 3: Select kerja bakti dates (e.g., Sundays) evenly
+  // Step 3: Select kerja bakti dates (e.g., Sundays) randomly from candidates
   const kerjaBaktiCandidates = allDates.filter(
     (date) => date.getDay() === kerjaBaktiWeekday
   );
 
-  // Pick kerjaBaktiCount dates evenly from candidates
+  // Pick kerjaBaktiCount random dates from candidates
   const kerjaBaktiDates: Date[] = [];
   if (kerjaBaktiCandidates.length > 0 && kerjaBaktiCount > 0) {
-    const step = Math.max(1, Math.floor(kerjaBaktiCandidates.length / kerjaBaktiCount));
-    for (let i = 0; i < kerjaBaktiCount && i * step < kerjaBaktiCandidates.length; i++) {
-      kerjaBaktiDates.push(kerjaBaktiCandidates[i * step]);
+    const countToPick = Math.min(kerjaBaktiCount, kerjaBaktiCandidates.length);
+    // Shuffle candidates to pick random ones
+    const shuffledCandidates = [...kerjaBaktiCandidates];
+    for (let i = shuffledCandidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledCandidates[i], shuffledCandidates[j]] = [shuffledCandidates[j], shuffledCandidates[i]];
     }
+    // Take the first countToPick candidates and sort them chronologically
+    const selected = shuffledCandidates.slice(0, countToPick);
+    selected.sort((a, b) => a.getTime() - b.getTime());
+    kerjaBaktiDates.push(...selected);
   }
 
   // Save kerja bakti dates

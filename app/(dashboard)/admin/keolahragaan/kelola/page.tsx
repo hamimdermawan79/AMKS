@@ -63,6 +63,7 @@ export default async function KeolahragaanKelolaPage() {
     include: {
       user: {
         select: {
+          id: true,
           fullName: true,
           username: true,
         },
@@ -91,10 +92,12 @@ export default async function KeolahragaanKelolaPage() {
         status: d.status,
         createdAt: d.createdAt,
         note: d.note,
+        userId: d.userId,
         user: d.user,
       }))}
       isAdmin={true}
       isKelolaMode={true}
+      currentUserId={session.user.id}
     />
   );
 }
