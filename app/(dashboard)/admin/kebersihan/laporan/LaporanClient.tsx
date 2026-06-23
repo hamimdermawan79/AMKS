@@ -505,7 +505,7 @@ export default function LaporanClient({
         <section className="rounded-2xl border border-border p-6 shadow-sm">
           <h3 className="mb-1 font-semibold text-foreground">Denda per Warga (Sepanjang Masa)</h3>
           <p className="mb-5 text-xs text-muted-foreground">
-            Akumulasi denda final dari seluruh periode. Tidak hilang saat jadwal baru dibuat.
+            Akumulasi denda final dari seluruh periode. Sinkron otomatis dengan Keuangan — jika dibayar di Keuangan, status di sini ikut berubah. Tidak hilang saat jadwal baru dibuat.
           </p>
           {dendaAllTime.length > 0 ? (
             <div className="space-y-3">
@@ -548,7 +548,7 @@ export default function LaporanClient({
                           </button>
                         ) : (
                           <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                            Lunas
+                            Lunas ✓
                           </span>
                         )}
                       </div>
@@ -558,9 +558,22 @@ export default function LaporanClient({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Belum ada denda yang diterbitkan. Tutup periode untuk memfinalisasi denda.
-            </p>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-amber-100 p-2 text-amber-700 mt-0.5">
+                  <Lock className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Belum Ada Denda yang Diterbitkan</p>
+                  <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                    Denda piket hanya diterbitkan saat <b>periode ditutup</b>. Setelah periode ditutup, sistem akan menghitung semua warga yang tidak piket, lalu otomatis membuat tagihan Denda Piket di modul <b>Keuangan</b> dan menampilkan detailnya di sini.
+                  </p>
+                  <p className="text-xs text-amber-600 mt-2">
+                    💡 Klik tombol <b>"Tutup Periode & Finalisasi Denda"</b> di atas untuk memulai proses.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </section>
       </div>

@@ -74,9 +74,16 @@ export async function deleteTransaction(id: string) {
     });
   }
 
+  // Delete any associated FinePayments in Kebersihan
+  await db.finePayment.deleteMany({
+    where: { paymentTxId: id }
+  });
+
   await db.transaction.delete({ where: { id } });
 
   revalidatePath('/admin/keuangan');
+  revalidatePath('/admin/kebersihan/laporan');
+  revalidatePath('/admin/kebersihan');
   return { success: true };
 }
 
@@ -230,6 +237,7 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
       occurredAt: new Date(),
       relatedBillId: bill.id,
       createdById: session.user.id,
+      division: bill.division,
     },
   });
 
@@ -273,6 +281,8 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
   }
 
   revalidatePath('/admin/keuangan');
+  revalidatePath('/admin/kebersihan/laporan');
+  revalidatePath('/admin/kebersihan');
   return { success: true };
 }
 
@@ -298,6 +308,11 @@ export async function cancelBill(billId: string) {
 
   // If there was an associated transaction, delete it
   if (bill.transaction) {
+    // Delete any associated FinePayments first
+    await db.finePayment.deleteMany({
+      where: { paymentTxId: bill.transaction.id }
+    });
+    
     await db.transaction.delete({
       where: { id: bill.transaction.id },
     });
@@ -311,6 +326,8 @@ export async function cancelBill(billId: string) {
   }
 
   revalidatePath('/admin/keuangan');
+  revalidatePath('/admin/kebersihan/laporan');
+  revalidatePath('/admin/kebersihan');
   return { success: true };
 }
 

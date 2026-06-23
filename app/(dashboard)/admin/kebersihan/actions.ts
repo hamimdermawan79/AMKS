@@ -358,6 +358,7 @@ export async function recordFinePayment(data: {
       description: `Pembayaran denda piket: ${fine.user.fullName}${v.note ? ` — ${v.note}` : ''}`,
       occurredAt: new Date(),
       createdById: session.user.id,
+      division: 'KEBERSIHAN',
     },
   });
 

@@ -46,6 +46,12 @@ export async function generatePiketSchedule(options: GeneratePiketOptions) {
   }
 
   // Step 1: Create the period record
+  // First, deactivate any currently active periods to prevent duplicates
+  await db.piketPeriod.updateMany({
+    where: { isActive: true },
+    data: { isActive: false },
+  });
+
   const period = await db.piketPeriod.create({
     data: {
       startDate,
@@ -201,6 +207,7 @@ export async function closePiketPeriod(periodId: string) {
         title: `Denda Piket (${daysMissed} hari)`,
         amount,
         status: 'BELUM_LUNAS',
+        division: 'KEBERSIHAN',
         note: `Tidak piket selama ${daysMissed} hari, periode ${period.startDate.toLocaleDateString()} - ${period.endDate.toLocaleDateString()}`,
       },
     });
