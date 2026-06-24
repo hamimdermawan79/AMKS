@@ -14,14 +14,17 @@ import {
   CheckCircle,
   FileText,
   AlertCircle,
-  Loader2
+  Loader2,
+  ArrowLeft,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Division } from '@prisma/client';
 import { 
   addAnnouncementAction, 
   deleteAnnouncementAction, 
   addActivityAction, 
-  deleteActivityAction 
+  deleteActivityAction,
+  toggleAnnouncementPinAction
 } from './actions';
 
 interface Announcement {
@@ -165,9 +168,34 @@ export default function DivisionClient({
     }
   };
 
+  const handleTogglePin = async (id: string, currentPinned: boolean) => {
+    try {
+      const res = await toggleAnnouncementPinAction(division, id, !currentPinned);
+      if (res.success) {
+        setAnnouncements((prev) => {
+          const updated = prev.map((ann) =>
+            ann.id === id ? { ...ann, pinned: !currentPinned } : ann
+          );
+          return updated.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          });
+        });
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengubah pin pengumuman');
+    }
+  };
+
   const handleAddActivity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAct.title) return;
+
+    if (newAct.startAt && newAct.endAt && new Date(newAct.endAt) < new Date(newAct.startAt)) {
+      setError('Waktu selesai tidak boleh mendahului waktu mulai');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -231,6 +259,13 @@ export default function DivisionClient({
       {/* Dynamic Themed Hero Panel */}
       <div className={`relative overflow-hidden rounded-2xl border ${theme.border} bg-gradient-to-b ${theme.gradient} p-8 md:p-12 shadow-sm ${theme.glow}`}>
         <div className="relative z-10 max-w-2xl space-y-4">
+          <Link
+            href={`/admin/${division.toLowerCase()}`}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Kembali ke tampilan divisi
+          </Link>
           <span className={`badge ${theme.badge} font-bold text-xs uppercase tracking-wider`}>
             Divisi {divisionLabel}
           </span>
@@ -342,13 +377,22 @@ export default function DivisionClient({
                     </div>
 
                     {canManage && (
-                      <button
-                        onClick={() => handleDeleteAnnouncement(ann.id)}
-                        className="p-2 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-lg transition-colors"
-                        title="Hapus pengumuman"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleTogglePin(ann.id, ann.pinned)}
+                          className={`p-2 rounded-lg transition-colors ${ann.pinned ? 'text-amber-500 hover:text-amber-700 hover:bg-amber-50' : 'text-muted-foreground hover:text-amber-500 hover:bg-amber-50'}`}
+                          title={ann.pinned ? 'Lepas pin pengumuman' : 'Pin pengumuman'}
+                        >
+                          <Pin className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAnnouncement(ann.id)}
+                          className="p-2 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-lg transition-colors"
+                          title="Hapus pengumuman"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -609,6 +653,7 @@ export default function DivisionClient({
                     <input
                       type="datetime-local"
                       value={newAct.endAt}
+                      min={newAct.startAt || undefined}
                       onChange={(e) => setNewAct({ ...newAct, endAt: e.target.value })}
                       className="input text-sm"
                     />

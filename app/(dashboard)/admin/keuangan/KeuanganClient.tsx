@@ -114,8 +114,8 @@ const DebtorRow = ({ deb }: { deb: any }) => {
       <td className="py-2 px-3 font-bold text-slate-700">{formatRpHelper(deb.totalAmount)}</td>
       <td className="py-2 px-3">
         {deb.bills.length > 1 ? (
-          <select 
-            value={selectedBill.id} 
+          <select
+            value={selectedBill.id}
             onChange={e => setSelectedBillId(e.target.value)}
             className="text-xs p-1 border border-slate-200 rounded bg-white shadow-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           >
@@ -184,7 +184,7 @@ export default function KeuanganClient({
   };
 
   const [chartRange, setChartRange] = useState('15 Hari');
-  
+
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [bills, setBills] = useState<Bill[]>(initialBills);
 
@@ -204,7 +204,7 @@ export default function KeuanganClient({
   const [txModalOpen, setTxModalOpen] = useState(false);
   const [billModalOpen, setBillModalOpen] = useState(false);
   const [settleModalOpen, setSettleModalOpen] = useState(false);
-  
+
   // Selected Bill for settlement
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [settleNote, setSettleNote] = useState('');
@@ -218,7 +218,7 @@ export default function KeuanganClient({
     description: '',
     occurredAt: new Date().toISOString().split('T')[0],
   });
-  
+
   const [newBill, setNewBill] = useState({
     userId: '',
     type: 'IURAN' as 'DENDA_PIKET' | 'IURAN' | 'LAINNYA' | 'IURAN_OLAHRAGA' | 'DENDA_OLAHRAGA',
@@ -229,7 +229,7 @@ export default function KeuanganClient({
   });
 
   const [customTxCategory, setCustomTxCategory] = useState('');
-  
+
   const [bulkBillData, setBulkBillData] = useState<Record<string, { selected: boolean; withWifi: boolean }>>({});
   const [bulkBillTitle, setBulkBillTitle] = useState('');
   const [bulkBillDueDate, setBulkBillDueDate] = useState('');
@@ -446,7 +446,7 @@ export default function KeuanganClient({
           billsList: [],
         };
       }
-      
+
       ledgers[uId].billsList.push(b);
       if (b.status === 'BELUM_LUNAS') {
         ledgers[uId].unpaid += b.amount;
@@ -513,9 +513,9 @@ export default function KeuanganClient({
 
       const due = new Date(b.dueDate);
       const dueMs = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
-      
+
       const diffDays = Math.floor((todayMs - dueMs) / (1000 * 60 * 60 * 24));
-      
+
       const isLate = diffDays > 0 && b.type === 'IURAN';
       const actualAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
 
@@ -714,7 +714,7 @@ export default function KeuanganClient({
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountNum = parseInt(newTx.amount);
-    
+
     // Resolve category
     let finalCategory = newTx.category;
     if (finalCategory === 'Lain-lain') {
@@ -722,6 +722,11 @@ export default function KeuanganClient({
     }
 
     if (isNaN(amountNum) || amountNum <= 0 || !finalCategory) return;
+
+    if (newTx.type === 'PENGELUARAN' && amountNum > saldo) {
+      setError('Saldo tidak mencukupi. Tersedia ' + formatRp(saldo));
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -864,6 +869,11 @@ export default function KeuanganClient({
     e.preventDefault();
     if (!selectedBillId) return;
 
+    if (settleAmount <= 0) {
+      setError('Nominal pelunasan harus lebih dari 0');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -874,13 +884,13 @@ export default function KeuanganClient({
           prev.map((b) =>
             b.id === selectedBillId
               ? {
-                  ...b,
-                  status: 'LUNAS' as const,
-                  amount: settleAmount,
-                  note: settleNote
-                    ? `${b.note || ''}\nPelunasan: ${settleNote}`.trim()
-                    : b.note,
-                }
+                ...b,
+                status: 'LUNAS' as const,
+                amount: settleAmount,
+                note: settleNote
+                  ? `${b.note || ''}\nPelunasan: ${settleNote}`.trim()
+                  : b.note,
+              }
               : b
           )
         );
@@ -892,8 +902,8 @@ export default function KeuanganClient({
             billObj.type === 'DENDA_PIKET'
               ? 'Denda Piket'
               : billObj.type === 'IURAN'
-              ? 'Iuran Warga'
-              : 'Lain-lain';
+                ? 'Iuran Warga'
+                : 'Lain-lain';
 
           const localTx: Transaction = {
             id: `temp-${Date.now()}`,
@@ -1005,41 +1015,36 @@ export default function KeuanganClient({
         <div className="flex gap-6 overflow-x-auto w-full md:w-auto">
           <button
             onClick={() => setActiveTab('chart')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'chart' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'chart' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
           >
             Grafik Keuangan
           </button>
           <button
             onClick={() => setActiveTab('transactions')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
           >
             Arus Kas ({transactions.length})
           </button>
           <button
             onClick={() => setActiveTab('bills')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'bills' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'bills' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
           >
             Tagihan Warga ({bills.length})
           </button>
           <button
             onClick={() => setActiveTab('ledger')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'ledger' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'ledger' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
           >
             Buku Pembantu Warga
           </button>
           <button
             onClick={() => setActiveTab('monthly')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
-              activeTab === 'monthly' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'monthly' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
           >
             📋 Rangkuman Bulanan
           </button>
@@ -1064,23 +1069,23 @@ export default function KeuanganClient({
             <button
               onClick={() => {
                 setError(null);
-                
+
                 // Initialize bulk bill data
                 const initData: Record<string, { selected: boolean; withWifi: boolean }> = {};
                 users.forEach(u => {
                   initData[u.id] = { selected: true, withWifi: true };
                 });
                 setBulkBillData(initData);
-                
+
                 // set default title
                 const now = new Date();
                 const monthName = now.toLocaleString('id-ID', { month: 'long' });
                 setBulkBillTitle(`Iuran Bulanan ${monthName} ${now.getFullYear()}`);
-                
+
                 // set default due date to the 20th of the current month
                 const due = new Date(now.getFullYear(), now.getMonth(), 20);
                 setBulkBillDueDate(due.toISOString().split('T')[0]);
-                
+
                 setBillModalOpen(true);
               }}
               className="btn btn-primary text-sm flex items-center gap-1.5"
@@ -1104,7 +1109,7 @@ export default function KeuanganClient({
                     Tren akumulasi transaksi kas asrama dalam {chartRange} terakhir.
                   </p>
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Selector Rentang Waktu (Toggle Group Buttons) */}
                   <div className="flex bg-slate-100 p-1 rounded-lg text-xs font-semibold overflow-x-auto max-w-full">
@@ -1113,11 +1118,10 @@ export default function KeuanganClient({
                         key={range}
                         type="button"
                         onClick={() => setChartRange(range)}
-                        className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${
-                          chartRange === range
+                        className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${chartRange === range
                             ? 'bg-white shadow-sm text-primary font-semibold'
                             : 'text-muted-foreground hover:text-foreground'
-                        }`}
+                          }`}
                       >
                         {range}
                       </button>
@@ -1125,27 +1129,27 @@ export default function KeuanganClient({
                   </div>
                 </div>
               </div>
-              
+
               <div className="h-80 w-full pt-4">
                 {mounted ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={getChartData()}>
                       <defs>
                         <linearGradient id="colorPemasukan" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="colorPengeluaran" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                       <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `Rp${(val/1000).toLocaleString('id-ID')}k`} />
-                      <Tooltip 
+                      <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `Rp${(val / 1000).toLocaleString('id-ID')}k`} />
+                      <Tooltip
                         formatter={(value: any) => [formatRp(Number(value)), '']}
-                        contentStyle={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                        contentStyle={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                       />
                       <Legend iconType="circle" />
                       <Area type="monotone" dataKey="Pemasukan" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorPemasukan)" />
@@ -1399,7 +1403,7 @@ export default function KeuanganClient({
                   <div className="space-y-3.5">
                     {agingData.map((bucket, idx) => {
                       const pct = totalPiutang > 0 ? (bucket.amount / totalPiutang) * 100 : 0;
-                      
+
                       // Theme color depending on severity
                       let textColor = 'text-slate-700';
                       let barColor = 'bg-slate-400';
@@ -1484,9 +1488,8 @@ export default function KeuanganClient({
                         <td>{formatDate(tx.occurredAt)}</td>
                         <td>
                           <span
-                            className={`badge ${
-                              tx.type === 'PEMASUKAN' ? 'badge-success' : 'badge-danger'
-                            }`}
+                            className={`badge ${tx.type === 'PEMASUKAN' ? 'badge-success' : 'badge-danger'
+                              }`}
                           >
                             {tx.type}
                           </span>
@@ -1547,11 +1550,10 @@ export default function KeuanganClient({
                           key={statusOption.value}
                           type="button"
                           onClick={() => setBillStatusFilter(statusOption.value)}
-                          className={`px-2.5 py-1.5 rounded-md transition-all whitespace-nowrap ${
-                            billStatusFilter === statusOption.value
+                          className={`px-2.5 py-1.5 rounded-md transition-all whitespace-nowrap ${billStatusFilter === statusOption.value
                               ? 'bg-white shadow-sm text-primary font-semibold'
                               : 'text-muted-foreground hover:text-foreground'
-                          }`}
+                            }`}
                         >
                           {statusOption.label}
                         </button>
@@ -1577,11 +1579,10 @@ export default function KeuanganClient({
                           key={typeOption.value}
                           type="button"
                           onClick={() => setBillTypeFilter(typeOption.value)}
-                          className={`px-2.5 py-1.5 rounded-md transition-all whitespace-nowrap ${
-                            billTypeFilter === typeOption.value
+                          className={`px-2.5 py-1.5 rounded-md transition-all whitespace-nowrap ${billTypeFilter === typeOption.value
                               ? 'bg-white shadow-sm text-primary font-semibold'
                               : 'text-muted-foreground hover:text-foreground'
-                          }`}
+                            }`}
                         >
                           {typeOption.label}
                         </button>
@@ -1677,15 +1678,14 @@ export default function KeuanganClient({
                             <td>{formatDate(b.dueDate)}</td>
                             <td>
                               <span
-                                className={`badge ${
-                                  b.status === 'LUNAS'
+                                className={`badge ${b.status === 'LUNAS'
                                     ? 'badge-success'
                                     : b.status === 'DIBATALKAN'
-                                    ? 'badge-danger'
-                                    : isLate
-                                    ? 'bg-red-100 text-red-800 border border-red-200 animate-pulse'
-                                    : 'badge-warning'
-                                }`}
+                                      ? 'badge-danger'
+                                      : isLate
+                                        ? 'bg-red-100 text-red-800 border border-red-200 animate-pulse'
+                                        : 'badge-warning'
+                                  }`}
                               >
                                 {b.status === 'BELUM_LUNAS' ? (isLate ? 'NUNGGAK (JATUH TEMPO)' : 'BELUM LUNAS') : b.status}
                               </span>
@@ -1910,11 +1910,11 @@ export default function KeuanganClient({
                                               <th className="p-3 pr-4 text-right">Aksi</th>
                                             </tr>
                                           </thead>
-                                            <tbody className="divide-y divide-border/40">
-                                              {led.billsList.map((b) => {
-                                                const isLate = b.status === 'BELUM_LUNAS' && b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
-                                                const displayAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
-                                                return (
+                                          <tbody className="divide-y divide-border/40">
+                                            {led.billsList.map((b) => {
+                                              const isLate = b.status === 'BELUM_LUNAS' && b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+                                              const displayAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
+                                              return (
                                                 <tr key={b.id} className="hover:bg-slate-50/30">
                                                   <td className="p-3 pl-4 font-medium text-foreground">
                                                     {b.title}
@@ -1936,15 +1936,14 @@ export default function KeuanganClient({
                                                   <td className="p-3 text-slate-500">{formatDate(b.dueDate)}</td>
                                                   <td className="p-3">
                                                     <span
-                                                      className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${
-                                                        b.status === 'LUNAS'
+                                                      className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${b.status === 'LUNAS'
                                                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                                           : b.status === 'DIBATALKAN'
-                                                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                                          : isLate 
-                                                          ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
-                                                          : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
-                                                      }`}
+                                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                            : isLate
+                                                              ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                                                              : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                                                        }`}
                                                     >
                                                       {b.status === 'BELUM_LUNAS' ? (isLate ? 'NUNGGAK' : 'BELUM LUNAS') : b.status}
                                                     </span>
@@ -1994,9 +1993,9 @@ export default function KeuanganClient({
                                                     </div>
                                                   </td>
                                                 </tr>
-                                                );
-                                              })}
-                                            </tbody>
+                                              );
+                                            })}
+                                          </tbody>
                                         </table>
                                       </div>
                                     )}
@@ -2133,7 +2132,7 @@ export default function KeuanganClient({
                   <span>Rincian Kategori Pemasukan</span>
                   <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">PEMASUKAN</span>
                 </h4>
-                
+
                 <div className="table-container">
                   <table className="table w-full text-xs">
                     <thead>
@@ -2205,7 +2204,7 @@ export default function KeuanganClient({
                   <span>Rincian Kategori Pengeluaran</span>
                   <span className="text-[10px] bg-red-50 text-red-700 px-2 py-0.5 rounded">PENGELUARAN</span>
                 </h4>
-                
+
                 <div className="table-container">
                   <table className="table w-full text-xs">
                     <thead>
@@ -2382,9 +2381,8 @@ export default function KeuanganClient({
                           <td className="py-3 px-4">{formatDate(tx.occurredAt)}</td>
                           <td className="py-3 px-4">
                             <span
-                              className={`badge ${
-                                tx.type === 'PEMASUKAN' ? 'badge-success' : 'badge-danger'
-                              }`}
+                              className={`badge ${tx.type === 'PEMASUKAN' ? 'badge-success' : 'badge-danger'
+                                }`}
                             >
                               {tx.type}
                             </span>
@@ -2461,18 +2459,16 @@ export default function KeuanganClient({
                   <button
                     type="button"
                     onClick={() => setNewTx({ ...newTx, type: 'PEMASUKAN' })}
-                    className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
-                      newTx.type === 'PEMASUKAN' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground'
-                    }`}
+                    className={`py-1.5 text-xs font-semibold rounded-md transition-all ${newTx.type === 'PEMASUKAN' ? 'bg-white text-emerald-600 shadow-sm' : 'text-muted-foreground'
+                      }`}
                   >
                     PEMASUKAN
                   </button>
                   <button
                     type="button"
                     onClick={() => setNewTx({ ...newTx, type: 'PENGELUARAN' })}
-                    className={`py-1.5 text-xs font-semibold rounded-md transition-all ${
-                      newTx.type === 'PENGELUARAN' ? 'bg-white text-red-600 shadow-sm' : 'text-muted-foreground'
-                    }`}
+                    className={`py-1.5 text-xs font-semibold rounded-md transition-all ${newTx.type === 'PENGELUARAN' ? 'bg-white text-red-600 shadow-sm' : 'text-muted-foreground'
+                      }`}
                   >
                     PENGELUARAN
                   </button>
@@ -2533,11 +2529,19 @@ export default function KeuanganClient({
                   <input
                     type="number"
                     required
+                    min={1}
+                    max={newTx.type === 'PENGELUARAN' ? saldo : undefined}
+                    step={1}
                     value={newTx.amount}
                     onChange={(e) => setNewTx({ ...newTx, amount: e.target.value })}
                     placeholder="Masukkan jumlah nominal uang..."
                     className="input text-sm"
                   />
+                  {newTx.type === 'PENGELUARAN' && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Saldo tersedia: {formatRp(saldo)}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -2672,7 +2676,7 @@ export default function KeuanganClient({
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="max-h-[220px] overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
                     {users.map(u => {
                       const isSelected = bulkBillData[u.id]?.selected || false;
@@ -2693,7 +2697,7 @@ export default function KeuanganClient({
                             />
                             <span className="text-sm font-medium">{u.fullName}</span>
                           </div>
-                          
+
                           {isSelected && (
                             <div className="flex items-center gap-2 text-xs">
                               <span className="text-muted-foreground font-semibold">Rp {withWifi ? '80.000' : '50.000'}</span>
@@ -2790,8 +2794,13 @@ export default function KeuanganClient({
                   <input
                     type="number"
                     required
+                    min={1}
+                    step={1}
                     value={settleAmount}
-                    onChange={(e) => setSettleAmount(Number(e.target.value))}
+                    onChange={(e) => {
+                      const val = Math.max(1, Math.floor(Number(e.target.value)));
+                      setSettleAmount(isNaN(val) ? 0 : val);
+                    }}
                     className="input text-sm font-bold text-foreground"
                   />
                   <p className="text-[10px] text-muted-foreground">Nominal ini otomatis menyertakan bunga 20% jika tagihan sudah lewat tenggat waktu.</p>

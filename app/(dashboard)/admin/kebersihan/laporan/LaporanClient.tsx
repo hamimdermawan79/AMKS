@@ -147,8 +147,10 @@ export default function LaporanClient({
   };
 
   const openPay = (fine: FineDetail, userName: string) => {
-    setPayTarget({ fine, userName });
-    setPayAmount(String(fine.remaining));
+    const remaining = Math.max(0, fine.remaining);
+    if (remaining <= 0) return;
+    setPayTarget({ fine: { ...fine, remaining }, userName });
+    setPayAmount(String(remaining));
     setPayNote("");
     setPayError("");
   };

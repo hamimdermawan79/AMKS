@@ -2,14 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Sparkles, 
-  Image, 
-  Plus, 
-  Trash2, 
-  Calendar, 
-  Tv, 
-  BarChart, 
+import {
+  Sparkles,
+  Image,
+  Plus,
+  Trash2,
+  Calendar,
+  Tv,
+  BarChart,
   ArrowRight,
   ShieldCheck,
   Compass
@@ -91,7 +91,7 @@ export default function KesenianManager({ posts, activities, announcements, canM
 
       {/* QUICK SUMMARY WIDGETS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
+
         {/* Post Activity Stat */}
         <div className="rounded-3xl border border-border bg-gradient-to-br from-purple-50/50 via-white to-white p-6 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-purple-100 text-purple-600 rounded-2xl">
@@ -140,11 +140,10 @@ export default function KesenianManager({ posts, activities, announcements, canM
       <div className="flex border-b border-border">
         <button
           onClick={() => setActiveTab('posting')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'posting'
-              ? 'border-purple-500 text-purple-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'posting'
+            ? 'border-purple-500 text-purple-600'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <span className="flex items-center gap-2">
             <Image className="h-4 w-4" />
@@ -153,11 +152,10 @@ export default function KesenianManager({ posts, activities, announcements, canM
         </button>
         <button
           onClick={() => setActiveTab('kegiatan')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === 'kegiatan'
-              ? 'border-purple-500 text-purple-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'kegiatan'
+            ? 'border-purple-500 text-purple-600'
+            : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
         >
           <span className="flex items-center gap-2">
             <Tv className="h-4 w-4" />
@@ -171,12 +169,14 @@ export default function KesenianManager({ posts, activities, announcements, canM
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Postingan Kegiatan Asrama</h2>
-            <Link
-              href="/admin/kesenian/kelola"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500 hover:bg-purple-600 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm"
-            >
-              <Plus className="h-4 w-4" /> Buat Postingan Baru
-            </Link>
+            {canManage && (
+              <Link
+                href="/admin/kesenian/kelola"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500 hover:bg-purple-600 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm"
+              >
+                <Plus className="h-4 w-4" /> Buat Postingan Baru
+              </Link>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -189,9 +189,9 @@ export default function KesenianManager({ posts, activities, announcements, canM
               >
                 {post.coverUrl ? (
                   <div className="md:w-1/3 h-40 md:h-auto relative bg-slate-100 flex-shrink-0">
-                    <img 
-                      src={post.coverUrl} 
-                      alt={post.title} 
+                    <img
+                      src={post.coverUrl}
+                      alt={post.title}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -239,12 +239,14 @@ export default function KesenianManager({ posts, activities, announcements, canM
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Daftar Event Kesenian & Hiburan</h2>
-            <Link
-              href="/admin/kesenian/kelola"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500 hover:bg-purple-600 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm"
-            >
-              <Plus className="h-4 w-4" /> Rencanakan Event
-            </Link>
+            {canManage && (
+              <Link
+                href="/admin/kesenian/kelola"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500 hover:bg-purple-600 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm"
+              >
+                <Plus className="h-4 w-4" /> Rencanakan Event
+              </Link>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

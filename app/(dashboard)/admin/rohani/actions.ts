@@ -175,3 +175,57 @@ export async function deleteRohaniSchedule(id: string) {
   revalidatePath('/admin/rohani');
   return { success: true };
 }
+
+export async function replaceRohaniDuty(
+  scheduleId: string,
+  role: 'imamMaghrib' | 'imamIsha' | 'kultum',
+  newUserId: string
+) {
+  await authorizeRohani();
+
+  const schedule = await db.rohaniSchedule.findUnique({ where: { id: scheduleId } });
+  if (!schedule) throw new Error('Jadwal tidak ditemukan');
+
+  const fieldMap = {
+    imamMaghrib: 'imamMaghribId',
+    imamIsha: 'imamIshaId',
+    kultum: 'kultumById',
+  } as const;
+
+  const field = fieldMap[role];
+
+  const updated = await db.rohaniSchedule.update({
+    where: { id: scheduleId },
+    data: { [field]: newUserId },
+    include: {
+      imamMaghrib: { select: { id: true, fullName: true } },
+      imamIsha: { select: { id: true, fullName: true } },
+      kultumBy: { select: { id: true, fullName: true } },
+    },
+  });
+
+  // Notify the new petugas
+  const roleLabels = {
+    imamMaghrib: 'Imam Sholat Maghrib',
+    imamIsha: 'Imam Sholat Isya',
+    kultum: 'Pembawa Kultum',
+  };
+  const newUser = await db.user.findUnique({ where: { id: newUserId }, select: { fullName: true } });
+  const formattedDate = schedule.date.toLocaleDateString('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+
+  if (newUser) {
+    await createNotification({
+      userId: newUserId,
+      title: `TUGAS IBADAH (Penggantian): ${roleLabels[role]}`,
+      message: `Halo ${newUser.fullName}, Anda ditunjuk sebagai pengganti ${roleLabels[role]} pada jadwal ${formattedDate}. Mohon bersiap diri.`,
+      type: 'SYSTEM',
+      referenceId: scheduleId,
+    });
+  }
+
+  revalidatePath('/admin/rohani');
+  revalidatePath('/admin/rohani/kelola');
+  return { success: true };
+}

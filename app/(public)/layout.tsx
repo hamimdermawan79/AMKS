@@ -49,7 +49,7 @@ export default function PublicLayout({
                 </svg>
               </Link>
               <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
-                <div className="bg-white/60 backdrop-blur-2xl border border-white/60 shadow-xl shadow-blue-900/10 min-w-[200px] py-2 rounded-2xl">
+                <div className="bg-white/95 backdrop-blur-xl border border-white/80 shadow-xl shadow-blue-900/10 min-w-[200px] py-2 rounded-2xl">
                   <Link href="/tentang-kami" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
                     Profil Asrama
                   </Link>

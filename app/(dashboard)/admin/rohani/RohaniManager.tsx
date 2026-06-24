@@ -2,23 +2,26 @@
 
 import { useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  BookOpen, 
-  Calendar, 
-  User, 
-  Plus, 
-  Trash2, 
-  AlertCircle, 
-  Users, 
-  Check, 
-  Clock, 
+import {
+  BookOpen,
+  Calendar,
+  User,
+  Plus,
+  Trash2,
+  AlertCircle,
+  Users,
+  Check,
+  Clock,
   BookMarked,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  Edit2,
+  X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { generateNextRohaniSchedule, deleteRohaniSchedule } from './actions';
+import { generateNextRohaniSchedule, deleteRohaniSchedule, replaceRohaniDuty } from './actions';
 
 type WargaQueue = {
   id: string;
@@ -51,6 +54,13 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState('');
+  const [replaceModal, setReplaceModal] = useState<{
+    scheduleId: string;
+    role: 'imamMaghrib' | 'imamIsha' | 'kultum';
+    currentName: string;
+  } | null>(null);
+  const [replaceUserId, setReplaceUserId] = useState('');
+  const [replaceLoading, setReplaceLoading] = useState(false);
 
   const nextSchedule = schedules[0] || null;
   const pastSchedules = schedules.slice(1);
@@ -85,6 +95,21 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
     });
   };
 
+  const handleReplace = async () => {
+    if (!replaceModal || !replaceUserId) return;
+    setReplaceLoading(true);
+    try {
+      await replaceRohaniDuty(replaceModal.scheduleId, replaceModal.role, replaceUserId);
+      setReplaceModal(null);
+      setReplaceUserId('');
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengganti petugas');
+    } finally {
+      setReplaceLoading(false);
+    }
+  };
+
   // Helper to format date nicely
   const formatDate = (d: Date) => {
     return new Date(d).toLocaleDateString('id-ID', {
@@ -110,6 +135,14 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
       {/* HEADER */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
+          {isKelolaMode && (
+            <Link
+              href="/admin/rohani"
+              className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" /> Kembali ke tampilan divisi
+            </Link>
+          )}
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <BookOpen className="h-8 w-8 text-emerald-600 animate-pulse" />
             Divisi Keagamaan (Rohani)
@@ -139,7 +172,7 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
 
       {/* GENERATE CONTROLS */}
       {isKelolaMode && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="p-6 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/50 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm"
@@ -161,10 +194,10 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* LEFT COLUMN: ACTIVE SCHEDULE & HISTORY */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* ACTIVE / NEXT SCHEDULE */}
           <div className="bg-card border border-border rounded-3xl shadow-sm overflow-hidden">
             <div className="p-6 border-b border-border bg-emerald-600/5 flex items-center justify-between">
@@ -184,7 +217,7 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
             {nextSchedule ? (
               <div className="p-6 space-y-6">
                 {hasDutyNext && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className="p-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl flex items-center gap-3 shadow-md border border-emerald-400/20"
@@ -216,11 +249,10 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border pt-6">
-                  <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${
-                    isImamMaghrib 
-                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-sm ring-1 ring-emerald-500/10' 
+                  <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${isImamMaghrib
+                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-sm ring-1 ring-emerald-500/10'
                       : 'bg-slate-50 border-transparent'
-                  }`}>
+                    }`}>
                     <div className={`p-2 rounded-xl ${isImamMaghrib ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-muted-foreground'}`}>
                       <User className="h-5 w-5" />
                     </div>
@@ -233,13 +265,15 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                         {nextSchedule.imamMaghrib.fullName}
                       </span>
                     </div>
+                    {isKelolaMode && (
+                      <button onClick={() => { setReplaceModal({ scheduleId: nextSchedule.id, role: 'imamMaghrib', currentName: nextSchedule.imamMaghrib.fullName }); setReplaceUserId(''); }} className="p-1.5 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Ganti petugas (izin)"><Edit2 className="h-3.5 w-3.5" /></button>
+                    )}
                   </div>
 
-                  <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${
-                    isImamIsha 
-                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-sm ring-1 ring-emerald-500/10' 
+                  <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${isImamIsha
+                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-sm ring-1 ring-emerald-500/10'
                       : 'bg-slate-50 border-transparent'
-                  }`}>
+                    }`}>
                     <div className={`p-2 rounded-xl ${isImamIsha ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-muted-foreground'}`}>
                       <User className="h-5 w-5" />
                     </div>
@@ -252,13 +286,15 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                         {nextSchedule.imamIsha.fullName}
                       </span>
                     </div>
+                    {isKelolaMode && (
+                      <button onClick={() => { setReplaceModal({ scheduleId: nextSchedule.id, role: 'imamIsha', currentName: nextSchedule.imamIsha.fullName }); setReplaceUserId(''); }} className="p-1.5 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Ganti petugas (izin)"><Edit2 className="h-3.5 w-3.5" /></button>
+                    )}
                   </div>
 
-                  <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${
-                    isKultum 
-                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-sm ring-1 ring-emerald-500/10' 
+                  <div className={`p-4 rounded-2xl flex items-center gap-3 border transition-all ${isKultum
+                      ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-sm ring-1 ring-emerald-500/10'
                       : 'bg-slate-50 border-transparent'
-                  }`}>
+                    }`}>
                     <div className={`p-2 rounded-xl ${isKultum ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-muted-foreground'}`}>
                       <User className="h-5 w-5" />
                     </div>
@@ -271,6 +307,9 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                         {nextSchedule.kultumBy.fullName}
                       </span>
                     </div>
+                    {isKelolaMode && (
+                      <button onClick={() => { setReplaceModal({ scheduleId: nextSchedule.id, role: 'kultum', currentName: nextSchedule.kultumBy.fullName }); setReplaceUserId(''); }} className="p-1.5 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Ganti petugas (izin)"><Edit2 className="h-3.5 w-3.5" /></button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -285,7 +324,7 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
           {/* PAST SCHEDULES */}
           <div className="bg-card border border-border rounded-3xl shadow-sm p-6 space-y-5">
             <h3 className="font-bold text-foreground text-base">Riwayat Kegiatan Rohani</h3>
-            
+
             <div className="space-y-4">
               {pastSchedules.map((schedule) => {
                 const isMyMaghrib = schedule.imamMaghrib?.id === currentUserId;
@@ -294,13 +333,12 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                 const hasDutyPast = isMyMaghrib || isMyIsha || isMyKultum;
 
                 return (
-                  <div 
-                    key={schedule.id} 
-                    className={`p-4 rounded-2xl border transition-all duration-200 ${
-                      hasDutyPast 
-                        ? 'border-emerald-500/40 bg-emerald-50/30 shadow-sm' 
+                  <div
+                    key={schedule.id}
+                    className={`p-4 rounded-2xl border transition-all duration-200 ${hasDutyPast
+                        ? 'border-emerald-500/40 bg-emerald-50/30 shadow-sm'
                         : 'border-border/80 bg-slate-50/30'
-                    }`}
+                      }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                       <div className="space-y-0.5">
@@ -316,7 +354,7 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                           Target Tadarus: <b className="text-emerald-700 font-semibold">QS. {schedule.currentSurah} {schedule.startVerse}-{schedule.endVerse}</b>
                         </p>
                       </div>
-                      
+
                       {isKelolaMode && (
                         <button
                           onClick={() => handleDelete(schedule.id)}
@@ -332,7 +370,7 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isMyMaghrib ? 'bg-emerald-600' : 'bg-slate-300'}`} />
                         <span className="truncate">Maghrib: <strong className={isMyMaghrib ? 'text-emerald-900 font-bold' : 'text-foreground font-semibold'}>{schedule.imamMaghrib.fullName}</strong></span>
                       </div>
-                      
+
                       <div className={`p-2 rounded-xl text-xs flex items-center gap-2 min-w-0 ${isMyIsha ? 'bg-emerald-100/80 text-emerald-800 font-medium border border-emerald-300/30' : 'bg-white border border-border/60 text-muted-foreground'}`}>
                         <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isMyIsha ? 'bg-emerald-600' : 'bg-slate-300'}`} />
                         <span className="truncate">Isya: <strong className={isMyIsha ? 'text-emerald-900 font-bold' : 'text-foreground font-semibold'}>{schedule.imamIsha.fullName}</strong></span>
@@ -371,13 +409,12 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
               {queues.map((item, idx) => {
                 const isMe = item.id === currentUserId;
                 return (
-                  <div 
-                    key={item.id} 
-                    className={`p-3.5 rounded-2xl border transition-all duration-200 ${
-                      isMe 
-                        ? 'border-emerald-500/50 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-500/20' 
+                  <div
+                    key={item.id}
+                    className={`p-3.5 rounded-2xl border transition-all duration-200 ${isMe
+                        ? 'border-emerald-500/50 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-500/20'
                         : 'border-border bg-slate-50/50'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-2 min-w-0">
                       <span className={`text-xs font-semibold truncate flex-1 ${isMe ? 'text-emerald-800 font-bold' : 'text-foreground'}`}>
@@ -410,6 +447,45 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
           </div>
         </div>
       </div>
+
+      {/* Replace Duty Modal */}
+      {replaceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-foreground">Ganti Petugas Izin</h3>
+              <button onClick={() => setReplaceModal(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-muted-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Mengganti <strong>{replaceModal.currentName}</strong> yang izin sebagai{' '}
+              <strong>{replaceModal.role === 'imamMaghrib' ? 'Imam Maghrib' : replaceModal.role === 'imamIsha' ? 'Imam Isya' : 'Pembawa Kultum'}</strong>.
+            </p>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1.5">Pilih Pengganti</label>
+              <select
+                value={replaceUserId}
+                onChange={(e) => setReplaceUserId(e.target.value)}
+                className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              >
+                <option value="">-- Pilih Warga --</option>
+                {queues.map((q) => (
+                  <option key={q.id} value={q.id}>{q.fullName}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setReplaceModal(null)} className="flex-1 px-4 py-2 text-sm border border-border rounded-xl text-muted-foreground hover:bg-slate-50">Batal</button>
+              <button
+                onClick={handleReplace}
+                disabled={!replaceUserId || replaceLoading}
+                className="flex-1 px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold disabled:opacity-60"
+              >
+                {replaceLoading ? 'Menyimpan...' : 'Konfirmasi Ganti'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -193,7 +193,7 @@ export default async function LaporanPage({
       daysMissed: f.daysMissed,
       amount: f.amount,
       paid,
-      remaining: f.amount - paid,
+      remaining: Math.max(0, f.amount - paid),
       payments: f.payments.map((p) => ({
         id: p.id,
         amount: p.amount,
@@ -210,7 +210,7 @@ export default async function LaporanPage({
       fullName: v.fullName,
       totalFined: v.totalFined,
       totalPaid: v.totalPaid,
-      remaining: v.totalFined - v.totalPaid,
+      remaining: Math.max(0, v.totalFined - v.totalPaid),
       fines: v.fines,
     }))
     .sort((a, b) => b.remaining - a.remaining || a.fullName.localeCompare(b.fullName));

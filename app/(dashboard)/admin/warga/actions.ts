@@ -16,20 +16,35 @@ const ALLOWED_IMG = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 // Validation schemas
 const createUserSchema = z.object({
   username: z.string().min(3, 'Username minimal 3 karakter'),
-  fullName: z.string().min(1, 'Nama lengkap wajib diisi'),
+  fullName: z.string().min(1, 'Nama lengkap wajib diisi').regex(/^[a-zA-Z\s]+$/, 'Nama hanya boleh berisi huruf dan spasi'),
   phone: z.string().regex(/^62\d{9,13}$/, 'Format nomor WA: 62xxx (9-13 digit)'),
   password: z.string().min(6, 'Password minimal 6 karakter'),
   status: z.enum(['AKTIF', 'ALUMNI']),
   roleIds: z.array(z.string()).min(1, 'Minimal 1 role harus dipilih'),
+  jabatan: z.string().nullable().optional(),
 });
 
 const updateUserSchema = z.object({
-  fullName: z.string().min(1, 'Nama lengkap wajib diisi'),
+  fullName: z.string().min(1, 'Nama lengkap wajib diisi').regex(/^[a-zA-Z\s]+$/, 'Nama hanya boleh berisi huruf dan spasi'),
   phone: z.string().regex(/^62\d{9,13}$/, 'Format nomor WA: 62xxx (9-13 digit)'),
   password: z.string().optional(),
   status: z.enum(['AKTIF', 'ALUMNI']),
   roleIds: z.array(z.string()).min(1, 'Minimal 1 role harus dipilih'),
+  jabatan: z.string().nullable().optional(),
 });
+
+/** Alumni users always get the ALUMNI role; create it if seed was not run yet. */
+async function resolveRoleIds(status: string, roleIds: string[]): Promise<string[]> {
+  if (status === 'ALUMNI') {
+    const alumniRole = await db.role.upsert({
+      where: { name: 'ALUMNI' },
+      update: {},
+      create: { name: 'ALUMNI', label: 'Alumni', isSystem: true },
+    });
+    return [alumniRole.id];
+  }
+  return roleIds;
+}
 
 export async function createUser(data: {
   username: string;
@@ -40,6 +55,7 @@ export async function createUser(data: {
   roleIds: string[];
   photoFile?: File | null;
   divisionScope?: string | null;
+  jabatan?: string | null;
 }) {
   const session = await auth();
 
@@ -53,8 +69,9 @@ export async function createUser(data: {
     throw new Error('Anda tidak memiliki izin untuk membuat user');
   }
 
-  // Validate input
-  const validated = createUserSchema.parse(data);
+  // Alumni status auto-assigns ALUMNI role (no manual role pick needed)
+  const roleIds = await resolveRoleIds(data.status, data.roleIds);
+  const validated = createUserSchema.parse({ ...data, roleIds });
 
   // Check if username already exists
   const existingUser = await db.user.findUnique({
@@ -83,7 +100,8 @@ export async function createUser(data: {
       passwordHash,
       photoUrl,
       status: validated.status as any,
-      divisionScope: (data.divisionScope as any) || null,
+      divisionScope: validated.status === 'ALUMNI' ? null : ((data.divisionScope as any) || null),
+      jabatan: validated.status === 'ALUMNI' ? null : (validated.jabatan || null),
       createdById: session.user.id,
     },
   });
@@ -112,6 +130,7 @@ export async function updateUser(
     roleIds: string[];
     photoFile?: File | null;
     divisionScope?: string | null;
+    jabatan?: string | null;
   }
 ) {
   const session = await auth();
@@ -126,15 +145,17 @@ export async function updateUser(
     throw new Error('Anda tidak memiliki izin untuk update user');
   }
 
-  // Validate input
-  const validated = updateUserSchema.parse(data);
+  // Alumni status auto-assigns ALUMNI role (no manual role pick needed)
+  const roleIds = await resolveRoleIds(data.status, data.roleIds);
+  const validated = updateUserSchema.parse({ ...data, roleIds });
 
   // Prepare update data
   const updateData: any = {
     fullName: validated.fullName,
     phone: validated.phone,
     status: validated.status as any,
-    divisionScope: (data.divisionScope as any) || null,
+    divisionScope: validated.status === 'ALUMNI' ? null : ((data.divisionScope as any) || null),
+    jabatan: validated.status === 'ALUMNI' ? null : (validated.jabatan || null),
   };
 
   // Save new photo if provided
@@ -142,7 +163,7 @@ export async function updateUser(
     // Delete old photo
     const existing = await db.user.findUnique({ where: { id: userId }, select: { photoUrl: true } });
     if (existing?.photoUrl) {
-      try { await unlink(path.join(process.cwd(), 'public', existing.photoUrl)); } catch {}
+      try { await unlink(path.join(process.cwd(), 'public', existing.photoUrl)); } catch { }
     }
     updateData.photoUrl = await savePhoto(data.photoFile);
   }
@@ -197,7 +218,7 @@ export async function deleteUser(userId: string) {
   // Delete user photo
   const user = await db.user.findUnique({ where: { id: userId }, select: { photoUrl: true } });
   if (user?.photoUrl) {
-    try { await unlink(path.join(process.cwd(), 'public', user.photoUrl)); } catch {}
+    try { await unlink(path.join(process.cwd(), 'public', user.photoUrl)); } catch { }
   }
 
   // Delete user (cascade will handle user_roles)

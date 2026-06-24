@@ -7,6 +7,10 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createNotification } from '@/lib/notifications';
 import { AttendanceStatus } from '@prisma/client';
+import {
+  assertPemasukanDeletionAllowed,
+  assertPengeluaranAllowed,
+} from '@/lib/finance/saldo';
 
 async function authorizeSports(permission: string = 'division:manage:keolahragaan') {
   const session = await auth();
@@ -20,26 +24,53 @@ async function authorizeSports(permission: string = 'division:manage:keolahragaa
   return session;
 }
 
-const sportsActivitySchema = z.object({
-  title: z.string().min(1, 'Nama kegiatan wajib diisi'),
-  date: z.string().min(1, 'Tanggal wajib diisi'),
-  feeAmount: z.number().int().min(0, 'Uang iuran tidak valid'),
-  fineAmount: z.number().int().min(0, 'Denda tidak valid'),
-});
+const sportsActivitySchema = z
+  .object({
+    title: z.string().min(1, 'Nama kegiatan wajib diisi'),
+    date: z.string().min(1, 'Waktu mulai wajib diisi'),
+    endDate: z.string().min(1, 'Waktu selesai wajib diisi'),
+    feeAmount: z.number().int().min(0, 'Uang iuran tidak valid'),
+    fineAmount: z.number().int().min(0, 'Denda tidak valid'),
+  })
+  .superRefine((data, ctx) => {
+    const start = new Date(data.date);
+    const end = new Date(data.endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Format waktu tidak valid',
+        path: ['date'],
+      });
+      return;
+    }
+    if (end.getTime() <= start.getTime()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Waktu selesai harus setelah waktu mulai',
+        path: ['endDate'],
+      });
+    }
+  });
 
 export async function createSportsActivity(data: {
   title: string;
   date: string;
+  endDate: string;
   feeAmount: number;
   fineAmount: number;
 }) {
-  const session = await authorizeSports();
-  const v = sportsActivitySchema.parse(data);
+  await authorizeSports();
+  const parsed = sportsActivitySchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? 'Data kegiatan tidak valid');
+  }
+  const v = parsed.data;
 
   const activity = await db.sportsActivity.create({
     data: {
       title: v.title,
       date: new Date(v.date),
+      endDate: new Date(v.endDate),
       feeAmount: v.feeAmount,
       fineAmount: v.fineAmount,
     },
@@ -191,6 +222,14 @@ export async function addSportsTransaction(data: {
   const session = await authorizeSports();
   const v = sportsTxSchema.parse(data);
 
+  if (v.type === 'PENGELUARAN') {
+    await assertPengeluaranAllowed(
+      { scope: 'DIVISION', division: 'KEOLAHRAGAAN' },
+      v.amount,
+      'Saldo kas olahraga'
+    );
+  }
+
   await db.transaction.create({
     data: {
       type: v.type,
@@ -217,6 +256,12 @@ export async function deleteSportsTransaction(id: string) {
   if (!existing) {
     throw new Error('Transaksi tidak ditemukan');
   }
+
+  await assertPemasukanDeletionAllowed(
+    { scope: 'DIVISION', division: 'KEOLAHRAGAAN' },
+    existing,
+    'Saldo kas olahraga'
+  );
 
   await db.transaction.delete({ where: { id } });
 
