@@ -2,6 +2,8 @@ import { db } from '@/lib/db';
 import { sendWhatsAppMessage } from './whatsapp';
 import { NotificationType } from '@prisma/client';
 
+const KARYA_ILMIAH_ACCESS_NOTIFY_ROLES = ['SUPERADMIN', 'KETUA', 'SEKRETARIS'] as const;
+
 interface CreateNotificationPayload {
   userId?: string | null;
   title: string;
@@ -120,12 +122,52 @@ function formatWaMessage(title: string, message: string, type: NotificationType)
   if (type === 'PIKET_REMINDER') emoji = '🧹';
   else if (type === 'TAGIHAN_REMINDER') emoji = '💵';
   else if (type === 'PENGUMUMAN') emoji = '📢';
+  else if (type === 'SYSTEM') emoji = '📚';
   
   return `*${emoji} ${title.toUpperCase()} ${emoji}*
 
 ${message}
 
 _Pesan otomatis dari Sistem Web Asrama AMKS. Mohon tidak membalas pesan ini._`;
+}
+
+/** Kirim notifikasi in-app (+ antrian WA) ke Ketua, Sekretaris, dan Super Admin. */
+export async function notifyKaryaIlmiahAccessRequestAdmins(payload: {
+  accessRequestId: string;
+  workTitle: string;
+  requesterName: string;
+  institution: string;
+  purpose: string;
+  whatsapp: string;
+}) {
+  const admins = await db.user.findMany({
+    where: {
+      status: 'AKTIF',
+      roles: {
+        some: {
+          role: { name: { in: [...KARYA_ILMIAH_ACCESS_NOTIFY_ROLES] } },
+        },
+      },
+    },
+    select: { id: true },
+  });
+
+  const uniqueAdminIds = [...new Set(admins.map((a) => a.id))];
+  const message = `${payload.requesterName} (${payload.institution}) meminta akses berkas "${payload.workTitle}". Keperluan: ${payload.purpose}. WA: ${payload.whatsapp}. Kelola di menu Permintaan Akses Karya Ilmiah.`;
+
+  await Promise.all(
+    uniqueAdminIds.map((userId) =>
+      createNotification({
+        userId,
+        title: 'Permintaan Akses Karya Ilmiah Baru',
+        message,
+        type: 'SYSTEM',
+        referenceId: payload.accessRequestId,
+      })
+    )
+  );
+
+  return uniqueAdminIds.length;
 }
 
 // Background Worker state

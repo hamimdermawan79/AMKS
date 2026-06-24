@@ -193,11 +193,26 @@ export async function deletePiketPeriod(periodId: string) {
     );
   }
 
-  // assignments, attendances, and kerja bakti dates are removed via onDelete: Cascade
-  await db.piketPeriod.delete({ where: { id: periodId } });
+  // Explicitly delete all related records in a transaction to prevent database drift or orphaned data
+  await db.$transaction([
+    db.piketAttendance.deleteMany({
+      where: { assignment: { periodId } },
+    }),
+    db.piketAssignment.deleteMany({
+      where: { periodId },
+    }),
+    db.piketKerjaBakti.deleteMany({
+      where: { periodId },
+    }),
+    db.piketPeriod.delete({
+      where: { id: periodId },
+    }),
+  ]);
 
   revalidatePath('/admin/kebersihan');
   revalidatePath('/admin/kebersihan/kelola');
+  revalidatePath('/user');
+  revalidatePath('/');
 }
 
 /**
@@ -339,7 +354,7 @@ export async function recordFinePayment(data: {
   }
 
   const alreadyPaid = fine.payments.reduce((sum, p) => sum + p.amount, 0);
-  const remaining = fine.amount - alreadyPaid;
+  const remaining = Math.max(0, fine.amount - alreadyPaid);
   if (remaining <= 0) {
     throw new Error('Denda ini sudah lunas');
   }
@@ -390,7 +405,7 @@ export async function recordFinePayment(data: {
 
   return {
     paid: paidNow,
-    remaining: fine.amount - paidNow,
+    remaining: Math.max(0, fine.amount - paidNow),
     settled: paidNow >= fine.amount,
   };
 }
