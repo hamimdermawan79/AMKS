@@ -6,6 +6,10 @@ import { canFromSession } from '@/lib/rbac/can';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createNotification } from '@/lib/notifications';
+import {
+  assertPemasukanDeletionAllowed,
+  assertPengeluaranAllowed,
+} from '@/lib/finance/saldo';
 
 // Helper to check bendahara permission
 async function authorizeFinance(permission: string) {
@@ -39,6 +43,10 @@ export async function addTransaction(data: {
   const session = await authorizeFinance('finance:transaction:create');
   const v = transactionSchema.parse(data);
 
+  if (v.type === 'PENGELUARAN') {
+    await assertPengeluaranAllowed({ scope: 'ALL' }, v.amount, 'Saldo kas');
+  }
+
   const tx = await db.transaction.create({
     data: {
       type: v.type,
@@ -61,6 +69,8 @@ export async function deleteTransaction(id: string) {
   if (!existing) {
     throw new Error('Transaksi tidak ditemukan');
   }
+
+  await assertPemasukanDeletionAllowed({ scope: 'ALL' }, existing, 'Saldo kas');
 
   // If transaction is linked to a bill, we should set the bill status back to BELUM_LUNAS
   if (existing.relatedBillId) {
@@ -191,6 +201,10 @@ export async function addBulkIuran(data: {
 export async function settleBill(billId: string, note?: string, amountOverride?: number) {
   const session = await authorizeFinance('bill:update');
 
+  if (amountOverride !== undefined && amountOverride <= 0) {
+    throw new Error('Nominal pelunasan harus lebih dari 0');
+  }
+
   const bill = await db.bill.findUnique({
     where: { id: billId },
     include: { transaction: true },
@@ -219,15 +233,15 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
   });
 
   // Automatically create a corresponding PEMASUKAN transaction
-  const category = bill.type === 'DENDA_PIKET' 
-    ? 'Denda Piket' 
-    : bill.type === 'IURAN' 
-    ? 'Iuran Warga' 
-    : bill.type === 'IURAN_OLAHRAGA'
-    ? 'Iuran Olahraga'
-    : bill.type === 'DENDA_OLAHRAGA'
-    ? 'Denda Olahraga'
-    : 'Lain-lain';
+  const category = bill.type === 'DENDA_PIKET'
+    ? 'Denda Piket'
+    : bill.type === 'IURAN'
+      ? 'Iuran Warga'
+      : bill.type === 'IURAN_OLAHRAGA'
+        ? 'Iuran Olahraga'
+        : bill.type === 'DENDA_OLAHRAGA'
+          ? 'Denda Olahraga'
+          : 'Lain-lain';
   const tx = await db.transaction.create({
     data: {
       type: 'PEMASUKAN',
@@ -252,7 +266,7 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
     for (const fine of fines) {
       const alreadyPaid = fine.payments.reduce((sum, p) => sum + p.amount, 0);
       const remaining = fine.amount - alreadyPaid;
-      
+
       if (remaining > 0) {
         await db.finePayment.create({
           data: {
@@ -333,14 +347,14 @@ export async function cancelBill(billId: string) {
 
 export async function extendBillDueDate(billId: string) {
   const session = await authorizeFinance('bill:update');
-  
+
   const bill = await db.bill.findUnique({ where: { id: billId } });
   if (!bill) throw new Error('Tagihan tidak ditemukan');
-  
+
   const now = new Date();
   // Next month, day 1
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  
+
   await db.bill.update({
     where: { id: billId },
     data: {
@@ -348,7 +362,7 @@ export async function extendBillDueDate(billId: string) {
       note: `${bill.note || ''}\n(Izin telat: diperpanjang tanpa denda hingga awal bulan)`.trim(),
     }
   });
-  
+
   revalidatePath('/admin/keuangan');
   return { success: true };
 }

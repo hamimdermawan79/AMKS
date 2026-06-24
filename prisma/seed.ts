@@ -10,6 +10,7 @@ const ROLES = [
   { name: 'BENDAHARA', label: 'Bendahara', isSystem: true },
   { name: 'DIVISION_HEAD', label: 'Ketua Divisi', isSystem: true },
   { name: 'WARGA', label: 'Warga', isSystem: true },
+  { name: 'ALUMNI', label: 'Alumni', isSystem: true },
 ];
 
 const PERMISSIONS = [
@@ -104,7 +105,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
   KETUA: [
     // Access all pages + manajerial global
-    'user:create', 'user:read', 'user:update',
+    'user:create', 'user:read', 'user:update', 'user:delete',
     'document:create', 'document:read', 'document:update', 'document:delete',
     'post:create', 'post:read', 'post:update', 'post:delete',
     'work:create', 'work:read', 'work:update', 'work:delete',
@@ -157,6 +158,12 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'work:read',
     'piket:read', 'piket:attendance:mark',
     'fine:read', 'bill:read',
+  ],
+  ALUMNI: [
+    // Alumni only get read-only access, no tasks
+    'user:read',
+    'post:read', 'activity:read', 'announcement:read',
+    'work:read',
   ],
 };
 

@@ -49,11 +49,18 @@ export default async function DashboardPage() {
     pendingBills,
   ] = await Promise.all([
     db.piketAssignment.findFirst({
-      where: { userId: session?.user.id, date: { gte: now } },
+      where: { 
+        userId: session?.user.id, 
+        date: { gte: now },
+        period: { isActive: true }
+      },
       orderBy: { date: 'asc' },
     }),
     db.piketKerjaBakti.findFirst({
-      where: { date: { gte: now } },
+      where: { 
+        date: { gte: now },
+        period: { isActive: true }
+      },
       orderBy: { date: 'asc' },
     }),
     db.sportsActivity.findFirst({

@@ -88,7 +88,7 @@ model User {
   divisionScope  Division?
   photoUrl       String?
   createdById    String?
-  createdBy      User?        @relation("UserCreator", fields: [createdById], references: [id])
+  createdBy      User?        @relation("UserCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdUsers   User[]       @relation("UserCreator")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -173,7 +173,7 @@ model Document {
   category    String?
   isPublic    Boolean  @default(false)
   uploadedById String
-  uploadedBy  User     @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  uploadedBy  User     @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -195,7 +195,7 @@ model ScientificWork {
   tocFileUrl        String?            // Path ke berkas daftar isi (PDF)
   isPublished       Boolean            @default(true)
   publishedById   String
-  publishedBy     User               @relation("WorkPublisher", fields: [publishedById], references: [id])
+  publishedBy     User               @relation("WorkPublisher", fields: [publishedById], references: [id], onDelete: Cascade)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -235,7 +235,7 @@ model Post {
   publishedAt DateTime?
   isPublic    Boolean   @default(false)
   authorId    String
-  author      User      @relation("PostAuthor", fields: [authorId], references: [id])
+  author      User      @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -253,7 +253,7 @@ model Activity {
   coverUrl    String?
   images      String[]
   createdById String
-  createdBy   User     @relation("ActivityCreator", fields: [createdById], references: [id])
+  createdBy   User     @relation("ActivityCreator", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -267,7 +267,7 @@ model AsramaProfile {
   sejarah     String?
   about       String?
   updatedById String
-  updatedBy   User     @relation("ProfileUpdater", fields: [updatedById], references: [id])
+  updatedBy   User     @relation("ProfileUpdater", fields: [updatedById], references: [id], onDelete: Cascade)
   updatedAt   DateTime @updatedAt
 
   @@map("asrama_profile")
@@ -280,7 +280,7 @@ model Announcement {
   body        String
   pinned      Boolean  @default(false)
   createdById String
-  createdBy   User     @relation("AnnouncementCreator", fields: [createdById], references: [id])
+  createdBy   User     @relation("AnnouncementCreator", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -297,7 +297,7 @@ model PiketPeriod {
   finePerDay         Int
   isActive           Boolean  @default(true)
   generatedById      String
-  generatedBy        User     @relation("PeriodGenerator", fields: [generatedById], references: [id])
+  generatedBy        User     @relation("PeriodGenerator", fields: [generatedById], references: [id], onDelete: Cascade)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -342,7 +342,7 @@ model PiketAttendance {
   photoUrl     String?          // bukti foto piket (path publik /uploads/piket/...)
   complaint    String?          // keluhan warga saat presensi
   assignment   PiketAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  markedBy     User?            @relation("AttendanceMarker", fields: [markedById], references: [id])
+  markedBy     User?            @relation("AttendanceMarker", fields: [markedById], references: [id], onDelete: SetNull)
 
   @@map("piket_attendances")
 }
@@ -374,7 +374,7 @@ model FinePayment {
   paidAt       DateTime @default(now())
   recordedById String?
   fine         Fine     @relation(fields: [fineId], references: [id], onDelete: Cascade)
-  recordedBy   User?    @relation("FinePaymentRecorder", fields: [recordedById], references: [id])
+  recordedBy   User?    @relation("FinePaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
   transaction  Transaction? @relation(fields: [paymentTxId], references: [id])
   paymentTxId  String? @unique
 
@@ -394,7 +394,7 @@ model Bill {
   note             String?
   division         Division?
   user             User              @relation("BillOwner", fields: [userId], references: [id], onDelete: Cascade)
-  settledBy        User?             @relation("BillSettler", fields: [settledById], references: [id])
+  settledBy        User?             @relation("BillSettler", fields: [settledById], references: [id], onDelete: SetNull)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -417,7 +417,7 @@ model Transaction {
   division         Division?
   sportsActivityId String?
   relatedBill      Bill?           @relation(fields: [relatedBillId], references: [id])
-  createdBy        User            @relation(fields: [createdById], references: [id])
+  createdBy        User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
   sportsActivity   SportsActivity? @relation(fields: [sportsActivityId], references: [id])
   finePayment      FinePayment?   @relation
   createdAt        DateTime        @default(now())
@@ -448,7 +448,7 @@ model AuditLog {
   entity    String
   entityId  String?
   meta      Json?
-  actor     User     @relation(fields: [actorId], references: [id])
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@map("audit_logs")
@@ -483,6 +483,7 @@ model SportsActivity {
   id           String             @id @default(cuid())
   title        String
   date         DateTime
+  endDate      DateTime?
   feeAmount    Int                @default(5000)
   fineAmount   Int                @default(5000)
   createdAt    DateTime           @default(now())

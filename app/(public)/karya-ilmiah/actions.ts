@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { notifyKaryaIlmiahAccessRequestAdmins } from '@/lib/notifications';
 
 // Form permintaan akses karya ilmiah dari publik (tanpa login)
 const accessRequestSchema = z.object({
@@ -24,14 +25,14 @@ export async function submitAccessRequest(data: AccessRequestInput) {
   // Pastikan karya ada & dipublikasikan
   const work = await db.scientificWork.findUnique({
     where: { id: validated.workId },
-    select: { id: true, isPublished: true },
+    select: { id: true, isPublished: true, title: true },
   });
 
   if (!work || !work.isPublished) {
     throw new Error('Karya tidak ditemukan');
   }
 
-  await db.accessRequest.create({
+  const accessRequest = await db.accessRequest.create({
     data: {
       workId: validated.workId,
       name: validated.name.trim(),
@@ -41,6 +42,19 @@ export async function submitAccessRequest(data: AccessRequestInput) {
       institution: validated.institution.trim(),
     },
   });
+
+  try {
+    await notifyKaryaIlmiahAccessRequestAdmins({
+      accessRequestId: accessRequest.id,
+      workTitle: work.title,
+      requesterName: validated.name.trim(),
+      institution: validated.institution.trim(),
+      purpose: validated.purpose.trim(),
+      whatsapp: validated.whatsapp.trim(),
+    });
+  } catch (err) {
+    console.error('Failed to notify admins about access request:', err);
+  }
 
   revalidatePath('/admin/karya-ilmiah/permintaan-akses');
   return { success: true };

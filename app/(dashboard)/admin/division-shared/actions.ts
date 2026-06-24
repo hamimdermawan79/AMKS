@@ -149,3 +149,21 @@ export async function deleteActivityAction(division: Division, id: string) {
   revalidatePath(`/admin/${division.toLowerCase()}`);
   return { success: true };
 }
+
+export async function toggleAnnouncementPinAction(division: Division, id: string, pinned: boolean) {
+  await authorizeDivisionManage(division);
+
+  const existing = await db.announcement.findUnique({ where: { id } });
+  if (!existing || existing.division !== division) {
+    throw new Error('Pengumuman tidak ditemukan');
+  }
+
+  await db.announcement.update({
+    where: { id },
+    data: { pinned },
+  });
+
+  revalidatePath(`/admin/${division.toLowerCase()}`);
+  revalidatePath(`/admin/${division.toLowerCase()}/kelola`);
+  return { success: true };
+}

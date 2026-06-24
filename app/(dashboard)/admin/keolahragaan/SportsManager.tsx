@@ -16,7 +16,8 @@ import {
   XCircle,
   AlertCircle,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -38,6 +39,7 @@ type SportsActivityType = {
   id: string;
   title: string;
   date: Date;
+  endDate: Date | null;
   feeAmount: number;
   fineAmount: number;
   attendance: {
@@ -117,22 +119,41 @@ export default function SportsManager({ wargaList, activities, transactions, den
 
   const saldoKas = totalPemasukan - totalPengeluaran;
 
+  const formatActivityTimeRange = (start: Date, end: Date | null) => {
+    const startStr = start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    if (!end) return startStr;
+    const endStr = end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    return `${startStr} – ${endStr}`;
+  };
+
   const handleCreateActivity = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (!actDate || !actEndDate) {
+      setErrorMsg('Waktu mulai dan waktu selesai wajib diisi');
+      return;
+    }
+
+    const startDt = new Date(actDate);
+    const endDt = new Date(actEndDate);
+
+    if (Number.isNaN(startDt.getTime()) || Number.isNaN(endDt.getTime())) {
+      setErrorMsg('Format waktu tidak valid');
+      return;
+    }
+
+    if (endDt.getTime() <= startDt.getTime()) {
+      setErrorMsg('Waktu selesai harus setelah waktu mulai');
+      return;
+    }
+
     startTransition(async () => {
       try {
-        // Extract start time & end time for display inside title
-        const startDt = new Date(actDate);
-        const endDt = new Date(actEndDate);
-        
-        const startTimeStr = startDt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const endTimeStr = endDt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const formattedTitle = `${actTitle} (${startTimeStr} - ${endTimeStr})`;
-
         await createSportsActivity({
-          title: formattedTitle,
+          title: actTitle.trim(),
           date: actDate,
+          endDate: actEndDate,
           feeAmount: Number(actFee),
           fineAmount: Number(actFine),
         });
@@ -191,12 +212,23 @@ export default function SportsManager({ wargaList, activities, transactions, den
   const handleCreateTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    const amount = Number(txAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setErrorMsg('Nominal harus lebih dari 0');
+      return;
+    }
+    if (txType === 'PENGELUARAN' && amount > saldoKas) {
+      setErrorMsg(
+        `Saldo tidak mencukupi. Tersedia Rp${saldoKas.toLocaleString('id-ID')}`
+      );
+      return;
+    }
     startTransition(async () => {
       try {
         await addSportsTransaction({
           type: txType,
           category: txCategory,
-          amount: Number(txAmount),
+          amount,
           description: txDesc,
           occurredAt: txDate,
         });
@@ -229,6 +261,14 @@ export default function SportsManager({ wargaList, activities, transactions, den
       {/* HEADER */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
+          {isKelolaMode && (
+            <Link
+              href="/admin/keolahragaan"
+              className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" /> Kembali ke tampilan divisi
+            </Link>
+          )}
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Trophy className="h-8 w-8 text-amber-500" />
             Divisi Keolahragaan
@@ -327,8 +367,10 @@ export default function SportsManager({ wargaList, activities, transactions, den
                           weekday: 'long',
                           day: 'numeric',
                           month: 'long',
-                          year: 'numeric'
+                          year: 'numeric',
                         })}
+                        {' · '}
+                        {formatActivityTimeRange(new Date(act.date), act.endDate ? new Date(act.endDate) : null)}
                       </p>
                     </div>
                     {isKelolaMode && (
@@ -703,7 +745,13 @@ export default function SportsManager({ wargaList, activities, transactions, den
                         type="datetime-local" 
                         required
                         value={actDate}
-                        onChange={(e) => setActDate(e.target.value)}
+                        onChange={(e) => {
+                          const nextStart = e.target.value;
+                          setActDate(nextStart);
+                          if (actEndDate && nextStart && new Date(actEndDate).getTime() <= new Date(nextStart).getTime()) {
+                            setActEndDate('');
+                          }
+                        }}
                         className="w-full px-3.5 py-2 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                       />
                     </div>
@@ -712,10 +760,14 @@ export default function SportsManager({ wargaList, activities, transactions, den
                       <input 
                         type="datetime-local" 
                         required
+                        min={actDate || undefined}
                         value={actEndDate}
                         onChange={(e) => setActEndDate(e.target.value)}
                         className="w-full px-3.5 py-2 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                       />
+                      {actDate && actEndDate && new Date(actEndDate).getTime() <= new Date(actDate).getTime() && (
+                        <p className="text-[11px] text-rose-600">Waktu selesai harus setelah waktu mulai</p>
+                      )}
                     </div>
                   </div>
 
@@ -753,7 +805,12 @@ export default function SportsManager({ wargaList, activities, transactions, den
                   </button>
                   <button
                     type="submit"
-                    disabled={isPending}
+                    disabled={
+                      isPending ||
+                      !actDate ||
+                      !actEndDate ||
+                      new Date(actEndDate).getTime() <= new Date(actDate).getTime()
+                    }
                     className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-sm font-medium text-white shadow-sm transition-all disabled:opacity-60"
                   >
                     Buat Kegiatan
@@ -839,11 +896,18 @@ export default function SportsManager({ wargaList, activities, transactions, den
                     <input 
                       type="number" 
                       required
+                      min={1}
+                      max={txType === 'PENGELUARAN' ? saldoKas : undefined}
                       placeholder="Nominal rupiah"
                       value={txAmount || ''}
                       onChange={(e) => setTxAmount(Number(e.target.value))}
                       className="w-full px-3.5 py-2 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                     />
+                    {txType === 'PENGELUARAN' && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Saldo tersedia: Rp{saldoKas.toLocaleString('id-ID')}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1">
