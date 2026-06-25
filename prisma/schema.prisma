@@ -114,6 +114,8 @@ model User {
   maghribSchedules  RohaniSchedule[]    @relation("ImamMaghrib")
   ishaSchedules     RohaniSchedule[]    @relation("ImamIsha")
   kultumSchedules   RohaniSchedule[]    @relation("KultumBy")
+  cadanganImamSchedules   RohaniSchedule[] @relation("CadanganImam")
+  cadanganKultumSchedules RohaniSchedule[] @relation("CadanganKultum")
 
   @@map("users")
 }
@@ -510,19 +512,23 @@ model SportsAttendance {
 }
 
 model RohaniSchedule {
-  id            String   @id @default(cuid())
-  date          DateTime // Must be a Thursday
-  startVerse    Int
-  endVerse      Int
-  currentSurah  String
-  imamMaghribId String
-  imamIshaId    String
-  kultumById    String
-  imamMaghrib   User     @relation("ImamMaghrib", fields: [imamMaghribId], references: [id], onDelete: Cascade)
-  imamIsha      User     @relation("ImamIsha", fields: [imamIshaId], references: [id], onDelete: Cascade)
-  kultumBy      User     @relation("KultumBy", fields: [kultumById], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  date             DateTime // Must be a Thursday
+  startVerse       Int
+  endVerse         Int
+  currentSurah     String
+  imamMaghribId    String
+  imamIshaId       String
+  kultumById       String
+  cadanganImamId   String?
+  cadanganKultumId String?
+  imamMaghrib      User     @relation("ImamMaghrib", fields: [imamMaghribId], references: [id], onDelete: Cascade)
+  imamIsha         User     @relation("ImamIsha", fields: [imamIshaId], references: [id], onDelete: Cascade)
+  kultumBy         User     @relation("KultumBy", fields: [kultumById], references: [id], onDelete: Cascade)
+  cadanganImam     User?    @relation("CadanganImam", fields: [cadanganImamId], references: [id], onDelete: SetNull)
+  cadanganKultum   User?    @relation("CadanganKultum", fields: [cadanganKultumId], references: [id], onDelete: SetNull)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@map("rohani_schedules")
 }

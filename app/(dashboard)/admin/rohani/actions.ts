@@ -28,8 +28,8 @@ export async function generateNextRohaniSchedule() {
     select: { id: true, fullName: true },
   });
 
-  if (activeUsers.length < 3) {
-    throw new Error('Warga aktif minimal harus 3 orang untuk menggenerasi jadwal (Imam Maghrib, Imam Isya, & Kultum).');
+  if (activeUsers.length < 5) {
+    throw new Error('Warga aktif minimal harus 5 orang untuk menggenerasi jadwal (Imam Maghrib, Imam Isya, Kultum, Cadangan Imam, & Cadangan Kultum).');
   }
 
   // 2. Get latest schedule to determine next date and verses
@@ -120,6 +120,20 @@ export async function generateNextRohaniSchedule() {
     .sort((a, b) => a.lastKultumTime - b.lastKultumTime);
   const kultumBy = sortedForKultum[0];
 
+  // Pick Cadangan Imam: lowest combined imam time (excluding 3 already picked)
+  const pickedIds = [imamMaghrib.id, imamIsha.id, kultumBy.id];
+  const sortedForCadanganImam = userStats
+    .filter(u => !pickedIds.includes(u.id))
+    .sort((a, b) => (a.lastMaghribTime + a.lastIshaTime) - (b.lastMaghribTime + b.lastIshaTime));
+  const cadanganImam = sortedForCadanganImam[0];
+
+  // Pick Cadangan Kultum: lowest lastKultumTime (excluding 4 already picked)
+  const pickedIds2 = [...pickedIds, cadanganImam.id];
+  const sortedForCadanganKultum = userStats
+    .filter(u => !pickedIds2.includes(u.id))
+    .sort((a, b) => a.lastKultumTime - b.lastKultumTime);
+  const cadanganKultum = sortedForCadanganKultum[0];
+
   // 4. Create the schedule
   const schedule = await db.rohaniSchedule.create({
     data: {
@@ -130,6 +144,8 @@ export async function generateNextRohaniSchedule() {
       imamMaghribId: imamMaghrib.id,
       imamIshaId: imamIsha.id,
       kultumById: kultumBy.id,
+      cadanganImamId: cadanganImam.id,
+      cadanganKultumId: cadanganKultum.id,
     },
   });
 
@@ -165,6 +181,22 @@ export async function generateNextRohaniSchedule() {
     referenceId: schedule.id,
   });
 
+  await createNotification({
+    userId: cadanganImam.id,
+    title: 'TUGAS IBADAH: Cadangan Imam',
+    message: `Halo ${cadanganImam.fullName}, Anda terjadwal sebagai cadangan Imam pada hari ${formattedDate}. Jika Imam Maghrib atau Imam Isya berhalangan, Anda akan menggantikan. Mohon bersiap diri.`,
+    type: 'SYSTEM',
+    referenceId: schedule.id,
+  });
+
+  await createNotification({
+    userId: cadanganKultum.id,
+    title: 'TUGAS IBADAH: Cadangan Kultum',
+    message: `Halo ${cadanganKultum.fullName}, Anda terjadwal sebagai cadangan Kultum pada hari ${formattedDate}. Jika pembawa Kultum utama berhalangan, Anda akan menggantikan. Mohon bersiap diri.`,
+    type: 'SYSTEM',
+    referenceId: schedule.id,
+  });
+
   revalidatePath('/admin/rohani');
   return { success: true, schedule };
 }
@@ -178,7 +210,7 @@ export async function deleteRohaniSchedule(id: string) {
 
 export async function replaceRohaniDuty(
   scheduleId: string,
-  role: 'imamMaghrib' | 'imamIsha' | 'kultum',
+  role: 'imamMaghrib' | 'imamIsha' | 'kultum' | 'cadanganImam' | 'cadanganKultum',
   newUserId: string
 ) {
   await authorizeRohani();
@@ -190,6 +222,8 @@ export async function replaceRohaniDuty(
     imamMaghrib: 'imamMaghribId',
     imamIsha: 'imamIshaId',
     kultum: 'kultumById',
+    cadanganImam: 'cadanganImamId',
+    cadanganKultum: 'cadanganKultumId',
   } as const;
 
   const field = fieldMap[role];
@@ -201,6 +235,8 @@ export async function replaceRohaniDuty(
       imamMaghrib: { select: { id: true, fullName: true } },
       imamIsha: { select: { id: true, fullName: true } },
       kultumBy: { select: { id: true, fullName: true } },
+      cadanganImam: { select: { id: true, fullName: true } },
+      cadanganKultum: { select: { id: true, fullName: true } },
     },
   });
 
@@ -209,6 +245,8 @@ export async function replaceRohaniDuty(
     imamMaghrib: 'Imam Sholat Maghrib',
     imamIsha: 'Imam Sholat Isya',
     kultum: 'Pembawa Kultum',
+    cadanganImam: 'Cadangan Imam',
+    cadanganKultum: 'Cadangan Kultum',
   };
   const newUser = await db.user.findUnique({ where: { id: newUserId }, select: { fullName: true } });
   const formattedDate = schedule.date.toLocaleDateString('id-ID', {
@@ -224,6 +262,83 @@ export async function replaceRohaniDuty(
       referenceId: scheduleId,
     });
   }
+
+  revalidatePath('/admin/rohani');
+  revalidatePath('/admin/rohani/kelola');
+  return { success: true };
+}
+
+/**
+ * Activate backup officer — swaps the main petugas with the cadangan.
+ * mainRole: which main role is being replaced ('imamMaghrib' | 'imamIsha' | 'kultum')
+ */
+export async function activateBackup(
+  scheduleId: string,
+  mainRole: 'imamMaghrib' | 'imamIsha' | 'kultum'
+) {
+  await authorizeRohani();
+
+  const schedule = await db.rohaniSchedule.findUnique({
+    where: { id: scheduleId },
+    include: {
+      imamMaghrib: { select: { id: true, fullName: true } },
+      imamIsha: { select: { id: true, fullName: true } },
+      kultumBy: { select: { id: true, fullName: true } },
+      cadanganImam: { select: { id: true, fullName: true } },
+      cadanganKultum: { select: { id: true, fullName: true } },
+    },
+  });
+  if (!schedule) throw new Error('Jadwal tidak ditemukan');
+
+  // Determine which backup to use
+  let backupUser: { id: string; fullName: string } | null = null;
+  let mainField: string;
+  let backupField: string;
+  let roleLabel: string;
+
+  if (mainRole === 'imamMaghrib' || mainRole === 'imamIsha') {
+    backupUser = schedule.cadanganImam;
+    mainField = mainRole === 'imamMaghrib' ? 'imamMaghribId' : 'imamIshaId';
+    backupField = 'cadanganImamId';
+    roleLabel = mainRole === 'imamMaghrib' ? 'Imam Sholat Maghrib' : 'Imam Sholat Isya';
+  } else {
+    // kultum
+    backupUser = schedule.cadanganKultum;
+    mainField = 'kultumById';
+    backupField = 'cadanganKultumId';
+    roleLabel = 'Pembawa Kultum';
+  }
+
+  if (!backupUser) {
+    throw new Error('Belum ada petugas cadangan yang ditunjuk untuk menggantikan role ini.');
+  }
+
+  // Get the original petugas name for notification
+  const originalUser = mainRole === 'imamMaghrib' ? schedule.imamMaghrib
+    : mainRole === 'imamIsha' ? schedule.imamIsha
+    : schedule.kultumBy;
+
+  // Swap: set main role to backup user, clear the backup slot
+  await db.rohaniSchedule.update({
+    where: { id: scheduleId },
+    data: {
+      [mainField]: backupUser.id,
+      [backupField]: null,
+    },
+  });
+
+  // Notify the backup user that they are now the main petugas
+  const formattedDate = schedule.date.toLocaleDateString('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+
+  await createNotification({
+    userId: backupUser.id,
+    title: `TUGAS IBADAH (Cadangan Diaktifkan): ${roleLabel}`,
+    message: `Halo ${backupUser.fullName}, Anda resmi menggantikan ${originalUser.fullName} sebagai ${roleLabel} pada ${formattedDate} karena yang bersangkutan berhalangan. Mohon bersiap diri.`,
+    type: 'SYSTEM',
+    referenceId: scheduleId,
+  });
 
   revalidatePath('/admin/rohani');
   revalidatePath('/admin/rohani/kelola');
