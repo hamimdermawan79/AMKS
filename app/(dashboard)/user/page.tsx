@@ -87,6 +87,8 @@ export default async function DashboardPage() {
     if (myUpcomingRohani.imamMaghribId === session.user.id) rohaniMessage = "Anda Bertugas Sebagai Imam Maghrib";
     else if (myUpcomingRohani.imamIshaId === session.user.id) rohaniMessage = "Anda Bertugas Sebagai Imam Isya";
     else if (myUpcomingRohani.kultumById === session.user.id) rohaniMessage = "Anda Berkesempatan Mengisi Kultum";
+    else if (myUpcomingRohani.cadanganImamId === session.user.id) rohaniMessage = "Anda Cadangan Imam (Siap Menggantikan)";
+    else if (myUpcomingRohani.cadanganKultumId === session.user.id) rohaniMessage = "Anda Cadangan Kultum (Siap Menggantikan)";
   }
 
   const dashboardProps = {
