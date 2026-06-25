@@ -112,3 +112,32 @@ Halaman baru khusus pengurus, dengan akses dibatasi melalui RBAC (`division:mana
 ### Catatan Keamanan
 
 - Foto bukti piket disimpan di `public/uploads/piket/` yang **dapat diakses publik** melalui URL langsung tanpa autentikasi (mengikuti konvensi unggah modul Karya Ilmiah yang sudah ada). Karena foto bukti bersifat lebih sensitif (memuat wajah/identitas warga), bila diperlukan tingkat privasi lebih tinggi, berkas dapat dipindahkan ke luar direktori `public/` dan disajikan melalui *route handler* yang memeriksa autentikasi.
+
+## Plan: Fitur Buku Alumni (Untuk Tim Backend)
+
+Fitur Buku Alumni memungkinkan asrama untuk mendata dan menampilkan profil alumni yang pernah menetap di asrama.
+
+### 1. Struktur Database (Schema)
+Perlu dibuat model `Alumni` di database (misal menggunakan Prisma) dengan skema dasar berikut:
+- `id` (String/UUID, Primary Key)
+- `nama` (String) - Nama lengkap alumni
+- `tanggalMasuk` (DateTime) - Tanggal masuk asrama
+- `tanggalKeluar` (DateTime) - Tanggal meninggalkan asrama
+- `kampus` (String) - Nama universitas/kampus
+- `fotoUrl` (String, opsional) - Path/URL foto alumni (jika ada)
+- `createdAt` & `updatedAt` (DateTime)
+
+### 2. Konfigurasi Izin Akses (Permissions/RBAC)
+Penambahan dan pengelolaan data Buku Alumni hanya dapat dilakukan oleh peran (Role) tertentu:
+- **Superadmin**
+- **Ketua**
+- **Sekretaris**
+
+Pengaturan konfigurasi hak akses ini harus ditambahkan dan dikelola melalui **Menu Pengaturan Sistem** di _dashboard_ Superadmin, Ketua, dan Sekretaris. Dengan demikian, izin (e.g. `canManageAlumni`) dapat disesuaikan secara dinamis dari UI tanpa hardcode.
+
+### 3. API & Endpoints
+- `GET /api/alumni`: Fetch daftar alumni (Public/Frontend).
+- `POST /api/alumni`: Create data alumni baru (Protected).
+- `PUT /api/alumni/:id`: Update data (Protected).
+- `DELETE /api/alumni/:id`: Delete data (Protected).
+Pastikan middleware memeriksa konfigurasi akses sebelum mengeksekusi *route* modifikasi data.

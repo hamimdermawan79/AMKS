@@ -38,7 +38,7 @@ export default function HeroSection({
   useEffect(() => setMounted(true), []);
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white py-16 md:py-20">
+    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white pt-28 pb-16 md:pt-36 md:pb-20">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(37,99,235,0.06),_transparent_60%)]" />
       {mounted && <FloatingOrbs />}
 

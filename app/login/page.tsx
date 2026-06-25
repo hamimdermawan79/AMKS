@@ -92,15 +92,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative" style={{ perspective: '1200px' }}>
       {mounted && <HeroBackgroundBlurred />}
       
       {/* The Floating Modal */}
       <motion.div 
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 flex w-full max-w-[1200px] flex-col lg:flex-row bg-white rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden shadow-2xl shadow-blue-900/10 min-h-[600px] lg:min-h-[700px] border border-white/50"
+        initial={{ opacity: 0, y: 80, scale: 0.92, rotateX: 15, filter: 'blur(10px)' }}
+        animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0, filter: 'blur(0px)' }}
+        transition={{ 
+          type: "spring",
+          stiffness: 80,
+          damping: 15,
+          mass: 1.2,
+          opacity: { duration: 0.4 },
+          filter: { duration: 0.5 }
+        }}
+        style={{ transformOrigin: "center center" }}
+        className="relative z-10 flex w-full max-w-[1200px] flex-col lg:flex-row bg-white rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden shadow-[0_30px_100px_-15px_rgba(37,99,235,0.2)] min-h-[600px] lg:min-h-[700px] border border-white/50"
       >
         {/* Left Panel - Branding */}
         <div className="relative hidden lg:flex flex-1 items-center justify-center p-12 xl:p-20 overflow-hidden">
@@ -219,11 +227,8 @@ export default function LoginPage() {
                     Memproses...
                   </span>
                 ) : (
-                  <span className="relative z-10 flex items-center justify-center gap-2">
+                  <span className="relative z-10 flex items-center justify-center">
                     Masuk Sekarang
-                    <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
                   </span>
                 )}
               </button>

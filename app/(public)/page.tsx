@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { ArrowRight, BookOpen, Palette, Heart, Users } from 'lucide-react';
+import MapSection from '@/components/MapSection';
 
 function FloatingOrbs() {
   const orbs = [
@@ -55,12 +56,15 @@ export default function HomePage() {
         className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white"
       >
         {/* Soft Blue Base Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-100/80 via-white to-slate-50/50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-white" />
         
-        {/* Abstract Blurry Blobs for Mesh Gradient Effect */}
-        <div className="pointer-events-none absolute -left-[10%] top-0 h-[700px] w-[700px] rounded-[40%_60%_70%_30%] bg-blue-500/30 mix-blend-multiply blur-[120px] animate-blob" />
-        <div className="pointer-events-none absolute left-[20%] -top-[20%] h-[600px] w-[600px] rounded-[60%_40%_30%_70%] bg-sky-300/40 mix-blend-multiply blur-[120px] animate-blob animation-delay-2000" />
-        <div className="pointer-events-none absolute -right-[10%] top-[20%] h-[600px] w-[600px] rounded-[50%_50%_60%_40%] bg-indigo-300/30 mix-blend-multiply blur-[100px] animate-blob animation-delay-4000" />
+        {/* Abstract Blurry Blobs for Mesh Gradient Effect - Blue Monochromatic Theme */}
+        {/* Top Left Blob */}
+        <div className="pointer-events-none absolute -left-[10%] top-0 h-[700px] w-[700px] rounded-[40%_60%_70%_30%] bg-primary/20 mix-blend-multiply blur-[120px] animate-blob" />
+        {/* Top Center Blob */}
+        <div className="pointer-events-none absolute left-[15%] -top-[10%] h-[600px] w-[600px] rounded-[60%_40%_30%_70%] bg-blue-200/40 mix-blend-multiply blur-[120px] animate-blob animation-delay-2000" />
+        {/* Bottom Left Blob */}
+        <div className="pointer-events-none absolute -left-[5%] bottom-[-10%] h-[600px] w-[600px] rounded-[50%_50%_60%_40%] bg-blue-300/30 mix-blend-multiply blur-[120px] animate-blob animation-delay-4000" />
         
         {/* Optional Noise Texture Overlay */}
         <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
@@ -91,16 +95,21 @@ export default function HomePage() {
             </motion.h1>
 
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-              className="mt-10"
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="mt-10 flex justify-center w-full"
             >
               <Link
                 href="/login"
-                className="inline-flex items-center rounded-xl bg-primary px-8 py-3.5 text-base font-medium text-white shadow-lg shadow-blue-200 transition-all duration-300 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-300"
+                className="group relative inline-flex items-center justify-center overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-8 py-4 text-base font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
               >
-                Akses Warga Asrama
+                {/* Inner Blur Gradient */}
+                <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
+                
+                <span className="relative z-10 flex items-center justify-center">
+                  Akses Warga Asrama
+                </span>
               </Link>
             </motion.div>
           </div>
@@ -152,6 +161,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ===== MAP LOCATION ===== */}
+      <MapSection />
 
       {/* ===== CTA ===== */}
       <section className="bg-white py-24 md:py-32">

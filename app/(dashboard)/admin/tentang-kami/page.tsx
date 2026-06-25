@@ -2,9 +2,7 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { canFromSession } from '@/lib/rbac/can';
-import ProfileEditor from './ProfileEditor';
-import ActivityManager from './ActivityManager';
-import DocumentManager from './DocumentManager';
+import TentangKamiTabs from './TentangKamiTabs';
 
 export default async function TentangKamiAdminPage() {
   const session = await auth();
@@ -42,27 +40,20 @@ export default async function TentangKamiAdminPage() {
   });
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8 pb-12">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-1">Konten & Gallery</h1>
-        <p className="text-sm text-muted-foreground">Kelola profil asrama, kegiatan, dan dokumentasi</p>
+        <h1 className="text-3xl font-bold text-slate-800 mb-2">Konten & Gallery</h1>
+        <p className="text-slate-500">Pilih modul di bawah ini untuk mengelola konten publik halaman Tentang Kami dan Dokumentasi.</p>
       </div>
 
-      {/* Profile Section */}
-      <ProfileEditor profile={profile} canEdit={canUpdate} userId={session.user.id} />
-
-      {/* Activities Section */}
-      <ActivityManager
+      <TentangKamiTabs 
+        profile={profile}
         activities={activities}
-        canCreate={canCreate}
-        canDelete={canDelete}
-      />
-
-      {/* Documents Section */}
-      <DocumentManager
         documents={documents}
         canCreate={canCreate}
+        canUpdate={canUpdate}
         canDelete={canDelete}
+        userId={session.user.id}
       />
     </div>
   );

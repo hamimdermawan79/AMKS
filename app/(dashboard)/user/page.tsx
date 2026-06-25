@@ -87,6 +87,8 @@ export default async function DashboardPage() {
     if (myUpcomingRohani.imamMaghribId === session.user.id) rohaniMessage = "Anda Bertugas Sebagai Imam Maghrib";
     else if (myUpcomingRohani.imamIshaId === session.user.id) rohaniMessage = "Anda Bertugas Sebagai Imam Isya";
     else if (myUpcomingRohani.kultumById === session.user.id) rohaniMessage = "Anda Berkesempatan Mengisi Kultum";
+    else if (myUpcomingRohani.cadanganImamId === session.user.id) rohaniMessage = "Anda Cadangan Imam (Siap Menggantikan)";
+    else if (myUpcomingRohani.cadanganKultumId === session.user.id) rohaniMessage = "Anda Cadangan Kultum (Siap Menggantikan)";
   }
 
   const dashboardProps = {
@@ -124,6 +126,8 @@ export default async function DashboardPage() {
   return <UserDashboard {...dashboardProps} showAdminButton={false} />;
 }
 
+import { Users, Activity, GraduationCap, FileWarning, Settings, UsersRound, Wallet, ClipboardCheck, ArrowRight, ShieldCheck } from 'lucide-react';
+
 // ==================== ADMIN DASHBOARD ====================
 async function AdminDashboard({ session }: { session: any }) {
   // System stats
@@ -159,110 +163,124 @@ async function AdminDashboard({ session }: { session: any }) {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground mb-1">Administrator Panel</h1>
-        <p className="text-sm text-muted-foreground">
-          System overview &amp; quick access. Logged in as{' '}
-          <span className="font-medium text-foreground">{session.user.fullName}</span>
-        </p>
+      <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Administrator Panel</h1>
+          <p className="text-slate-500">
+            Selamat datang kembali, <span className="font-semibold text-slate-700">{session.user.fullName}</span>. Berikut adalah ringkasan sistem hari ini.
+          </p>
+        </div>
+        <div className="shrink-0 flex items-center gap-3 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
+          <ShieldCheck className="text-blue-500 h-8 w-8" />
+          <div>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Akses Hak</p>
+            <p className="text-sm font-bold text-slate-700">Super Administrator</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatBox label="Total Users" value={totalUsers} />
-        <StatBox label="Active" value={activeUsers} />
-        <StatBox label="Alumni" value={alumniUsers} />
-        <StatBox
-          label="Outstanding Bills"
-          value={outstandingBills}
-          valueClass="text-red-600"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatBox label="Total Pengguna" value={totalUsers} icon={<Users className="h-5 w-5" />} color="blue" />
+        <StatBox label="Warga Aktif" value={activeUsers} icon={<Activity className="h-5 w-5" />} color="green" />
+        <StatBox label="Alumni" value={alumniUsers} icon={<GraduationCap className="h-5 w-5" />} color="amber" />
+        <StatBox label="Tagihan Tertunggak" value={outstandingBills} icon={<FileWarning className="h-5 w-5" />} color="rose" />
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white border border-border p-6">
-        <h2 className="font-semibold text-foreground mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link
-            href="/admin/warga"
-            className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
-          >
-            <p className="font-medium text-foreground text-sm">User Management</p>
-            <p className="text-xs text-muted-foreground mt-1">Add, edit, delete users</p>
-          </Link>
+      <div>
+        <h2 className="text-lg font-bold text-slate-800 mb-4 px-2">Akses Cepat (Modul Utama)</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ActionCard 
+            href="/admin/warga" 
+            title="Kelola Warga" 
+            desc="Tambah, edit, hapus data warga asrama" 
+            icon={<UsersRound className="h-6 w-6 text-indigo-500" />} 
+          />
           {isSuper && (
-            <Link
-              href="/admin/pengaturan"
-              className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
-            >
-              <p className="font-medium text-foreground text-sm">Settings</p>
-              <p className="text-xs text-muted-foreground mt-1">Roles &amp; permissions</p>
-            </Link>
+            <ActionCard 
+              href="/admin/pengaturan" 
+              title="Pengaturan Sistem" 
+              desc="Konfigurasi role & permission" 
+              icon={<Settings className="h-6 w-6 text-slate-500" />} 
+            />
           )}
-          <Link
-            href="/admin/keuangan"
-            className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
-          >
-            <p className="font-medium text-foreground text-sm">Finance</p>
-            <p className="text-xs text-muted-foreground mt-1">Transactions &amp; bills</p>
-          </Link>
-          <Link
-            href="/admin/kebersihan"
-            className="border border-border p-4 hover:border-primary/30 hover:bg-blue-50/50 transition-colors"
-          >
-            <p className="font-medium text-foreground text-sm">Piket System</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {activePiketPeriods} active period{activePiketPeriods !== 1 ? 's' : ''}
-            </p>
-          </Link>
+          <ActionCard 
+            href="/admin/keuangan" 
+            title="Keuangan" 
+            desc="Laporan transaksi & tagihan iuran" 
+            icon={<Wallet className="h-6 w-6 text-emerald-500" />} 
+          />
+          <ActionCard 
+            href="/admin/kebersihan" 
+            title="Sistem Piket" 
+            desc={`${activePiketPeriods} periode piket sedang aktif`} 
+            icon={<ClipboardCheck className="h-6 w-6 text-cyan-500" />} 
+          />
         </div>
       </div>
 
       {/* System Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Registrations */}
-        <div className="bg-white border border-border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-foreground">Recent Registrations</h2>
-            <Link href="/admin/warga" className="text-xs text-primary hover:underline">
-              View all
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-bold text-slate-800">Pendaftar Terbaru</h2>
+            <Link href="/admin/warga" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Lihat semua <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4 flex-1">
             {recentUsers.map((user) => (
-              <div key={user.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0 last:pb-0">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{user.fullName}</p>
-                  <p className="text-xs text-muted-foreground">@{user.username}</p>
+              <div key={user.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                    {user.fullName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{user.fullName}</p>
+                    <p className="text-xs text-slate-500 font-medium">@{user.username}</p>
+                  </div>
                 </div>
-                <span
-                  className={`text-xs px-2 py-0.5 font-medium ${
-                    user.status === 'AKTIF'
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-yellow-50 text-yellow-700'
-                  }`}
-                >
+                <span className={`text-xs px-3 py-1 rounded-full font-bold ${
+                  user.status === 'AKTIF' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                }`}>
                   {user.status}
                 </span>
               </div>
             ))}
+            {recentUsers.length === 0 && (
+              <div className="flex items-center justify-center h-full text-slate-400 text-sm italic">
+                Belum ada pengguna terdaftar
+              </div>
+            )}
           </div>
         </div>
 
         {/* Role Distribution */}
-        <div className="bg-white border border-border p-6">
-          <h2 className="font-semibold text-foreground mb-4">Role Distribution</h2>
-          <div className="space-y-3">
-            {roleCounts.map((role) => (
-              <div key={role.id} className="flex items-center justify-between">
-                <span className="text-sm text-foreground">{role.label}</span>
-                <span className="text-sm font-medium text-muted-foreground">
-                  {role.users.length}
-                </span>
-              </div>
-            ))}
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex flex-col">
+          <h2 className="font-bold text-slate-800 mb-6">Distribusi Peran (Roles)</h2>
+          <div className="space-y-3 flex-1">
+            {roleCounts.map((role) => {
+              const count = role.users.length;
+              const percentage = totalUsers > 0 ? (count / totalUsers) * 100 : 0;
+              return (
+                <div key={role.id} className="mb-4 last:mb-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-slate-700">{role.label}</span>
+                    <span className="text-sm font-bold text-slate-500">{count} akun</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2.5">
+                    <div 
+                      className="bg-blue-500 h-2.5 rounded-full" 
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -271,21 +289,38 @@ async function AdminDashboard({ session }: { session: any }) {
 }
 
 // ==================== HELPERS ====================
-function StatBox({
-  label,
-  value,
-  valueClass,
-}: {
-  label: string;
-  value: number;
-  valueClass?: string;
-}) {
+
+function StatBox({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: 'blue' | 'green' | 'amber' | 'rose' }) {
+  const colorMap = {
+    blue: 'bg-blue-50 text-blue-600 border-blue-100',
+    green: 'bg-green-50 text-green-600 border-green-100',
+    amber: 'bg-amber-50 text-amber-600 border-amber-100',
+    rose: 'bg-rose-50 text-rose-600 border-rose-100',
+  };
+  
   return (
-    <div className="border border-border p-5 bg-white">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className={`text-3xl font-bold mt-1 ${valueClass || 'text-foreground'}`}>
-        {value}
-      </p>
+    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-5 transition-transform hover:-translate-y-1 duration-300">
+      <div className={`shrink-0 h-14 w-14 flex items-center justify-center rounded-2xl border ${colorMap[color]}`}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-slate-500 mb-1">{label}</p>
+        <p className="text-3xl font-black text-slate-800">{value}</p>
+      </div>
     </div>
+  );
+}
+
+function ActionCard({ href, title, desc, icon }: { href: string; title: string; desc: string; icon: React.ReactNode }) {
+  return (
+    <Link href={href} className="group bg-white rounded-3xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300 flex flex-col gap-3">
+      <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:scale-110 group-hover:bg-blue-50 transition-all duration-300">
+        {icon}
+      </div>
+      <div>
+        <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{title}</h3>
+        <p className="text-xs text-slate-500 mt-1 leading-relaxed">{desc}</p>
+      </div>
+    </Link>
   );
 }

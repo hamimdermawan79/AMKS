@@ -22,6 +22,7 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +45,10 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
       if (coverFile) {
         formData.append('cover', coverFile);
         setProgress('Mengunggah cover...');
+      }
+
+      if (youtubeUrl.trim()) {
+        formData.append('youtubeUrl', youtubeUrl.trim());
       }
 
       imageFiles.forEach((file, i) => {
@@ -82,6 +87,7 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
     setCoverFile(null);
     setImageFiles([]);
     setStartAt('');
+    setYoutubeUrl('');
     setError('');
     setProgress('');
   };
@@ -168,6 +174,16 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
 
               <FormField label="Lokasi">
                 <input value={location} onChange={(e) => setLocation(e.target.value)} className="input" />
+              </FormField>
+
+              <FormField label="Link YouTube Video (Opsional)">
+                <input 
+                  type="url"
+                  placeholder="Contoh: https://youtube.com/watch?v=..."
+                  value={youtubeUrl} 
+                  onChange={(e) => setYoutubeUrl(e.target.value)} 
+                  className="input" 
+                />
               </FormField>
 
               <FormField label="Narasi / Deskripsi">
