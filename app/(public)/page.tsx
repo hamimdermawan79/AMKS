@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { ArrowRight, BookOpen, Palette, Heart, Users } from 'lucide-react';
 import MapSection from '@/components/MapSection';
+import SyaratWargaSection from '@/components/SyaratWargaSection';
 
 function FloatingOrbs() {
   const orbs = [
@@ -57,7 +58,7 @@ export default function HomePage() {
       >
         {/* Soft Blue Base Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-white" />
-        
+
         {/* Abstract Blurry Blobs for Mesh Gradient Effect - Blue Monochromatic Theme */}
         {/* Top Left Blob */}
         <div className="pointer-events-none absolute -left-[10%] top-0 h-[700px] w-[700px] rounded-[40%_60%_70%_30%] bg-primary/20 mix-blend-multiply blur-[120px] animate-blob" />
@@ -65,7 +66,7 @@ export default function HomePage() {
         <div className="pointer-events-none absolute left-[15%] -top-[10%] h-[600px] w-[600px] rounded-[60%_40%_30%_70%] bg-blue-200/40 mix-blend-multiply blur-[120px] animate-blob animation-delay-2000" />
         {/* Bottom Left Blob */}
         <div className="pointer-events-none absolute -left-[5%] bottom-[-10%] h-[600px] w-[600px] rounded-[50%_50%_60%_40%] bg-blue-300/30 mix-blend-multiply blur-[120px] animate-blob animation-delay-4000" />
-        
+
         {/* Optional Noise Texture Overlay */}
         <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
 
@@ -106,7 +107,7 @@ export default function HomePage() {
               >
                 {/* Inner Blur Gradient */}
                 <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
-                
+
                 <span className="relative z-10 flex items-center justify-center">
                   Akses Warga Asrama
                 </span>
@@ -161,6 +162,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ===== SYARAT WARGA ===== */}
+      <SyaratWargaSection />
 
       {/* ===== MAP LOCATION ===== */}
       <MapSection />
