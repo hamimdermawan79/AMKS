@@ -39,8 +39,11 @@ export default async function WargaManagementPage() {
     },
   });
 
-  // Fetch all available roles
+  // Fetch all available roles (SUPERADMIN excluded — it cannot be assigned via this UI)
   const roles = await db.role.findMany({
+    where: {
+      name: { not: 'SUPERADMIN' },
+    },
     orderBy: {
       name: 'asc',
     },

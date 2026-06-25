@@ -87,6 +87,12 @@ model User {
   jabatan        String?
   divisionScope  Division?
   photoUrl       String?
+  // Data akademik & asrama
+  jurusan        String?
+  namaKampus     String?
+  tahunMasuk     Int?         // Tahun masuk asrama (angkatan)
+  asalDaerah     String?
+  tahunKeluar    Int?         // Tahun keluar asrama (alumni only)
   createdById    String?
   createdBy      User?        @relation("UserCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdUsers   User[]       @relation("UserCreator")

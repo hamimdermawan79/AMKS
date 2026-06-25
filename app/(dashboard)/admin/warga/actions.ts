@@ -22,6 +22,11 @@ const createUserSchema = z.object({
   status: z.enum(['AKTIF', 'ALUMNI']),
   roleIds: z.array(z.string()).min(1, 'Minimal 1 role harus dipilih'),
   jabatan: z.string().nullable().optional(),
+  jurusan: z.string().nullable().optional(),
+  namaKampus: z.string().nullable().optional(),
+  tahunMasuk: z.number().nullable().optional(),
+  asalDaerah: z.string().nullable().optional(),
+  tahunKeluar: z.number().nullable().optional(),
 });
 
 const updateUserSchema = z.object({
@@ -31,6 +36,11 @@ const updateUserSchema = z.object({
   status: z.enum(['AKTIF', 'ALUMNI']),
   roleIds: z.array(z.string()).min(1, 'Minimal 1 role harus dipilih'),
   jabatan: z.string().nullable().optional(),
+  jurusan: z.string().nullable().optional(),
+  namaKampus: z.string().nullable().optional(),
+  tahunMasuk: z.number().nullable().optional(),
+  asalDaerah: z.string().nullable().optional(),
+  tahunKeluar: z.number().nullable().optional(),
 });
 
 /** Alumni users always get the ALUMNI role; create it if seed was not run yet. */
@@ -46,6 +56,88 @@ async function resolveRoleIds(status: string, roleIds: string[]): Promise<string
   return roleIds;
 }
 
+// Roles that can only be assigned to exactly 1 active user globally
+const GLOBALLY_EXCLUSIVE_ROLES = ['KETUA', 'SEKRETARIS', 'BENDAHARA'];
+
+/**
+ * Validate exclusive-role constraints:
+ * - SUPERADMIN cannot be assigned via this API (fixed system account).
+ * - KETUA, SEKRETARIS, BENDAHARA: only 1 active user may hold each.
+ * - DIVISION_HEAD: only 1 active user per divisionScope.
+ * excludeUserId: skip checking the user being updated (their own current roles).
+ */
+async function validateExclusiveRoles(
+  roleIds: string[],
+  divisionScope: string | null | undefined,
+  excludeUserId?: string
+) {
+  if (roleIds.length === 0) return;
+
+  // Fetch the role records for the requested roleIds
+  const requestedRoles = await db.role.findMany({
+    where: { id: { in: roleIds } },
+    select: { id: true, name: true, label: true },
+  });
+
+  for (const role of requestedRoles) {
+    // Block SUPERADMIN assignment entirely
+    if (role.name === 'SUPERADMIN') {
+      throw new Error(
+        'Role Super Admin tidak dapat diberikan. Akun Super Admin bersifat tetap dan tidak dapat diubah.'
+      );
+    }
+
+    // Check globally exclusive roles (KETUA, SEKRETARIS, BENDAHARA)
+    if (GLOBALLY_EXCLUSIVE_ROLES.includes(role.name)) {
+      // Find all users that have this role
+      const usersWithRole = await db.userRole.findMany({
+        where: { roleId: role.id },
+        include: { user: { select: { id: true, fullName: true, status: true } } },
+      });
+      // Filter: active users only, not the current user being edited
+      const conflicting = usersWithRole.find(
+        (ur) =>
+          ur.user.status === 'AKTIF' &&
+          (!excludeUserId || ur.user.id !== excludeUserId)
+      );
+      if (conflicting) {
+        throw new Error(
+          `Role "${role.label}" sudah digunakan oleh ${conflicting.user.fullName}. Role ini hanya boleh dimiliki oleh 1 orang.`
+        );
+      }
+    }
+
+    // Check DIVISION_HEAD per divisionScope
+    if (role.name === 'DIVISION_HEAD') {
+      if (!divisionScope) {
+        throw new Error('Divisi wajib dipilih untuk role Ketua Divisi.');
+      }
+      // Find all active users with this divisionScope, then check JS-side if they are DIVISION_HEAD
+      const existingHeads = await db.user.findMany({
+        where: {
+          status: 'AKTIF',
+          divisionScope: divisionScope as any,
+        },
+        include: {
+          roles: {
+            include: { role: { select: { name: true } } },
+          },
+        },
+      });
+      const conflicting = existingHeads.find(
+        (u) =>
+          (!excludeUserId || u.id !== excludeUserId) &&
+          u.roles.some((ur) => ur.role.name === 'DIVISION_HEAD')
+      );
+      if (conflicting) {
+        throw new Error(
+          `Ketua Divisi ${divisionScope} sudah dijabat oleh ${conflicting.fullName}. Setiap divisi hanya boleh memiliki 1 ketua.`
+        );
+      }
+    }
+  }
+}
+
 export async function createUser(data: {
   username: string;
   fullName: string;
@@ -56,6 +148,11 @@ export async function createUser(data: {
   photoFile?: File | null;
   divisionScope?: string | null;
   jabatan?: string | null;
+  jurusan?: string | null;
+  namaKampus?: string | null;
+  tahunMasuk?: number | null;
+  asalDaerah?: string | null;
+  tahunKeluar?: number | null;
 }) {
   const session = await auth();
 
@@ -72,6 +169,11 @@ export async function createUser(data: {
   // Alumni status auto-assigns ALUMNI role (no manual role pick needed)
   const roleIds = await resolveRoleIds(data.status, data.roleIds);
   const validated = createUserSchema.parse({ ...data, roleIds });
+
+  // Validate exclusive-role constraints (only for non-alumni)
+  if (data.status !== 'ALUMNI') {
+    await validateExclusiveRoles(validated.roleIds, data.divisionScope);
+  }
 
   // Check if username already exists
   const existingUser = await db.user.findUnique({
@@ -102,6 +204,11 @@ export async function createUser(data: {
       status: validated.status as any,
       divisionScope: validated.status === 'ALUMNI' ? null : ((data.divisionScope as any) || null),
       jabatan: validated.status === 'ALUMNI' ? null : (validated.jabatan || null),
+      jurusan: validated.jurusan || null,
+      namaKampus: validated.namaKampus || null,
+      tahunMasuk: validated.tahunMasuk || null,
+      asalDaerah: validated.asalDaerah || null,
+      tahunKeluar: validated.status === 'ALUMNI' ? (validated.tahunKeluar || null) : null,
       createdById: session.user.id,
     },
   });
@@ -117,6 +224,7 @@ export async function createUser(data: {
   }
 
   revalidatePath('/admin/warga');
+  revalidatePath('/arsip-dokumen/buku-alumni');
   return { success: true, userId: user.id };
 }
 
@@ -131,6 +239,11 @@ export async function updateUser(
     photoFile?: File | null;
     divisionScope?: string | null;
     jabatan?: string | null;
+    jurusan?: string | null;
+    namaKampus?: string | null;
+    tahunMasuk?: number | null;
+    asalDaerah?: string | null;
+    tahunKeluar?: number | null;
   }
 ) {
   const session = await auth();
@@ -149,6 +262,11 @@ export async function updateUser(
   const roleIds = await resolveRoleIds(data.status, data.roleIds);
   const validated = updateUserSchema.parse({ ...data, roleIds });
 
+  // Validate exclusive-role constraints (only for non-alumni, exclude self)
+  if (data.status !== 'ALUMNI') {
+    await validateExclusiveRoles(validated.roleIds, data.divisionScope, userId);
+  }
+
   // Prepare update data
   const updateData: any = {
     fullName: validated.fullName,
@@ -156,6 +274,11 @@ export async function updateUser(
     status: validated.status as any,
     divisionScope: validated.status === 'ALUMNI' ? null : ((data.divisionScope as any) || null),
     jabatan: validated.status === 'ALUMNI' ? null : (validated.jabatan || null),
+    jurusan: validated.jurusan || null,
+    namaKampus: validated.namaKampus || null,
+    tahunMasuk: validated.tahunMasuk || null,
+    asalDaerah: validated.asalDaerah || null,
+    tahunKeluar: validated.status === 'ALUMNI' ? (validated.tahunKeluar || null) : null,
   };
 
   // Save new photo if provided
@@ -194,6 +317,7 @@ export async function updateUser(
   }
 
   revalidatePath('/admin/warga');
+  revalidatePath('/arsip-dokumen/buku-alumni');
   return { success: true };
 }
 
@@ -215,10 +339,18 @@ export async function deleteUser(userId: string) {
     throw new Error('Tidak dapat menghapus user sendiri');
   }
 
-  // Delete user photo
-  const user = await db.user.findUnique({ where: { id: userId }, select: { photoUrl: true } });
-  if (user?.photoUrl) {
-    try { await unlink(path.join(process.cwd(), 'public', user.photoUrl)); } catch { }
+  // Prevent deleting the SuperAdmin account
+  const targetUser = await db.user.findUnique({
+    where: { id: userId },
+    include: { roles: { include: { role: true } } },
+  });
+  if (targetUser?.roles.some((r) => r.role.name === 'SUPERADMIN')) {
+    throw new Error('Akun Super Admin tidak dapat dihapus. Akun ini bersifat tetap.');
+  }
+
+  // Delete user photo if exists
+  if (targetUser?.photoUrl) {
+    try { await unlink(path.join(process.cwd(), 'public', targetUser.photoUrl)); } catch { }
   }
 
   // Delete user (cascade will handle user_roles)
@@ -227,6 +359,7 @@ export async function deleteUser(userId: string) {
   });
 
   revalidatePath('/admin/warga');
+  revalidatePath('/arsip-dokumen/buku-alumni');
   return { success: true };
 }
 
