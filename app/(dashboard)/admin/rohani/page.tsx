@@ -19,8 +19,6 @@ export default async function RohaniPage() {
       imamMaghrib: { select: { id: true, fullName: true } },
       imamIsha: { select: { id: true, fullName: true } },
       kultumBy: { select: { id: true, fullName: true } },
-      cadanganImam: { select: { id: true, fullName: true } },
-      cadanganKultum: { select: { id: true, fullName: true } },
     },
     orderBy: {
       date: 'desc',

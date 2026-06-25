@@ -5,19 +5,10 @@ export const authConfig = {
     signIn: '/login',
   },
   callbacks: {
-    authorized({ auth, request: { nextUrl, headers } }) {
+    authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isServerAction =
-        headers.has('next-action') || headers.has('Next-Action');
-      const isOnDashboard =
-        nextUrl.pathname.startsWith('/user') || nextUrl.pathname.startsWith('/admin');
+      const isOnDashboard = nextUrl.pathname.startsWith('/user') || nextUrl.pathname.startsWith('/admin');
       const isOnLogin = nextUrl.pathname.startsWith('/login');
-
-      // Jangan redirect POST server action ke /login — itu menyebabkan
-      // "Failed to fetch" / TypeError di Chrome. Biarkan action tangani auth sendiri.
-      if (isServerAction) {
-        return true;
-      }
 
       if (isOnDashboard) {
         if (isLoggedIn) return true;

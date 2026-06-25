@@ -28,21 +28,16 @@ export default function NotificationBell({ userId }: { userId: string }) {
 
   // Fetch data
   const fetchData = async () => {
-    if (!userId) return;
-
     try {
-      const [countRes, notifRes] = await Promise.all([
-        getUnreadCount(),
-        getUserNotifications(5),
-      ]);
+      const countRes = await getUnreadCount();
+      setUnreadCount(countRes.count);
 
-      setUnreadCount(countRes.count ?? 0);
-
+      const notifRes = await getUserNotifications(5);
       if (notifRes.success && notifRes.notifications) {
         setNotifications(notifRes.notifications);
       }
-    } catch {
-      // Network/server unavailable — jangan spam console saat dev server restart
+    } catch (error) {
+      console.error('Failed to load notifications for bell:', error);
     }
   };
 

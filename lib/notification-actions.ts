@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 export async function getUserNotifications(limit = 20) {
   const session = await auth();
   if (!session?.user) {
-    return { success: false as const, notifications: [], error: 'Unauthorized' };
+    throw new Error('Unauthorized');
   }
 
   try {
@@ -21,11 +21,10 @@ export async function getUserNotifications(limit = 20) {
       take: limit,
     });
 
-    return { success: true as const, notifications };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: true, notifications };
+  } catch (error: any) {
     console.error('Failed to fetch user notifications:', error);
-    return { success: false as const, notifications: [], error: message };
+    return { success: false, error: error.message };
   }
 }
 
@@ -52,7 +51,7 @@ export async function getUnreadCount() {
 export async function markNotificationAsRead(id: string) {
   const session = await auth();
   if (!session?.user) {
-    return { success: false as const, error: 'Unauthorized' };
+    throw new Error('Unauthorized');
   }
 
   try {
@@ -67,18 +66,17 @@ export async function markNotificationAsRead(id: string) {
     });
 
     revalidatePath('/notifications');
-    return { success: true as const };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: true };
+  } catch (error: any) {
     console.error('Failed to mark notification as read:', error);
-    return { success: false as const, error: message };
+    return { success: false, error: error.message };
   }
 }
 
 export async function markAllNotificationsAsRead() {
   const session = await auth();
   if (!session?.user) {
-    return { success: false as const, error: 'Unauthorized' };
+    throw new Error('Unauthorized');
   }
 
   try {
@@ -93,10 +91,9 @@ export async function markAllNotificationsAsRead() {
     });
 
     revalidatePath('/notifications');
-    return { success: true as const };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: true };
+  } catch (error: any) {
     console.error('Failed to mark all notifications as read:', error);
-    return { success: false as const, error: message };
+    return { success: false, error: error.message };
   }
 }

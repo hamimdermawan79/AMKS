@@ -27,32 +27,29 @@ export async function register() {
       }
     });
 
-    server.listen(lockPort, '127.0.0.1', () => {
-      void (async () => {
-        try {
-          console.log(`🏁 Initializing AMKS background services in process ${process.pid} (port lock acquired)...`);
+    server.listen(lockPort, '127.0.0.1', async () => {
+      try {
+        console.log(`🏁 Initializing AMKS background services in process ${process.pid} (port lock acquired)...`);
+        
+        const { connectToWhatsApp } = await import('./lib/whatsapp');
+        const { startNotificationWorker } = await import('./lib/notifications');
+        const { startCronJobs } = await import('./lib/cron');
 
-          const { connectToWhatsApp } = await import('./lib/whatsapp');
-          const { startNotificationWorker } = await import('./lib/notifications');
-          const { startCronJobs } = await import('./lib/cron');
+        // Initialize WhatsApp client
+        await connectToWhatsApp();
 
-          // Non-blocking: jangan tahan startup Next.js jika WA gagal connect
-          connectToWhatsApp().catch((err) => {
-            console.error('❌ WhatsApp init failed (app tetap jalan):', err);
-          });
+        // Start background workers
+        startNotificationWorker();
+        startCronJobs();
 
-          startNotificationWorker();
-          startCronJobs();
-
-          globalObj.AMKS_SERVICES_STARTED = true;
-          globalObj.AMKS_LOCK_SERVER = server;
-
-          console.log('🏁 AMKS background services initialized successfully.');
-        } catch (error) {
-          console.error('❌ Failed to register instrumentation background services:', error);
-          server.close();
-        }
-      })();
+        globalObj.AMKS_SERVICES_STARTED = true;
+        globalObj.AMKS_LOCK_SERVER = server;
+        
+        console.log('🏁 AMKS background services initialized successfully.');
+      } catch (error) {
+        console.error('❌ Failed to register instrumentation background services:', error);
+        server.close();
+      }
     });
   }
 }
