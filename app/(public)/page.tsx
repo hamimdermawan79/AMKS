@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { ArrowRight, BookOpen, Palette, Heart, Users } from 'lucide-react';
+import MapSection from '@/components/MapSection';
 
 function FloatingOrbs() {
   const orbs = [
@@ -160,6 +161,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ===== MAP LOCATION ===== */}
+      <MapSection />
 
       {/* ===== CTA ===== */}
       <section className="bg-white py-24 md:py-32">

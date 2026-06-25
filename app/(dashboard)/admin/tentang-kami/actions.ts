@@ -7,31 +7,52 @@ import { revalidatePath } from 'next/cache';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import sharp from 'sharp';
 
 const UPLOAD_ROOT = path.join(process.cwd(), 'public', 'uploads');
 
-// Allowed image extensions
-const ALLOWED_IMG = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+// Allowed document extensions
 const ALLOWED_DOC = ['.pdf', '.doc', '.docx'];
 
 async function saveFile(file: File, subdir: string): Promise<string | null> {
   if (!file || file.size === 0) return null;
 
   const ext = path.extname(file.name).toLowerCase();
-  if (![...ALLOWED_IMG, ...ALLOWED_DOC].includes(ext)) {
+  const isImage = file.type.startsWith('image/');
+
+  if (!isImage && !ALLOWED_DOC.includes(ext)) {
     throw new Error(`Format file tidak didukung: ${ext}`);
   }
 
   const dir = path.join(UPLOAD_ROOT, subdir);
   await mkdir(dir, { recursive: true });
 
-  const filename = `${randomUUID()}${ext}`;
-  const filepath = path.join(dir, filename);
   const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(filepath, buffer);
 
-  // Return web-accessible path
-  return `/uploads/${subdir}/${filename}`;
+  if (isImage) {
+    const filename = `${randomUUID()}.webp`;
+    const filepath = path.join(dir, filename);
+    
+    try {
+      const webpBuffer = await sharp(buffer)
+        .webp({ quality: 80 })
+        .toBuffer();
+      await writeFile(filepath, webpBuffer);
+      return `/uploads/${subdir}/${filename}`;
+    } catch (error) {
+      console.error('Sharp conversion error:', error);
+      // Fallback to saving original file if sharp fails (e.g. unsupported format like some HEIC on Windows)
+      const fallbackFilename = `${randomUUID()}${ext}`;
+      const fallbackFilepath = path.join(dir, fallbackFilename);
+      await writeFile(fallbackFilepath, buffer);
+      return `/uploads/${subdir}/${fallbackFilename}`;
+    }
+  } else {
+    const filename = `${randomUUID()}${ext}`;
+    const filepath = path.join(dir, filename);
+    await writeFile(filepath, buffer);
+    return `/uploads/${subdir}/${filename}`;
+  }
 }
 
 export async function saveProfile(data: {
@@ -91,12 +112,14 @@ export async function createActivity(formData: FormData) {
 
   const startAtStr = formData.get('startAt') as string;
   const startAt = startAtStr ? new Date(startAtStr) : null;
+  const youtubeUrl = formData.get('youtubeUrl') as string | null;
 
   await db.activity.create({
     data: {
       title,
       description: (formData.get('description') as string) || null,
       location: (formData.get('location') as string) || null,
+      youtubeUrl: youtubeUrl || null,
       coverUrl,
       images,
       startAt,

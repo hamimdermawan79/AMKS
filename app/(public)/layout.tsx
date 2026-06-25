@@ -36,9 +36,25 @@ export default function PublicLayout({
             <Link href="/karya-ilmiah" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
               Karya Ilmiah
             </Link>
-            <Link href="/dokumentasi" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
-              Dokumentasi
-            </Link>
+            {/* Arsip & Dokumen - Dropdown */}
+            <div className="relative group">
+              <span className="text-sm font-semibold text-slate-700 cursor-pointer hover:text-primary smooth-transition flex items-center gap-1.5">
+                Arsip & Dokumen
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </span>
+              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
+                <div className="bg-white/95 backdrop-blur-xl border border-white/80 shadow-xl shadow-blue-900/10 min-w-[200px] py-2 rounded-2xl">
+                  <Link href="/arsip-dokumen/ad-art" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                    AD / ART
+                  </Link>
+                  <Link href="/arsip-dokumen/buku-alumni" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                    Buku Alumni
+                  </Link>
+                </div>
+              </div>
+            </div>
 
             {/* Tentang Kami - Dropdown */}
             <div className="relative group">

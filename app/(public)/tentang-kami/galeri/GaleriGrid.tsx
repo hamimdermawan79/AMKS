@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { Calendar, MapPin } from 'lucide-react';
 
 interface Activity {
   id: string;
@@ -11,93 +12,119 @@ interface Activity {
   coverUrl: string | null;
   images: string[] | null;
   startAt: Date | null;
+  location: string | null;
 }
 
 function ThumbImage({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    if (imgRef.current?.complete) setLoaded(true);
+    if (imgRef.current?.complete) {
+      if (imgRef.current.naturalWidth === 0) setError(true);
+      setLoaded(true);
+    }
   }, []);
 
   return (
-    <div className="absolute inset-0 bg-slate-100">
-      {!loaded && <div className="absolute inset-0 animate-pulse bg-slate-200" />}
-      <img
-        ref={imgRef}
-        src={src}
-        alt={alt}
-        loading="lazy"
-        onLoad={() => setLoaded(true)}
-        className={`h-full w-full object-cover transition-all duration-700 ease-out group-hover:scale-105 ${
-          loaded ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
+    <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden rounded-t-2xl">
+      {!loaded && !error && <div className="absolute inset-0 animate-pulse bg-slate-200" />}
+      {error ? (
+        <div className="flex w-full h-full items-center justify-center bg-slate-100 text-sm text-slate-400 border border-dashed border-slate-300">
+          Gambar Hilang (404)
+        </div>
+      ) : (
+        <img
+          ref={imgRef}
+          src={src}
+          alt={alt}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          onError={() => { setLoaded(true); setError(true); }}
+          className={`h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 ${
+            loaded ? 'opacity-100' : 'opacity-0'
+          }`}
+        />
+      )}
+      
+      {/* Subtle bottom gradient for a modern feel */}
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
     </div>
   );
 }
 
-const cardItem = {
+const cardReveal = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.4, delay: i * 0.06, ease: 'easeOut' },
+    transition: { duration: 0.4, delay: i * 0.1, ease: 'easeOut' },
   }),
 };
 
 export default function GaleriGrid({ activities }: { activities: Activity[] }) {
+  if (!activities || activities.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border bg-slate-50/60 p-12 text-center mt-8">
+        <p className="text-muted-foreground italic">
+          Belum ada dokumentasi kegiatan yang diunggah.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: '-40px' }}
-      className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12"
     >
       {activities.map((activity, i) => (
-        <motion.div key={activity.id} custom={i} variants={cardItem}>
-          <Link
-            href={`/tentang-kami/${activity.id}`}
-            className="group block overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-shadow hover:shadow-lg"
-          >
-            <div className="relative aspect-[4/3] overflow-hidden">
-              {activity.coverUrl ? (
-                <>
-                  <ThumbImage src={activity.coverUrl} alt={activity.title} />
-                  {activity.images && activity.images.length > 0 && (
-                    <div className="absolute bottom-3 right-3 z-10 rounded-lg bg-black/50 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
-                      {activity.images.length + 1} foto
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-muted-foreground">
-                  No cover
-                </div>
-              )}
-            </div>
-
-            <div className="p-5">
-              <h3 className="font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
-                {activity.title}
-              </h3>
-              {activity.startAt && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {new Date(activity.startAt).toLocaleDateString('id-ID', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </p>
-              )}
-              {activity.description && (
-                <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                  {activity.description}
-                </p>
-              )}
-            </div>
+        <motion.div
+          key={activity.id}
+          custom={i}
+          variants={cardReveal}
+          whileHover={{ y: -8, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
+          className="group relative flex flex-col rounded-2xl bg-white border border-border shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300"
+        >
+          <Link href={`/tentang-kami/${activity.id}`} className="absolute inset-0 z-10">
+            <span className="sr-only">Lihat detail {activity.title}</span>
           </Link>
+          
+          <ThumbImage 
+            src={activity.coverUrl || '/placeholder-image.jpg'} 
+            alt={activity.title} 
+          />
+
+          <div className="p-6 flex flex-col flex-grow relative z-20">
+            <div className="flex items-center gap-2 text-xs font-medium text-blue-600 mb-3">
+              <Calendar className="h-4 w-4" />
+              <span>
+                {activity.startAt ? new Date(activity.startAt).toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                }) : 'Waktu tidak ditentukan'}
+              </span>
+            </div>
+            
+            <h3 className="text-xl font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2 mb-2">
+              {activity.title}
+            </h3>
+            
+            <p className="text-sm text-slate-500 line-clamp-3 mb-4">
+              {activity.description}
+            </p>
+            
+            {activity.location && (
+              <div className="mt-auto flex items-start gap-2 text-sm text-slate-500 pt-4 border-t border-slate-100">
+                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span className="line-clamp-1">{activity.location}</span>
+              </div>
+            )}
+          </div>
         </motion.div>
       ))}
     </motion.div>

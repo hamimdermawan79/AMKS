@@ -252,6 +252,7 @@ model Activity {
   endAt       DateTime?
   coverUrl    String?
   images      String[]
+  youtubeUrl  String?
   createdById String
   createdBy   User     @relation("ActivityCreator", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
