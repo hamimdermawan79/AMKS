@@ -49,7 +49,7 @@ function TimelineItem({
   const Icon = item.icon;
 
   return (
-    <div ref={ref} className="relative flex gap-6 md:gap-10">
+    <div ref={ref} className="relative flex gap-4 md:gap-10">
       {/* Left: Step + Line */}
       <div className="flex flex-col items-center">
         {/* Step circle */}
@@ -100,27 +100,27 @@ export default function SyaratWargaSection() {
   const headInView = useInView(headRef, { once: true });
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white py-24 md:py-32">
+    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white py-16 md:py-24 lg:py-32">
       {/* Subtle background decoration */}
       <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 -translate-y-1/2 translate-x-1/2 rounded-full bg-blue-100/40 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 left-0 h-96 w-96 translate-y-1/2 -translate-x-1/2 rounded-full bg-indigo-100/30 blur-3xl" />
 
-      <div className="container relative mx-auto px-6">
+      <div className="container relative mx-auto px-4 md:px-6">
         {/* Heading */}
         <motion.div
           ref={headRef}
           initial={{ opacity: 0, y: 20 }}
           animate={headInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
-          className="mx-auto mb-16 max-w-2xl text-center"
+          className="mx-auto mb-12 md:mb-16 max-w-2xl text-center"
         >
           <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-600">
             Syarat Pendaftaran
           </span>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
             Ingin Menjadi Warga Asrama?
           </h2>
-          <p className="mt-4 text-muted-foreground">
+          <p className="mt-4 text-sm md:text-base text-muted-foreground">
             Ada tiga syarat utama yang harus dipenuhi sebelum bergabung menjadi bagian dari keluarga besar Asrama Mahasiswa Kabupaten Sambas Yogyakarta.
           </p>
         </motion.div>
@@ -171,7 +171,7 @@ export default function SyaratWargaSection() {
             {/* Main CTA */}
             <Link
               href="/daftar-warga"
-              className="group relative inline-flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+              className="group relative w-full sm:w-auto inline-flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 sm:px-8 py-4 text-sm sm:text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
             >
               {/* Animated shimmer overlay */}
               <span

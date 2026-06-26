@@ -146,7 +146,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Panel - Login Form */}
-        <div className="flex w-full lg:w-[450px] xl:w-[500px] flex-col justify-center px-8 py-12 sm:px-16 lg:px-12 xl:px-16 relative bg-white z-20">
+        <div className="flex w-full lg:w-[450px] xl:w-[500px] flex-col justify-center px-6 py-10 sm:px-10 sm:py-12 lg:px-12 xl:px-16 relative bg-white z-20">
           {/* Subtle background element for mobile */}
           <div className="absolute top-0 right-0 -mr-32 -mt-32 h-96 w-96 rounded-full bg-blue-50 blur-[100px] lg:hidden" />
           

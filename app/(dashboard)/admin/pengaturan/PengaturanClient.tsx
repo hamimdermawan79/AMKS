@@ -125,7 +125,7 @@ export default function PengaturanClient({ roles: initialRoles, permissions }: P
       </div>
 
       {/* Role list header overview */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {roles.map((role) => (
           <div key={role.id} className="glass-card p-4 rounded-xl space-y-1 border border-border/40">
             <span className="text-[10px] uppercase font-bold tracking-wider text-primary">

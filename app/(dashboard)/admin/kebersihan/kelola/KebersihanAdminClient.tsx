@@ -507,7 +507,7 @@ export default function KebersihanAdminClient({
             <button
               onClick={handleGenerate}
               disabled={isPending}
-              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"
+              className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60 min-h-[44px]"
             >
               <CalendarRange className="h-4 w-4" />
               {isPending ? "Memproses..." : "Generate Jadwal"}
@@ -642,9 +642,11 @@ function ScheduleTable({
             {week.label}
           </p>
 
+          {/* overflow-x-auto agar tidak overflow di mobile */}
+          <div className="overflow-x-auto rounded-2xl border border-border">
           {/* Grid: 1 col for labels + 7 cols for days */}
           <div
-            className="grid rounded-2xl border border-border bg-white overflow-hidden"
+            className="grid bg-white min-w-[480px]"
             style={{ gridTemplateColumns: `60px repeat(7, 1fr)` }}
           >
             {/* Header row */}
@@ -683,6 +685,7 @@ function ScheduleTable({
                 })}
               </div>
             ))}
+          </div>
           </div>
         </div>
       ))}

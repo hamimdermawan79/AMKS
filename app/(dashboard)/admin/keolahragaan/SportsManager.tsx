@@ -290,10 +290,10 @@ export default function SportsManager({ wargaList, activities, transactions, den
       </div>
 
       {/* TABS */}
-      <div className="flex border-b border-border">
+      <div className="flex border-b border-border overflow-x-auto">
         <button
           onClick={() => setActiveTab('kegiatan')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'kegiatan'
               ? 'border-amber-500 text-amber-600'
               : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -306,7 +306,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
         </button>
         <button
           onClick={() => setActiveTab('kas')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'kas'
               ? 'border-amber-500 text-amber-600'
               : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -319,7 +319,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
         </button>
         <button
           onClick={() => setActiveTab('denda')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'denda'
               ? 'border-amber-500 text-amber-600'
               : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -475,7 +475,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
           </div>
 
           {/* Transactions List */}
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden"><div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-border text-xs font-semibold text-muted-foreground uppercase">
@@ -525,7 +525,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
                 )}
               </tbody>
             </table>
-          </div>
+          </div></div>
         </div>
       )}
       {/* TAB CONTENT: DAFTAR DENDA */}
@@ -535,7 +535,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
             <h2 className="text-lg font-semibold text-foreground">Daftar Denda Ketidakhadiran Olahraga</h2>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden"><div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-border text-xs font-semibold text-muted-foreground uppercase">
@@ -599,7 +599,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
                 )}
               </tbody>
             </table>
-          </div>
+          </div></div>
         </div>
       )}
 

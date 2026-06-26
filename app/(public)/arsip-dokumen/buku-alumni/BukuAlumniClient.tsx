@@ -245,7 +245,7 @@ export default function BukuAlumniClient({ groupedAngkatan, totalAlumni }: Props
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true, margin: '-40px' }}
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                    className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6"
                   >
                     {group.members.map((alumni) => (
                       <AlumniCard key={alumni.id} alumni={alumni} highlight={searchQuery.trim()} />
@@ -301,8 +301,8 @@ function AlumniCard({ alumni, highlight }: { alumni: AlumniEntry; highlight: str
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80" />
 
         {/* Name overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-          <h3 className="text-xl font-bold mb-1 group-hover:text-blue-300 transition-colors leading-tight">
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5 text-white">
+          <h3 className="text-sm sm:text-xl font-bold mb-0.5 sm:mb-1 group-hover:text-blue-300 transition-colors leading-tight">
             <HighlightText text={alumni.fullName} query={highlight} />
           </h3>
           {alumni.namaKampus && (
@@ -315,7 +315,7 @@ function AlumniCard({ alumni, highlight }: { alumni: AlumniEntry; highlight: str
       </div>
 
       {/* Details */}
-      <div className="p-5 bg-white space-y-3">
+      <div className="p-3 sm:p-5 bg-white space-y-2 sm:space-y-3">
         {alumni.jurusan && (
           <div className="flex items-start gap-2 text-sm text-slate-600">
             <GraduationCap className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />

@@ -965,7 +965,7 @@ export default function KeuanganClient({
         <div className="glass-card p-6 flex items-center justify-between border border-border/40">
           <div className="space-y-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Pemasukan</span>
-            <div className="text-2xl font-bold text-emerald-600">{formatRp(totalPemasukan)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-emerald-600">{formatRp(totalPemasukan)}</div>
             {renderTrendIndicator(pemasukanBulanIni, pemasukanBulanLalu)}
           </div>
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -977,7 +977,7 @@ export default function KeuanganClient({
         <div className="glass-card p-6 flex items-center justify-between border border-border/40">
           <div className="space-y-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Pengeluaran</span>
-            <div className="text-2xl font-bold text-red-600">{formatRp(totalPengeluaran)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-red-600">{formatRp(totalPengeluaran)}</div>
             {renderTrendIndicator(pengeluaranBulanIni, pengeluaranBulanLalu)}
           </div>
           <div className="p-3 bg-red-50 text-red-600 rounded-xl">
@@ -989,7 +989,7 @@ export default function KeuanganClient({
         <div className="glass-card p-6 flex items-center justify-between border border-border/40">
           <div className="space-y-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saldo Kas Asrama</span>
-            <div className={`text-2xl font-bold ${saldo >= 0 ? 'text-primary' : 'text-red-700'}`}>
+            <div className={`text-lg sm:text-2xl font-bold ${saldo >= 0 ? 'text-primary' : 'text-red-700'}`}>
               {formatRp(saldo)}
             </div>
             {renderTrendIndicator(saldoBulanIni, saldoBulanLalu)}
@@ -1003,7 +1003,7 @@ export default function KeuanganClient({
         <div className="glass-card p-6 flex items-center justify-between border border-border/40">
           <div className="space-y-1">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tagihan Tertunggak</span>
-            <div className="text-2xl font-bold text-amber-600">{formatRp(totalPiutang)}</div>
+            <div className="text-lg sm:text-2xl font-bold text-amber-600">{formatRp(totalPiutang)}</div>
             {renderTrendIndicator(piutangBulanIni, piutangBulanLalu)}
           </div>
           <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
@@ -1013,39 +1013,39 @@ export default function KeuanganClient({
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-border gap-4">
-        <div className="flex gap-6 overflow-x-auto w-full md:w-auto">
+      <div className="flex flex-col border-b border-border gap-2">
+        <div className="flex gap-3 sm:gap-6 overflow-x-auto w-full pb-1 scrollbar-hide">
           <button
             onClick={() => setActiveTab('chart')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'chart' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`pb-3 sm:pb-4 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'chart' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >
             Grafik Keuangan
           </button>
           <button
             onClick={() => setActiveTab('transactions')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`pb-3 sm:pb-4 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >
             Arus Kas ({transactions.length})
           </button>
           <button
             onClick={() => setActiveTab('bills')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'bills' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`pb-3 sm:pb-4 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'bills' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >
             Tagihan Warga ({bills.length})
           </button>
           <button
             onClick={() => setActiveTab('ledger')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'ledger' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`pb-3 sm:pb-4 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'ledger' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >
             Buku Pembantu Warga
           </button>
           <button
             onClick={() => setActiveTab('monthly')}
-            className={`pb-4 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'monthly' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`pb-3 sm:pb-4 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${activeTab === 'monthly' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
           >
             📋 Rangkuman Bulanan
@@ -1053,14 +1053,14 @@ export default function KeuanganClient({
         </div>
 
         {/* Buttons based on active tab */}
-        <div className="flex gap-2 pb-3 md:pb-0 w-full md:w-auto justify-end">
+        <div className="flex gap-2 pb-2 w-full justify-end">
           {permissions.canCreateTx && activeTab === 'transactions' && (
             <button
               onClick={() => {
                 setError(null);
                 setTxModalOpen(true);
               }}
-              className="btn btn-primary text-sm flex items-center gap-1.5"
+              className="btn btn-primary text-sm flex items-center gap-1.5 min-h-[44px]"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
               Catat Transaksi
@@ -1090,7 +1090,7 @@ export default function KeuanganClient({
 
                 setBillModalOpen(true);
               }}
-              className="btn btn-primary text-sm flex items-center gap-1.5"
+              className="btn btn-primary text-sm flex items-center gap-1.5 min-h-[44px]"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
               Buat Tagihan Bulanan
@@ -1132,7 +1132,7 @@ export default function KeuanganClient({
                 </div>
               </div>
 
-              <div className="h-80 w-full pt-4">
+              <div className="h-48 sm:h-64 md:h-80 w-full pt-4">
                 {mounted ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={getChartData()}>
@@ -1259,7 +1259,7 @@ export default function KeuanganClient({
                 <h3 className="font-bold text-foreground text-md">Tren Keuangan 12 Bulan Terakhir</h3>
                 <p className="text-xs text-muted-foreground">Perbandingan bulanan pemasukan, pengeluaran, dan saldo bersih.</p>
               </div>
-              <div className="h-80 w-full pt-4">
+              <div className="h-48 sm:h-64 md:h-80 w-full pt-4">
                 {mounted ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
@@ -1565,8 +1565,8 @@ export default function KeuanganClient({
 
                   {/* Filter Jenis */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground">Jenis:</span>
-                    <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold">
+                    <span className="text-xs font-semibold text-muted-foreground shrink-0">Jenis:</span>
+                    <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold overflow-x-auto max-w-[calc(100vw-2rem)] sm:max-w-none scrollbar-hide">
                       {(
                         [
                           { value: 'ALL', label: 'Semua' },
@@ -2089,7 +2089,7 @@ export default function KeuanganClient({
               <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Pemasukan</span>
-                  <div className="text-xl font-bold text-emerald-600">{formatRp(monthlyReport.pemasukan)}</div>
+                  <div className="text-base sm:text-xl font-bold text-emerald-600">{formatRp(monthlyReport.pemasukan)}</div>
                   <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PEMASUKAN').length} transaksi</div>
                 </div>
                 <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -2101,7 +2101,7 @@ export default function KeuanganClient({
               <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Pengeluaran</span>
-                  <div className="text-xl font-bold text-red-600">{formatRp(monthlyReport.pengeluaran)}</div>
+                  <div className="text-base sm:text-xl font-bold text-red-600">{formatRp(monthlyReport.pengeluaran)}</div>
                   <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PENGELUARAN').length} transaksi</div>
                 </div>
                 <div className="p-2.5 bg-red-50 text-red-600 rounded-lg">
@@ -2447,7 +2447,7 @@ export default function KeuanganClient({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-border"
+              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-border max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-foreground">Catat Transaksi Baru</h3>
@@ -2616,7 +2616,7 @@ export default function KeuanganClient({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-border"
+              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-border max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-foreground">Buat Tagihan Baru</h3>
@@ -2774,7 +2774,7 @@ export default function KeuanganClient({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-border"
+              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-border max-h-[90vh] overflow-y-auto"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-foreground">Konfirmasi Pelunasan</h3>

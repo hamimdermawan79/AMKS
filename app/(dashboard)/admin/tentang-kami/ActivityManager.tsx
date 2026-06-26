@@ -140,7 +140,7 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
                 {canDelete && (
                   <button
                     onClick={() => handleDelete(activity.id)}
-                    className="text-xs text-red-600 hover:underline ml-auto"
+                    className="text-xs text-red-600 hover:underline ml-auto min-h-[44px] px-2 inline-flex items-center"
                   >
                     Hapus
                   </button>
@@ -222,11 +222,11 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
                 <p className="text-xs text-muted-foreground mt-1">{imageFiles.length} foto terpilih</p>
               </FormField>
 
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="btn btn-secondary flex-1" disabled={submitting}>
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="btn btn-secondary flex-1 min-h-[44px]" disabled={submitting}>
                   Batal
                 </button>
-                <button type="submit" className="btn btn-primary flex-1" disabled={submitting}>
+                <button type="submit" className="btn btn-primary flex-1 min-h-[44px]" disabled={submitting}>
                   {submitting ? 'Mengunggah...' : 'Simpan'}
                 </button>
               </div>

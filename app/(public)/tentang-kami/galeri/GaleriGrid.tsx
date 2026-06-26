@@ -79,7 +79,7 @@ export default function GaleriGrid({ activities }: { activities: Activity[] }) {
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: '-40px' }}
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-12"
+      className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 sm:gap-8 mt-8 sm:mt-12"
     >
       {activities.map((activity, i) => (
         <motion.div
@@ -98,28 +98,28 @@ export default function GaleriGrid({ activities }: { activities: Activity[] }) {
             alt={activity.title} 
           />
 
-          <div className="p-6 flex flex-col flex-grow relative z-20">
-            <div className="flex items-center gap-2 text-xs font-medium text-blue-600 mb-3">
-              <Calendar className="h-4 w-4" />
-              <span>
+          <div className="p-3 sm:p-6 flex flex-col flex-grow relative z-20">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 mb-2 sm:mb-3">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="truncate">
                 {activity.startAt ? new Date(activity.startAt).toLocaleDateString('id-ID', {
                   day: 'numeric',
-                  month: 'long',
+                  month: 'short',
                   year: 'numeric'
                 }) : 'Waktu tidak ditentukan'}
               </span>
             </div>
             
-            <h3 className="text-xl font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2 mb-2">
+            <h3 className="text-sm sm:text-xl font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2 mb-1 sm:mb-2">
               {activity.title}
             </h3>
             
-            <p className="text-sm text-slate-500 line-clamp-3 mb-4">
+            <p className="hidden sm:block text-sm text-slate-500 line-clamp-3 mb-4">
               {activity.description}
             </p>
             
             {activity.location && (
-              <div className="mt-auto flex items-start gap-2 text-sm text-slate-500 pt-4 border-t border-slate-100">
+              <div className="mt-auto hidden sm:flex items-start gap-2 text-sm text-slate-500 pt-4 border-t border-slate-100">
                 <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span className="line-clamp-1">{activity.location}</span>
               </div>

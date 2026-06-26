@@ -38,16 +38,16 @@ export default function HeroSection({
   useEffect(() => setMounted(true), []);
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white pt-28 pb-16 md:pt-36 md:pb-20">
+    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white pt-24 pb-12 sm:pt-28 md:pt-36 md:pb-20">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(37,99,235,0.06),_transparent_60%)]" />
       {mounted && <FloatingOrbs />}
 
-      <div className="container relative mx-auto px-6 text-center">
+      <div className="container relative mx-auto px-4 md:px-6 text-center">
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-5xl"
+          className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl lg:text-5xl"
         >
           {title}
         </motion.h1>
@@ -56,7 +56,7 @@ export default function HeroSection({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.25 }}
-            className="mx-auto mt-3 max-w-lg text-muted-foreground"
+            className="mx-auto mt-3 max-w-lg text-sm md:text-base text-muted-foreground"
           >
             {subtitle}
           </motion.p>

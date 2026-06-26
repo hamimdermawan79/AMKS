@@ -82,7 +82,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
             <div className="absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-slate-200" />
           </div>
 
-          <div className="relative z-10 mt-4 grid grid-cols-1 gap-8 md:grid-cols-2">
+          <div className="relative z-10 mt-4 grid grid-cols-2 gap-4 md:grid-cols-2 md:gap-8">
             {/* Sekretaris column */}
             <div className="flex flex-col items-center">
               <div className="mb-3 hidden h-8 w-0.5 bg-slate-200 md:block" />
@@ -149,7 +149,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
           </div>
 
           <div className="relative z-10 mt-4">
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
               {Object.entries(divisiConfig).map(([divisiId, cfg], colIdx) => {
                 const head = divHeads.find(h => h.divisionScope === divisiId);
                 const anggota = warga.filter(w => w.divisionScope === divisiId);
@@ -208,9 +208,9 @@ function PersonCard({
   label: string;
   small?: boolean;
 }) {
-  const sizeClass = small ? "h-16 w-16" : "h-24 w-24";
-  const textSizeClass = small ? "text-xl" : "text-3xl";
-  const nameClass = small ? "text-xs" : "text-sm";
+  const sizeClass = small ? "h-12 w-12 sm:h-16 sm:w-16" : "h-16 w-16 sm:h-24 sm:w-24";
+  const textSizeClass = small ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl";
+  const nameClass = small ? "text-[10px] sm:text-xs" : "text-xs sm:text-sm";
 
   return (
     <div className="text-center">

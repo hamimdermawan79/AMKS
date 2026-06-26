@@ -117,7 +117,7 @@ export default function UserDashboard({
       {/* ===== HERO GREETING ===== */}
       <motion.div
         variants={item}
-        className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-slate-50 via-blue-50/40 to-white p-8 md:p-10"
+        className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-slate-50 via-blue-50/40 to-white p-5 sm:p-8 md:p-10"
       >
         {/* Decorative shapes */}
         <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-blue-100/50 blur-3xl" />
@@ -133,7 +133,7 @@ export default function UserDashboard({
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span>{greeting}</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
               Halo, {name}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:text-base">

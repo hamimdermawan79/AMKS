@@ -118,7 +118,7 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="px-0 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Calon Warga Asrama</h1>
@@ -281,8 +281,8 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
 
               <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
                 {/* Foto */}
-                <div className="flex gap-4">
-                  <div className="flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Foto KTP</p>
                     <img
                       src={selected.fotoKtp}
@@ -291,7 +291,7 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
                       className="w-full h-36 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:opacity-90 transition-opacity"
                     />
                   </div>
-                  <div className="flex-1">
+                  <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Foto Formal</p>
                     <img
                       src={selected.fotoFormal}
@@ -356,25 +356,25 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
                     />
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       disabled={updating || selected.status === 'DITERIMA'}
                       onClick={() => handleUpdateStatus('DITERIMA')}
-                      className="flex-1 py-2.5 rounded-xl bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 rounded-xl bg-green-500 text-white font-semibold text-sm hover:bg-green-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
                     >
                       {updating ? '...' : '✅ Terima'}
                     </button>
                     <button
                       disabled={updating || selected.status === 'MENUNGGU'}
                       onClick={() => handleUpdateStatus('MENUNGGU')}
-                      className="flex-1 py-2.5 rounded-xl bg-amber-400 text-white font-semibold text-sm hover:bg-amber-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 rounded-xl bg-amber-400 text-white font-semibold text-sm hover:bg-amber-500 transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
                     >
                       ⏳ Tunda
                     </button>
                     <button
                       disabled={updating || selected.status === 'DITOLAK'}
                       onClick={() => handleUpdateStatus('DITOLAK')}
-                      className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
                     >
                       ❌ Tolak
                     </button>

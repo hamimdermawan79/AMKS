@@ -238,7 +238,7 @@ export default function KaryaIlmiahClient({
                       {canUpdate && (
                         <button
                           onClick={() => openEdit(work)}
-                          className="text-xs text-blue-600 hover:underline"
+                          className="text-xs text-blue-600 hover:underline min-h-[44px] px-2 inline-flex items-center"
                         >
                           Edit
                         </button>
@@ -246,7 +246,7 @@ export default function KaryaIlmiahClient({
                       {canDelete && (
                         <button
                           onClick={() => setDeleteTarget(work)}
-                          className="text-xs text-red-600 hover:underline"
+                          className="text-xs text-red-600 hover:underline min-h-[44px] px-2 inline-flex items-center"
                         >
                           Hapus
                         </button>
@@ -325,17 +325,17 @@ export default function KaryaIlmiahClient({
             ? Permintaan akses terkait juga akan terhapus. Tindakan ini tidak dapat
             dibatalkan.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setDeleteTarget(null)}
-              className="btn btn-secondary flex-1"
+              className="btn btn-secondary flex-1 min-h-[44px]"
               disabled={isDeleting}
             >
               Batal
             </button>
             <button
               onClick={handleDelete}
-              className="btn bg-destructive text-destructive-foreground hover:bg-red-600 flex-1"
+              className="btn bg-destructive text-destructive-foreground hover:bg-red-600 flex-1 min-h-[44px]"
               disabled={isDeleting}
             >
               {isDeleting ? 'Menghapus...' : 'Hapus'}
@@ -467,7 +467,7 @@ function WorkForm({
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Jenis">
           <select
             className="input"

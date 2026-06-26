@@ -322,12 +322,12 @@ export default function UserManagementClient({
                     ) : (
                       <>
                         {canUpdate && (
-                          <button onClick={() => openEditModal(user)} className="text-xs text-blue-600 hover:underline">
+                          <button onClick={() => openEditModal(user)} className="text-xs text-blue-600 hover:underline min-h-[44px] px-2 inline-flex items-center">
                             Edit
                           </button>
                         )}
                         {canDelete && (
-                          <button onClick={() => setDeleteUserId(user.id)} className="text-xs text-red-600 hover:underline">
+                          <button onClick={() => setDeleteUserId(user.id)} className="text-xs text-red-600 hover:underline min-h-[44px] px-2 inline-flex items-center">
                             Hapus
                           </button>
                         )}

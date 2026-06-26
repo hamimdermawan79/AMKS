@@ -157,17 +157,17 @@ export default function PermintaanAksesClient({
                       {STATUS_LABELS[r.status]}
                     </span>
                   </td>
-                  <td className="text-center space-x-2 whitespace-nowrap">
+                  <td className="text-center space-x-1 whitespace-nowrap">
                     <button
                       onClick={() => setDetailTarget(r)}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-blue-600 hover:underline min-h-[44px] px-2 inline-flex items-center"
                     >
                       Detail
                     </button>
                     {canManage && (
                       <button
                         onClick={() => setDeleteTarget(r)}
-                        className="text-xs text-red-600 hover:underline"
+                        className="text-xs text-red-600 hover:underline min-h-[44px] px-2 inline-flex items-center"
                       >
                         Hapus
                       </button>
@@ -225,17 +225,17 @@ export default function PermintaanAksesClient({
           </div>
 
           {canManage && (
-            <div className="flex gap-3 pt-6">
+            <div className="flex flex-col sm:flex-row gap-3 pt-6">
               <button
                 onClick={() => handleStatus(detailTarget.id, 'DITOLAK')}
-                className="btn btn-secondary flex-1"
+                className="btn btn-secondary flex-1 min-h-[44px]"
                 disabled={busyId === detailTarget.id}
               >
                 Tolak
               </button>
               <button
                 onClick={() => handleStatus(detailTarget.id, 'DISETUJUI')}
-                className="btn btn-primary flex-1"
+                className="btn btn-primary flex-1 min-h-[44px]"
                 disabled={busyId === detailTarget.id}
               >
                 Setujui
@@ -255,17 +255,17 @@ export default function PermintaanAksesClient({
             </span>
             ? Tindakan ini tidak dapat dibatalkan.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setDeleteTarget(null)}
-              className="btn btn-secondary flex-1"
+              className="btn btn-secondary flex-1 min-h-[44px]"
               disabled={busyId === deleteTarget.id}
             >
               Batal
             </button>
             <button
               onClick={handleDelete}
-              className="btn bg-destructive text-destructive-foreground hover:bg-red-600 flex-1"
+              className="btn bg-destructive text-destructive-foreground hover:bg-red-600 flex-1 min-h-[44px]"
               disabled={busyId === deleteTarget.id}
             >
               {busyId === deleteTarget.id ? 'Menghapus...' : 'Hapus'}

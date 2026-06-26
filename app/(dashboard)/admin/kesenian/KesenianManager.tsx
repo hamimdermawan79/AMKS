@@ -137,10 +137,10 @@ export default function KesenianManager({ posts, activities, announcements, canM
       </div>
 
       {/* TABS */}
-      <div className="flex border-b border-border">
+      <div className="flex border-b border-border overflow-x-auto">
         <button
           onClick={() => setActiveTab('posting')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'posting'
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'posting'
             ? 'border-purple-500 text-purple-600'
             : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
@@ -152,7 +152,7 @@ export default function KesenianManager({ posts, activities, announcements, canM
         </button>
         <button
           onClick={() => setActiveTab('kegiatan')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'kegiatan'
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'kegiatan'
             ? 'border-purple-500 text-purple-600'
             : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}

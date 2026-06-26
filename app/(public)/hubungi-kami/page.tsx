@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 const MapLeaflet = dynamic(() => import('@/components/MapLeaflet'), {
   ssr: false,
   loading: () => (
-    <div className="h-[400px] w-full rounded-[2rem] bg-slate-100 animate-pulse flex items-center justify-center border border-slate-200">
+    <div className="h-64 sm:h-80 md:h-[400px] w-full rounded-[2rem] bg-slate-100 animate-pulse flex items-center justify-center border border-slate-200">
       <span className="text-slate-400 font-medium">Memuat Peta...</span>
     </div>
   )
@@ -21,7 +21,7 @@ export default function HubungiKamiPage() {
       <div className="relative pt-32 pb-40 bg-gradient-to-b from-blue-50 via-white to-slate-50">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] max-w-4xl bg-blue-400/10 blur-[120px] rounded-full pointer-events-none" />
         
-        <div className="container relative z-10 mx-auto px-6 text-center">
+        <div className="container relative z-10 mx-auto px-4 md:px-6 text-center">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -50,7 +50,7 @@ export default function HubungiKamiPage() {
 
       {/* Main Content Area */}
       <section className="bg-white pb-32 -mt-1 relative z-10">
-        <div className="container mx-auto px-6 max-w-7xl">
+        <div className="container mx-auto px-4 md:px-6 max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
             
             {/* Left Column: Form */}
