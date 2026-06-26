@@ -101,6 +101,11 @@ export default async function DashboardLayout({
                       Warga
                     </Link>
                   )}
+                  {canManageUsers && (
+                    <Link href="/admin/calon-warga" className="nav-item">
+                      Calon Warga Asrama
+                    </Link>
+                  )}
                   {canManageContent && (
                     <Link href="/admin/tentang-kami" className="nav-item">
                       Konten & Gallery

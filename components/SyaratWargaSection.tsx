@@ -2,7 +2,8 @@
 
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { CreditCard, GraduationCap, BookOpen, CheckCircle2 } from 'lucide-react';
+import { CreditCard, GraduationCap, BookOpen, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 const syarat = [
   {
@@ -141,15 +142,62 @@ export default function SyaratWargaSection() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="flex items-center gap-4 rounded-2xl border border-green-200 bg-green-50 p-5"
+            className="flex items-center gap-4 rounded-2xl border border-green-200 bg-green-50 p-5 mb-8"
           >
             <CheckCircle2 className="h-8 w-8 shrink-0 text-green-500" />
             <div>
               <p className="font-semibold text-green-800">Siap Mendaftar?</p>
               <p className="mt-0.5 text-sm text-green-700">
-                Jika semua syarat terpenuhi, hubungi pengurus asrama atau login untuk memulai proses pendaftaran.
+                Jika semua syarat terpenuhi, kamu bisa langsung mengisi formulir pendaftaran di bawah ini.
               </p>
             </div>
+          </motion.div>
+
+          {/* ── CTA Button ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex flex-col items-center gap-4"
+          >
+            {/* Glowing pill label */}
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 uppercase tracking-widest">
+              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+              Daftar Sekarang
+              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+            </div>
+
+            {/* Main CTA */}
+            <Link
+              href="/daftar-warga"
+              className="group relative inline-flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-4 text-base font-bold text-white shadow-lg shadow-blue-500/30 transition-all duration-300 hover:scale-[1.03] hover:shadow-xl hover:shadow-blue-500/40 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+            >
+              {/* Animated shimmer overlay */}
+              <span
+                className="pointer-events-none absolute inset-0 -translate-x-full skew-x-[-20deg] bg-white/20 transition-transform duration-700 group-hover:translate-x-full"
+                aria-hidden="true"
+              />
+
+              <span className="relative flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-lg backdrop-blur-sm">
+                  🏠
+                </span>
+                <span>
+                  <span className="block text-[11px] font-medium text-white/70 leading-none mb-0.5">
+                    Formulir Pendaftaran Calon Warga
+                  </span>
+                  <span className="block text-base font-bold leading-tight">
+                    Daftar Menjadi Warga Asrama
+                  </span>
+                </span>
+                <ArrowRight className="ml-1 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+              </span>
+            </Link>
+
+            <p className="text-xs text-muted-foreground">
+              Proses pendaftaran 100% online · Gratis · Tanpa biaya
+            </p>
           </motion.div>
         </div>
       </div>

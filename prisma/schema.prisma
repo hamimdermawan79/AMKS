@@ -539,3 +539,41 @@ model RohaniSchedule {
   @@map("rohani_schedules")
 }
 
+
+enum CalonWargaStatus {
+  MENUNGGU
+  DITERIMA
+  DITOLAK
+}
+
+model CalonWarga {
+  id              String           @id @default(cuid())
+  // Dokumen
+  fotoKtp         String           // path foto KTP
+  fotoFormal      String           // path foto formal
+  // Data Pribadi
+  namaLengkap     String
+  asalDaerahSambas String          // tinggal di mana di Sambas
+  noHp            String
+  // Data Akademik
+  jurusan         String
+  namaUniversitas String
+  tahunMasukAsrama Int             // tahun ingin masuk asrama
+  alasanMasuk     String          @db.Text
+  // Data Orang Tua - Ayah
+  namaAyah        String
+  pekerjaanAyah   String
+  noHpAyah        String
+  // Data Orang Tua - Ibu
+  namaIbu         String
+  pekerjaanIbu    String
+  noHpIbu         String
+  // Status
+  status          CalonWargaStatus @default(MENUNGGU)
+  catatanAdmin    String?          @db.Text
+  // Timestamps
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("calon_warga")
+}
