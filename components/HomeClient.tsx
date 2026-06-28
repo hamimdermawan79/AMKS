@@ -132,7 +132,7 @@ export default function HomeClient({
       {/* ===== HERO ===== */}
       <motion.section
         style={{ scale: heroScale, opacity: heroOpacity }}
-        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white pt-20 sm:pt-24 md:pt-0"
+        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white pt-32 sm:pt-36 md:pt-40 lg:pt-44 pb-12 sm:pb-16"
       >
         {/* Blobs */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-white" />

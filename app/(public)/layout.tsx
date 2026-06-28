@@ -69,7 +69,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -80,7 +80,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-            className="fixed right-0 top-0 z-50 flex h-full w-[80vw] max-w-sm flex-col bg-white shadow-2xl"
+            className="fixed right-0 top-0 z-[70] flex h-full w-[80vw] max-w-sm flex-col bg-white shadow-2xl"
           >
             {/* Header drawer */}
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
@@ -145,6 +145,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                                   className="block rounded-lg px-3 py-2.5 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-primary"
                                 >
                                   {child.label}
+                                  
                                 </Link>
                               ))}
                             </div>
@@ -219,7 +220,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </div>
 
           {/* Desktop Floating Navbar */}
-          <nav className="pointer-events-auto hidden md:flex items-center gap-8 px-8 py-3.5 rounded-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-lg shadow-blue-900/5 absolute left-1/2 -translate-x-1/2 top-6">
+          <nav className="pointer-events-auto hidden lg:flex items-center gap-8 px-8 py-3.5 rounded-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-lg shadow-blue-900/5 absolute left-1/2 -translate-x-1/2 top-6">
             <Link href="/karya-ilmiah" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
               Karya Ilmiah
             </Link>
@@ -293,9 +294,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
             {/* Hamburger button — hanya mobile */}
             <button
-              onClick={() => setMobileOpen(true)}
-              className="md:hidden flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 backdrop-blur-md border border-white/60 shadow-sm text-slate-700 transition hover:bg-white/90"
-              aria-label="Buka menu navigasi"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 backdrop-blur-md border border-white/60 shadow-sm text-slate-700 transition hover:bg-white/90"
+              aria-label="Toggle menu navigasi"
             >
               <Menu className="h-5 w-5" />
             </button>
