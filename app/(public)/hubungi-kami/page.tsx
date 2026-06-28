@@ -16,13 +16,13 @@ const MapLeaflet = dynamic(() => import('@/components/MapLeaflet'), {
 export default function HubungiKamiPage() {
   return (
     <div className="min-h-screen bg-slate-50 overflow-hidden">
-      
+
       {/* Soft Gradient Hero */}
       <div className="relative pt-32 pb-40 bg-gradient-to-b from-blue-50 via-white to-slate-50">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] max-w-4xl bg-blue-400/10 blur-[120px] rounded-full pointer-events-none" />
-        
+
         <div className="container relative z-10 mx-auto px-4 md:px-6 text-center">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
@@ -30,7 +30,7 @@ export default function HubungiKamiPage() {
           >
             Hubungi Kami
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -52,9 +52,9 @@ export default function HubungiKamiPage() {
       <section className="bg-white pb-32 -mt-1 relative z-10">
         <div className="container mx-auto px-4 md:px-6 max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
-            
+
             {/* Left Column: Form */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.2 }}
@@ -67,32 +67,32 @@ export default function HubungiKamiPage() {
                 <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">Nama Lengkap</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="Masukkan nama Anda"
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm text-slate-800 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-400/10 outline-none transition-all"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">Email</label>
-                    <input 
-                      type="email" 
-                      placeholder="nama@email.com"
+                    <input
+                      type="email"
+                      placeholder="asramasambas20006@gmail.com"
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm text-slate-800 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-400/10 outline-none transition-all"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2 ml-1">Pesan</label>
-                    <textarea 
+                    <textarea
                       rows={5}
                       placeholder="Tuliskan pesan atau pertanyaan Anda di sini..."
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm text-slate-800 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-400/10 outline-none transition-all resize-none"
                     ></textarea>
                   </div>
 
-                  <button 
+                  <button
                     type="button"
                     className="w-full flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-4 text-sm font-bold text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 transition-all duration-300"
                   >
@@ -104,7 +104,7 @@ export default function HubungiKamiPage() {
             </motion.div>
 
             {/* Right Column: Contact Info & Map */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
@@ -126,7 +126,7 @@ export default function HubungiKamiPage() {
                   </div>
                   <h3 className="text-slate-800 font-bold mb-1">Email Resmi</h3>
                   <p className="text-slate-500 text-sm mb-3">Untuk keperluan administrasi.</p>
-                  <p className="text-indigo-700 font-semibold mt-auto">halo@asramasambas.id</p>
+                  <p className="text-indigo-700 font-semibold mt-auto">'asramasambas20006@gmail.com'</p>
                 </div>
               </div>
 
@@ -139,7 +139,7 @@ export default function HubungiKamiPage() {
                   <div>
                     <h3 className="text-slate-800 font-bold text-lg mb-1">Lokasi Asrama</h3>
                     <p className="text-slate-500 leading-relaxed text-sm">
-                      Gg. Beo No.328, Tahunan, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55167
+                      Jl. Garuda, Gg. Beo No.328, Tahunan, Kec. Umbulharjo, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55167
                     </p>
                   </div>
                 </div>
@@ -147,11 +147,11 @@ export default function HubungiKamiPage() {
                 <div className="w-full rounded-[1.5rem] overflow-hidden border border-slate-200">
                   <MapLeaflet />
                 </div>
-                
+
                 <div className="mt-6 flex justify-center">
-                  <a 
-                    href="https://maps.app.goo.gl/CavYAr6gwS6oHUp18" 
-                    target="_blank" 
+                  <a
+                    href="https://maps.app.goo.gl/CavYAr6gwS6oHUp18"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-xl bg-slate-50 px-6 py-3 text-sm font-semibold text-slate-600 transition-all hover:bg-blue-50 hover:text-blue-600 hover:shadow-sm border border-slate-200"
                   >

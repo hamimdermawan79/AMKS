@@ -145,7 +145,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                                   className="block rounded-lg px-3 py-2.5 text-sm text-slate-600 transition hover:bg-blue-50 hover:text-primary"
                                 >
                                   {child.label}
-                                  
+
                                 </Link>
                               ))}
                             </div>
@@ -331,7 +331,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               {/* Sosmed */}
               <div className="mt-5 flex items-center gap-3">
                 <a
-                  href="https://instagram.com/amks.jogja"
+                  href="https://www.instagram.com/amks.yogyakarta?igsh=Mm03OHc5NWR4NWU2"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram AMKS"
@@ -378,8 +378,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <ul className="space-y-4 text-sm">
                 <li className="flex items-start gap-3">
                   <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <a href="mailto:amksjogja@gmail.com" className="text-slate-400 transition hover:text-primary">
-                    amksjogja@gmail.com
+                  <a href="mailto:asramasambas20006@gmail.com" className="text-slate-400 transition hover:text-primary">
+                    asramasambas20006@gmail.com
                   </a>
                 </li>
                 <li className="flex items-start gap-3">
@@ -393,7 +393,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="text-slate-400 leading-relaxed">
                     {/* Ganti dengan alamat lengkap sebelum launch */}
-                    Jl. [Nama Jalan], Yogyakarta,<br />
+                    Jl. Garuda Gg Beo No 328 Tahunan Kec. Umbulharjo, Yogyakarta,<br />
                     Daerah Istimewa Yogyakarta
                   </span>
                 </li>
