@@ -10,6 +10,7 @@ interface Props {
     fullName: string;
     phone: string;
     status: string;
+    jabatan?: string | null;
   };
 }
 
@@ -20,6 +21,8 @@ export default function AccountSettingsClient({ user }: Props) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const canEditPhone = user.jabatan?.toLowerCase() === 'super admin' || user.jabatan?.toLowerCase() === 'ketua' || user.jabatan?.toLowerCase() === 'superadmin';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,10 +82,15 @@ export default function AccountSettingsClient({ user }: Props) {
             type="text"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="input"
+            className={`input ${!canEditPhone ? 'bg-secondary' : ''}`}
             placeholder="628123456789"
+            disabled={!canEditPhone}
           />
-          <p className="text-xs text-muted-foreground mt-1">Format: 62 + nomor, tanpa spasi</p>
+          {!canEditPhone ? (
+            <p className="text-xs text-muted-foreground mt-1">Hanya Super Admin dan Ketua yang dapat mengubah nomor WhatsApp.</p>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-1">Format: 62 + nomor, tanpa spasi</p>
+          )}
         </div>
 
         <div className="border-t border-border pt-6">

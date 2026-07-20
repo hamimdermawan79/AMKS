@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { compressImage } from '@/lib/image-utils';
 
 const KEBERSIHAN_PERM = 'division:manage:kebersihan';
 
@@ -36,9 +37,10 @@ async function savePiketPhoto(file: File | null): Promise<string> {
   }
 
   await mkdir(PIKET_UPLOAD_DIR, { recursive: true });
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const filename = `${randomUUID()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const rawBuffer = Buffer.from(await file.arrayBuffer());
+  const { buffer, ext: compressedExt } = await compressImage(rawBuffer);
+  const finalExt = compressedExt ? compressedExt.replace('.', '') : (file.name.split('.').pop()?.toLowerCase() || 'jpg');
+  const filename = `${randomUUID()}.${finalExt}`;
   await writeFile(path.join(PIKET_UPLOAD_DIR, filename), buffer);
 
   return `/uploads/piket/${filename}`;

@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { compressImage } from '@/lib/image-utils';
 
 const UPLOAD_ROOT = path.join(process.cwd(), 'public', 'uploads');
 const ALLOWED_IMG = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
@@ -370,9 +371,11 @@ async function savePhoto(file: File): Promise<string> {
   }
   const dir = path.join(UPLOAD_ROOT, 'users');
   await mkdir(dir, { recursive: true });
-  const filename = `${randomUUID()}${ext}`;
+  const rawBuffer = Buffer.from(await file.arrayBuffer());
+  const { buffer, ext: compressedExt } = await compressImage(rawBuffer);
+  const finalExt = compressedExt || ext;
+  const filename = `${randomUUID()}${finalExt}`;
   const filepath = path.join(dir, filename);
-  const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(filepath, buffer);
   return `/uploads/users/${filename}`;
 }

@@ -16,6 +16,7 @@ interface Props {
   canUpdate: boolean;
   canDelete: boolean;
   userId: string;
+  initialTab?: Tab;
 }
 
 export default function TentangKamiTabs({
@@ -26,8 +27,9 @@ export default function TentangKamiTabs({
   canUpdate,
   canDelete,
   userId,
+  initialTab = 'profil',
 }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('profil');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   return (
     <div className="space-y-8">

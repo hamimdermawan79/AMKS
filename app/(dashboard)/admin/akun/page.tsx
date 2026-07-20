@@ -15,6 +15,7 @@ export default async function AccountSettingsPage() {
     fullName: session.user.fullName,
     phone: '',
     status: session.user.status,
+    jabatan: session.user.jabatan,
   };
 
   return (

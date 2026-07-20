@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Calendar, MapPin } from 'lucide-react';
 
 interface Activity {
@@ -18,14 +19,8 @@ interface Activity {
 function ThumbImage({ src, alt }: { src: string; alt: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
 
-  useEffect(() => {
-    if (imgRef.current?.complete) {
-      if (imgRef.current.naturalWidth === 0) setError(true);
-      setLoaded(true);
-    }
-  }, []);
+
 
   return (
     <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden rounded-t-2xl">
@@ -35,14 +30,14 @@ function ThumbImage({ src, alt }: { src: string; alt: string }) {
           Gambar Hilang (404)
         </div>
       ) : (
-        <img
-          ref={imgRef}
+        <Image
           src={src}
           alt={alt}
-          loading="lazy"
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
           onLoad={() => setLoaded(true)}
           onError={() => { setLoaded(true); setError(true); }}
-          className={`h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 ${
+          className={`object-cover transition-transform duration-700 ease-out group-hover:scale-110 ${
             loaded ? 'opacity-100' : 'opacity-0'
           }`}
         />

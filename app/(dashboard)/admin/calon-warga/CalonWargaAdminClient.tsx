@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { updateCalonWargaStatus } from '@/app/(public)/daftar-warga/actions';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type CalonWargaStatus = 'MENUNGGU' | 'DITERIMA' | 'DITOLAK';
 
@@ -205,12 +206,16 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
                     <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <img
+                        <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 flex-shrink-0">
+                          <Image
                             src={c.fotoFormal}
                             alt={c.namaLengkap}
-                            className="w-9 h-9 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                            fill
+                            sizes="36px"
+                            className="object-cover"
                           />
-                          <div>
+                        </div>
+                        <div>
                             <p className="font-semibold text-slate-800">{c.namaLengkap}</p>
                             <p className="text-xs text-slate-400">{c.asalDaerahSambas}</p>
                           </div>
@@ -254,7 +259,7 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto"
-            onClick={(e) => e.target === e.currentTarget && setSelected(null)}
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => e.target === e.currentTarget && setSelected(null)}
           >
             <motion.div
               key="modal"
@@ -284,21 +289,29 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Foto KTP</p>
-                    <img
-                      src={selected.fotoKtp}
-                      alt="KTP"
-                      onClick={() => setLightboxImg(selected.fotoKtp)}
-                      className="w-full h-36 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:opacity-90 transition-opacity"
-                    />
+                    <div className="relative w-full h-36 rounded-xl overflow-hidden border border-slate-200 cursor-zoom-in hover:opacity-90 transition-opacity">
+                      <Image
+                        src={selected.fotoKtp}
+                        alt="KTP"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 300px"
+                        onClick={() => setLightboxImg(selected.fotoKtp)}
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Foto Formal</p>
-                    <img
-                      src={selected.fotoFormal}
-                      alt="Formal"
-                      onClick={() => setLightboxImg(selected.fotoFormal)}
-                      className="w-full h-36 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:opacity-90 transition-opacity"
-                    />
+                    <div className="relative w-full h-36 rounded-xl overflow-hidden border border-slate-200 cursor-zoom-in hover:opacity-90 transition-opacity">
+                      <Image
+                        src={selected.fotoFormal}
+                        alt="Formal"
+                        fill
+                        sizes="(max-width: 640px) 100vw, 300px"
+                        onClick={() => setLightboxImg(selected.fotoFormal)}
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
                 </div>
 

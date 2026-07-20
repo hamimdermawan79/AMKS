@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   UserPlus,
   X,
@@ -283,9 +284,15 @@ export default function UserManagementClient({
               <tr key={user.id}>
                 <td className="font-medium">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full overflow-hidden bg-secondary border border-border flex-shrink-0">
+                    <div className="relative w-9 h-9 rounded-full overflow-hidden bg-secondary border border-border flex-shrink-0">
                       {user.photoUrl ? (
-                        <img src={user.photoUrl} alt={user.fullName} className="w-full h-full object-cover" />
+                        <Image 
+                          src={user.photoUrl} 
+                          alt={user.fullName} 
+                          fill 
+                          sizes="36px"
+                          className="object-cover" 
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
                           {user.fullName.charAt(0)}

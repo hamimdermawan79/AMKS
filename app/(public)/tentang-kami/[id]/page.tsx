@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Calendar, MapPin, User, ArrowLeft } from 'lucide-react';
 
 function getYoutubeEmbedUrl(url: string) {
@@ -164,11 +165,13 @@ export default async function ActivityDetailPage({
                     key={i}
                     className="group relative overflow-hidden bg-slate-100 rounded-xl break-inside-avoid border border-border shadow-sm hover:shadow-md transition-shadow"
                   >
-                    <img 
+                    <Image 
                       src={url} 
                       alt={`Dokumentasi tambahan ${i+1}`} 
+                      width={800}
+                      height={600}
+                      sizes="(max-width: 768px) 50vw, 33vw"
                       className="w-full h-auto object-cover transition-transform duration-700 ease-out group-hover:scale-105" 
-                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500 pointer-events-none" />
                   </div>

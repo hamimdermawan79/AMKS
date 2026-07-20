@@ -218,19 +218,35 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
     throw new Error('Tagihan sudah lunas');
   }
 
-  const finalAmount = amountOverride ?? bill.amount;
+  const isLate = bill.status === 'BELUM_LUNAS' && bill.dueDate && new Date() > new Date(bill.dueDate) && bill.type === 'IURAN';
+  const targetAmount = isLate ? Math.floor(bill.amount * 1.2) : bill.amount;
+  const payAmount = amountOverride ?? targetAmount;
 
-  // Update bill status to LUNAS
-  await db.bill.update({
-    where: { id: billId },
-    data: {
-      status: 'LUNAS',
-      amount: finalAmount, // Update the DB amount if late fee is included
-      settledAt: new Date(),
-      settledById: session.user.id,
-      note: note ? `${bill.note || ''}\nCatatan Pelunasan: ${note}`.trim() : bill.note,
-    },
-  });
+  const isPartial = payAmount < targetAmount;
+
+  if (isPartial) {
+    // Pembayaran sebagian / cicilan
+    const remainingAmount = targetAmount - payAmount;
+    await db.bill.update({
+      where: { id: billId },
+      data: {
+        amount: remainingAmount,
+        note: note ? `${bill.note || ''}\nCatatan Cicilan: ${note} (Bayar Rp${payAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')})`.trim() : `${bill.note || ''}\n(Bayar Rp${payAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')})`.trim(),
+      },
+    });
+  } else {
+    // Pelunasan penuh
+    await db.bill.update({
+      where: { id: billId },
+      data: {
+        status: 'LUNAS',
+        amount: payAmount, // Update the DB amount if late fee is included
+        settledAt: new Date(),
+        settledById: session.user.id,
+        note: note ? `${bill.note || ''}\nCatatan Pelunasan: ${note}`.trim() : bill.note,
+      },
+    });
+  }
 
   // Automatically create a corresponding PEMASUKAN transaction
   const category = bill.type === 'DENDA_PIKET'
@@ -242,56 +258,71 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
         : bill.type === 'DENDA_OLAHRAGA'
           ? 'Denda Olahraga'
           : 'Lain-lain';
+
   const tx = await db.transaction.create({
     data: {
       type: 'PEMASUKAN',
       category,
-      amount: finalAmount,
-      description: `Pelunasan tagihan: ${bill.title}`,
+      amount: payAmount,
+      description: isPartial ? `Pembayaran cicilan tagihan: ${bill.title}` : `Pelunasan tagihan: ${bill.title}`,
       occurredAt: new Date(),
-      relatedBillId: bill.id,
+      relatedBillId: isPartial ? null : bill.id,
       createdById: session.user.id,
       division: bill.division,
     },
   });
 
-  // [Two-Way Sync] Jika jenis tagihan adalah DENDA_PIKET,
-  // maka catat FinePayment secara otomatis agar laporan denda di Kebersihan sinkron
+  // [Two-Way Sync] Jika jenis tagihan adalah DENDA_PIKET, catat FinePayment secara otomatis
   if (bill.type === 'DENDA_PIKET') {
     const fines = await db.fine.findMany({
       where: { billId: bill.id },
       include: { payments: true }
     });
 
+    let remainingPayAmount = payAmount;
     for (const fine of fines) {
+      if (remainingPayAmount <= 0) break;
       const alreadyPaid = fine.payments.reduce((sum, p) => sum + p.amount, 0);
-      const remaining = fine.amount - alreadyPaid;
+      const remainingFine = fine.amount - alreadyPaid;
 
-      if (remaining > 0) {
+      if (remainingFine > 0) {
+        const payToThisFine = Math.min(remainingFine, remainingPayAmount);
         await db.finePayment.create({
           data: {
             fineId: fine.id,
-            amount: remaining,
-            note: note ? `Dilunasi dari modul Keuangan: ${note}` : 'Dilunasi otomatis dari modul Keuangan',
+            amount: payToThisFine,
+            note: note ? `Dibayar sebagian/lunas dari Keuangan: ${note}` : 'Dibayar dari modul Keuangan',
             recordedById: session.user.id,
             paymentTxId: tx.id,
           }
         });
+        remainingPayAmount -= payToThisFine;
       }
     }
   }
 
-  // Create notification in DB (which handles WA queues automatically)
+  // Create notification in DB
   try {
-    await createNotification({
-      userId: bill.userId,
-      title: 'Konfirmasi Pembayaran Tagihan',
-      message: `Terima kasih! Tagihan Anda sebesar Rp${bill.amount.toLocaleString('id-ID')} untuk "${bill.title}" telah dikonfirmasi LUNAS oleh Bendahara.`,
-      type: 'TAGIHAN_REMINDER',
-      referenceId: bill.id,
-    });
+    if (isPartial) {
+      const remainingAmount = targetAmount - payAmount;
+      await createNotification({
+        userId: bill.userId,
+        title: 'Pembayaran Sebagian Tagihan',
+        message: `Pembayaran sebagian sebesar Rp${payAmount.toLocaleString('id-ID')} untuk tagihan "${bill.title}" telah diterima. Sisa tagihan Anda adalah Rp${remainingAmount.toLocaleString('id-ID')}.`,
+        type: 'TAGIHAN_REMINDER',
+        referenceId: bill.id,
+      });
+    } else {
+      await createNotification({
+        userId: bill.userId,
+        title: 'Konfirmasi Pembayaran Tagihan',
+        message: `Terima kasih! Tagihan Anda sebesar Rp${payAmount.toLocaleString('id-ID')} untuk "${bill.title}" telah dikonfirmasi LUNAS oleh Bendahara.`,
+        type: 'TAGIHAN_REMINDER',
+        referenceId: bill.id,
+      });
+    }
   } catch (err) {
-    console.error('Failed to create notification for settled bill:', err);
+    console.error('Failed to create notification for bill payment:', err);
   }
 
   revalidatePath('/admin/keuangan');

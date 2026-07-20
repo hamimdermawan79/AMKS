@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import HeroSection from '@/components/HeroSection';
 import { GraduationCap, Calendar, MapPin, BookOpen, Users, Search, X, ChevronDown } from 'lucide-react';
 import { useState, useMemo } from 'react';
@@ -284,14 +285,14 @@ function AlumniCard({ alumni, highlight }: { alumni: AlumniEntry; highlight: str
       whileHover={{ y: -6, transition: { type: 'spring', stiffness: 400 } }}
       className="group relative bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300"
     >
-      {/* Photo / Initials */}
       <div className="relative aspect-[4/5] bg-slate-100 overflow-hidden">
         {alumni.photoUrl ? (
-          <img
+          <Image
             src={alumni.photoUrl}
             alt={`Foto ${alumni.fullName}`}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            loading="lazy"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-indigo-200">

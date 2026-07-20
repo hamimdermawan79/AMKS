@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Person {
   id: string;
@@ -214,11 +215,13 @@ function PersonCard({
 
   return (
     <div className="text-center">
-      <div className={`mx-auto mb-3 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white shadow-sm ${sizeClass}`}>
+      <div className={`relative mx-auto mb-3 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white shadow-sm ${sizeClass}`}>
         {user.photoUrl ? (
-          <img
+          <Image
             src={user.photoUrl}
             alt={user.fullName}
+            fill
+            sizes="(max-width: 768px) 64px, 96px"
             className="h-full w-full object-cover"
           />
         ) : (

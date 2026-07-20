@@ -2,10 +2,12 @@
 
 import { db } from '@/lib/db';
 import { createNotification } from '@/lib/notifications';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, unlink } from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+import { compressImage } from '@/lib/image-utils';
+import { canFromSession } from '@/lib/rbac/can';
 
 const UPLOAD_ROOT = path.join(process.cwd(), 'public', 'uploads', 'calon-warga');
 const ALLOWED_IMG = ['.jpg', '.jpeg', '.png', '.webp'];
@@ -16,9 +18,11 @@ async function saveFile(file: File): Promise<string> {
     throw new Error(`Format file tidak didukung: ${ext}`);
   }
   await mkdir(UPLOAD_ROOT, { recursive: true });
-  const filename = `${randomUUID()}${ext}`;
+  const rawBuffer = Buffer.from(await file.arrayBuffer());
+  const { buffer, ext: compressedExt } = await compressImage(rawBuffer);
+  const finalExt = compressedExt || ext;
+  const filename = `${randomUUID()}${finalExt}`;
   const filepath = path.join(UPLOAD_ROOT, filename);
-  const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(filepath, buffer);
   return `/uploads/calon-warga/${filename}`;
 }
@@ -84,57 +88,68 @@ export async function submitPendaftaranCalonWarga(formData: FormData): Promise<{
       saveFile(fotoFormalFile),
     ]);
 
-    // ── Simpan ke database ────────────────────────────────────────────────
-    const calonWarga = await db.calonWarga.create({
-      data: {
-        fotoKtp: fotoKtpUrl,
-        fotoFormal: fotoFormalUrl,
-        namaLengkap,
-        asalDaerahSambas,
-        noHp,
-        jurusan,
-        namaUniversitas,
-        tahunMasukAsrama,
-        alasanMasuk,
-        namaAyah,
-        pekerjaanAyah,
-        noHpAyah,
-        namaIbu,
-        pekerjaanIbu,
-        noHpIbu,
-      },
-    });
+    try {
+      // ── Simpan ke database ────────────────────────────────────────────────
+      const calonWarga = await db.calonWarga.create({
+        data: {
+          fotoKtp: fotoKtpUrl,
+          fotoFormal: fotoFormalUrl,
+          namaLengkap,
+          asalDaerahSambas,
+          noHp,
+          jurusan,
+          namaUniversitas,
+          tahunMasukAsrama,
+          alasanMasuk,
+          namaAyah,
+          pekerjaanAyah,
+          noHpAyah,
+          namaIbu,
+          pekerjaanIbu,
+          noHpIbu,
+        },
+      });
 
-    // ── Kirim notifikasi ke Ketua, Sekretaris, Superadmin ─────────────────
-    const admins = await db.user.findMany({
-      where: {
-        status: 'AKTIF',
-        roles: {
-          some: {
-            role: { name: { in: ['SUPERADMIN', 'KETUA', 'SEKRETARIS'] } },
+      // ── Kirim notifikasi ke Ketua, Sekretaris, Superadmin ─────────────────
+      const admins = await db.user.findMany({
+        where: {
+          status: 'AKTIF',
+          roles: {
+            some: {
+              role: { name: { in: ['SUPERADMIN', 'KETUA', 'SEKRETARIS'] } },
+            },
           },
         },
-      },
-      select: { id: true },
-    });
+        select: { id: true },
+      });
 
-    const uniqueAdminIds = [...new Set(admins.map((a) => a.id))];
-    const notifMessage = `${namaLengkap} dari ${asalDaerahSambas}, mahasiswa ${namaUniversitas} (${jurusan}), telah mendaftar sebagai calon warga asrama untuk tahun ${tahunMasukAsrama}. Tinjau di menu Calon Warga.`;
+      const uniqueAdminIds = [...new Set(admins.map((a) => a.id))];
+      const notifMessage = `${namaLengkap} dari ${asalDaerahSambas}, mahasiswa ${namaUniversitas} (${jurusan}), telah mendaftar sebagai calon warga asrama untuk tahun ${tahunMasukAsrama}. Tinjau di menu Calon Warga.`;
 
-    await Promise.all(
-      uniqueAdminIds.map((userId) =>
-        createNotification({
-          userId,
-          title: '🏠 Pendaftaran Calon Warga Baru',
-          message: notifMessage,
-          type: 'SYSTEM',
-          referenceId: calonWarga.id,
-        })
-      )
-    );
+      await Promise.all(
+        uniqueAdminIds.map((userId) =>
+          createNotification({
+            userId,
+            title: '🏠 Pendaftaran Calon Warga Baru',
+            message: notifMessage,
+            type: 'SYSTEM',
+            referenceId: calonWarga.id,
+          })
+        )
+      );
 
-    revalidatePath('/admin/calon-warga');
-    return { success: true };
+      revalidatePath('/admin/calon-warga');
+      return { success: true };
+    } catch (dbError) {
+      // Jika simpan database gagal, hapus foto yang terlanjur terupload
+      const ktpPath = path.join(process.cwd(), 'public', fotoKtpUrl);
+      const formalPath = path.join(process.cwd(), 'public', fotoFormalUrl);
+      await Promise.all([
+        unlink(ktpPath).catch(() => {}),
+        unlink(formalPath).catch(() => {})
+      ]);
+      throw dbError; // Lempar ke blok catch utama
+    }
   } catch (err) {
     console.error('submitPendaftaranCalonWarga error:', err);
     const message = err instanceof Error ? err.message : 'Terjadi kesalahan pada server.';
@@ -145,6 +160,9 @@ export async function submitPendaftaranCalonWarga(formData: FormData): Promise<{
 // ── Admin actions ──────────────────────────────────────────────────────────
 
 export async function getCalonWargaList() {
+  const canAccess = await canFromSession('user:read');
+  if (!canAccess) throw new Error('Unauthorized');
+  
   return db.calonWarga.findMany({
     orderBy: { createdAt: 'desc' },
   });
@@ -156,6 +174,9 @@ export async function updateCalonWargaStatus(
   catatanAdmin?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const canAccess = await canFromSession('user:update');
+    if (!canAccess) throw new Error('Unauthorized');
+
     await db.calonWarga.update({
       where: { id },
       data: { status, catatanAdmin: catatanAdmin ?? null },

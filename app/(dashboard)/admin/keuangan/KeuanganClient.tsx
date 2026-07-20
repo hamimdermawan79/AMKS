@@ -882,24 +882,29 @@ export default function KeuanganClient({
     try {
       const res = await settleBill(selectedBillId, settleNote, settleAmount);
       if (res.success) {
-        setBills((prev) =>
-          prev.map((b) =>
-            b.id === selectedBillId
-              ? {
-                ...b,
-                status: 'LUNAS' as const,
-                amount: settleAmount,
-                note: settleNote
-                  ? `${b.note || ''}\nPelunasan: ${settleNote}`.trim()
-                  : b.note,
-              }
-              : b
-          )
-        );
-
-        // Add matching transaction locally too
         const billObj = bills.find((b) => b.id === selectedBillId);
         if (billObj) {
+          const isLate = billObj.status === 'BELUM_LUNAS' && billObj.dueDate && new Date() > new Date(billObj.dueDate) && billObj.type === 'IURAN';
+          const targetAmount = isLate ? Math.floor(billObj.amount * 1.2) : billObj.amount;
+          const isPartial = settleAmount < targetAmount;
+          const remainingAmount = targetAmount - settleAmount;
+
+          setBills((prev) =>
+            prev.map((b) =>
+              b.id === selectedBillId
+                ? {
+                  ...b,
+                  status: isPartial ? b.status : ('LUNAS' as const),
+                  amount: isPartial ? remainingAmount : settleAmount,
+                  note: settleNote
+                    ? `${b.note || ''}\nPelunasan: ${settleNote} (${isPartial ? `Cicilan Rp${settleAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')}` : 'Lunas Penuh'})`.trim()
+                    : `${b.note || ''}\n(${isPartial ? `Cicilan Rp${settleAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')}` : 'Lunas Penuh'})`.trim(),
+                }
+                : b
+            )
+          );
+
+          // Add matching transaction locally too
           const category =
             billObj.type === 'DENDA_PIKET'
               ? 'Denda Piket'
@@ -912,7 +917,9 @@ export default function KeuanganClient({
             type: 'PEMASUKAN',
             category,
             amount: settleAmount,
-            description: `Pelunasan tagihan: ${billObj.title}`,
+            description: isPartial 
+              ? `Pembayaran cicilan tagihan: ${billObj.title}`
+              : `Pelunasan tagihan: ${billObj.title}`,
             occurredAt: new Date().toISOString(),
           };
           setTransactions((prev) => [localTx, ...prev]);
@@ -2183,29 +2190,75 @@ export default function KeuanganClient({
 
                 {/* Donut Chart Pemasukan */}
                 {monthlyReport.categoryPemList.length > 0 && (
-                  <div className="h-48 w-full flex items-center justify-center relative">
-                    {mounted ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={monthlyReport.categoryPemList.map(c => ({ name: c.category, value: c.amount }))}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={35}
-                            outerRadius={55}
-                            paddingAngle={3}
-                            dataKey="value"
-                          >
-                            {monthlyReport.categoryPemList.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={PEMASUKAN_COLORS[index % PEMASUKAN_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => formatRp(Number(value))} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                    )}
+                  <div className="space-y-2">
+                    <div className="h-72 w-full flex items-center justify-center relative">
+                      {mounted ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={monthlyReport.categoryPemList.map(c => ({ name: c.category, value: c.amount }))}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={75}
+                              paddingAngle={3}
+                              dataKey="value"
+                              labelLine={{
+                                stroke: '#94a3b8',
+                                strokeWidth: 1.5,
+                                strokeDasharray: '0',
+                              }}
+                              label={({ cx, cy, midAngle, innerRadius, outerRadius, name, percent }) => {
+                                const RADIAN = Math.PI / 180;
+                                const radius = outerRadius + 28;
+                                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                const pct = (percent * 100).toFixed(1);
+                                const isLeft = x < cx;
+                                return (
+                                  <text
+                                    x={x}
+                                    y={y}
+                                    textAnchor={isLeft ? 'end' : 'start'}
+                                    dominantBaseline="central"
+                                    style={{ fontSize: '10px', fill: '#475569', fontWeight: 600 }}
+                                  >
+                                    {`${name.length > 10 ? name.slice(0, 10) + '…' : name} ${pct}%`}
+                                  </text>
+                                );
+                              }}
+                            >
+                              {monthlyReport.categoryPemList.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={PEMASUKAN_COLORS[index % PEMASUKAN_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value, name) => [formatRp(Number(value)), name]}
+                              contentStyle={{ borderRadius: '10px', fontSize: '11px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                      )}
+                    </div>
+                    {/* Legend Teks Manual */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1.5 justify-center px-2">
+                      {monthlyReport.categoryPemList.map((cat, index) => {
+                        const total = monthlyReport.pemasukan;
+                        const pct = total > 0 ? ((cat.amount / total) * 100).toFixed(1) : '0';
+                        return (
+                          <div key={index} className="flex items-center gap-1.5">
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: PEMASUKAN_COLORS[index % PEMASUKAN_COLORS.length] }}
+                            />
+                            <span className="text-[10px] font-semibold text-slate-600">{cat.category}</span>
+                            <span className="text-[10px] text-emerald-600 font-bold">{pct}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2255,29 +2308,75 @@ export default function KeuanganClient({
 
                 {/* Donut Chart Pengeluaran */}
                 {monthlyReport.categoryPengList.length > 0 && (
-                  <div className="h-48 w-full flex items-center justify-center relative">
-                    {mounted ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={monthlyReport.categoryPengList.map(c => ({ name: c.category, value: c.amount }))}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={35}
-                            outerRadius={55}
-                            paddingAngle={3}
-                            dataKey="value"
-                          >
-                            {monthlyReport.categoryPengList.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={PENGELUARAN_COLORS[index % PENGELUARAN_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => formatRp(Number(value))} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                    )}
+                  <div className="space-y-2">
+                    <div className="h-72 w-full flex items-center justify-center relative">
+                      {mounted ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={monthlyReport.categoryPengList.map(c => ({ name: c.category, value: c.amount }))}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={75}
+                              paddingAngle={3}
+                              dataKey="value"
+                              labelLine={{
+                                stroke: '#94a3b8',
+                                strokeWidth: 1.5,
+                                strokeDasharray: '0',
+                              }}
+                              label={({ cx, cy, midAngle, innerRadius, outerRadius, name, percent }) => {
+                                const RADIAN = Math.PI / 180;
+                                const radius = outerRadius + 28;
+                                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                const pct = (percent * 100).toFixed(1);
+                                const isLeft = x < cx;
+                                return (
+                                  <text
+                                    x={x}
+                                    y={y}
+                                    textAnchor={isLeft ? 'end' : 'start'}
+                                    dominantBaseline="central"
+                                    style={{ fontSize: '10px', fill: '#475569', fontWeight: 600 }}
+                                  >
+                                    {`${name.length > 10 ? name.slice(0, 10) + '…' : name} ${pct}%`}
+                                  </text>
+                                );
+                              }}
+                            >
+                              {monthlyReport.categoryPengList.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={PENGELUARAN_COLORS[index % PENGELUARAN_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value, name) => [formatRp(Number(value)), name]}
+                              contentStyle={{ borderRadius: '10px', fontSize: '11px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                      )}
+                    </div>
+                    {/* Legend Teks Manual */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1.5 justify-center px-2">
+                      {monthlyReport.categoryPengList.map((cat, index) => {
+                        const total = monthlyReport.pengeluaran;
+                        const pct = total > 0 ? ((cat.amount / total) * 100).toFixed(1) : '0';
+                        return (
+                          <div key={index} className="flex items-center gap-1.5">
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: PENGELUARAN_COLORS[index % PENGELUARAN_COLORS.length] }}
+                            />
+                            <span className="text-[10px] font-semibold text-slate-600">{cat.category}</span>
+                            <span className="text-[10px] text-red-600 font-bold">{pct}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

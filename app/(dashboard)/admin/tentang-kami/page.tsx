@@ -4,7 +4,11 @@ import { db } from '@/lib/db';
 import { canFromSession } from '@/lib/rbac/can';
 import TentangKamiTabs from './TentangKamiTabs';
 
-export default async function TentangKamiAdminPage() {
+export default async function TentangKamiAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect('/login');
 
@@ -39,6 +43,9 @@ export default async function TentangKamiAdminPage() {
     include: { uploadedBy: { select: { fullName: true } } },
   });
 
+  const resolvedParams = await searchParams;
+  const initialTab = resolvedParams.tab === 'galeri' || resolvedParams.tab === 'dokumen' ? resolvedParams.tab : 'profil';
+
   return (
     <div className="space-y-8 pb-12">
       <div>
@@ -54,6 +61,7 @@ export default async function TentangKamiAdminPage() {
         canUpdate={canUpdate}
         canDelete={canDelete}
         userId={session.user.id}
+        initialTab={initialTab}
       />
     </div>
   );
