@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { createNotification } from './notifications';
+import { isUserSuperAdminById } from '@/lib/rbac/can';
 
 /**
  * Check for piket assignments scheduled for tomorrow (H-1)
@@ -184,6 +185,11 @@ export async function checkMissedPikets() {
     console.log(`⏰ Found ${unpaidAssignments.length} assignments to process for missed picket status.`);
 
     for (const assign of unpaidAssignments) {
+      // Super Admin tidak dikenai denda piket otomatis
+      if (await isUserSuperAdminById(assign.userId)) {
+        continue;
+      }
+
       // Create attendance as TIDAK_HADIR
       await db.piketAttendance.create({
         data: {

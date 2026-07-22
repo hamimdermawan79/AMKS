@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { submitPendaftaranCalonWarga } from './actions';
+import { CreditCard, GraduationCap, FileText, Home, User } from 'lucide-react';
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 function IconCheck() {
@@ -12,19 +13,12 @@ function IconCheck() {
     </svg>
   );
 }
-function IconArrow() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-    </svg>
-  );
-}
 
 // ── Syarat data ────────────────────────────────────────────────────────────
 const SYARAT = [
   {
     no: 1,
-    icon: '🪪',
+    icon: <CreditCard className="h-6 w-6" />,
     judul: 'KTP Asli Sambas',
     deskripsi:
       'Memiliki Kartu Tanda Penduduk (KTP) asli yang terdaftar di wilayah Kabupaten Sambas, Kalimantan Barat.',
@@ -32,7 +26,7 @@ const SYARAT = [
   },
   {
     no: 2,
-    icon: '🎓',
+    icon: <GraduationCap className="h-6 w-6" />,
     judul: 'Mahasiswa Aktif di Yogyakarta',
     deskripsi:
       'Sedang menempuh pendidikan aktif di perguruan tinggi (universitas, institut, atau sekolah tinggi) yang berada di wilayah Daerah Istimewa Yogyakarta.',
@@ -40,7 +34,7 @@ const SYARAT = [
   },
   {
     no: 3,
-    icon: '📜',
+    icon: <FileText className="h-6 w-6" />,
     judul: 'Menaati AD / ART Asrama',
     deskripsi:
       'Bersedia membaca, memahami, dan menaati seluruh Anggaran Dasar / Anggaran Rumah Tangga (AD/ART) serta tata tertib peraturan yang berlaku di asrama.',
@@ -115,7 +109,7 @@ export default function DaftarWargaPage() {
           className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
-            🏠 Pendaftaran Calon Warga
+            <Home className="h-4 w-4" /> Pendaftaran Calon Warga
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-3">
             Bergabung dengan Asrama <br />
@@ -257,7 +251,6 @@ export default function DaftarWargaPage() {
                 }`}
               >
                 Lanjut Isi Formulir Pendaftaran
-                <IconArrow />
               </motion.button>
             </motion.div>
           )}
@@ -304,7 +297,7 @@ export default function DaftarWargaPage() {
                   </Section>
 
                   {/* ── Data Pribadi ──────────────────────────────────────── */}
-                  <Section title="👤 Data Pribadi">
+                  <Section title={<><User className="h-4 w-4 inline mr-1.5" /> Data Pribadi</>}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field name="namaLengkap" label="Nama Lengkap" required placeholder="Nama sesuai KTP" className="sm:col-span-2" />
                       <Field name="asalDaerahSambas" label="Asal Daerah di Sambas" required placeholder="Contoh: Kec. Sambas, Desa Dalam Kaum" className="sm:col-span-2" />
@@ -313,7 +306,7 @@ export default function DaftarWargaPage() {
                   </Section>
 
                   {/* ── Data Akademik ─────────────────────────────────────── */}
-                  <Section title="🎓 Data Akademik">
+                  <Section title={<><GraduationCap className="h-4 w-4 inline mr-1.5" /> Data Akademik</>}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field name="jurusan" label="Jurusan / Program Studi" required placeholder="Contoh: Teknik Informatika" />
                       <Field name="namaUniversitas" label="Nama Universitas / Institut / Sekolah Tinggi" required placeholder="Contoh: Universitas Gadjah Mada" className="sm:col-span-2" />
@@ -404,7 +397,7 @@ export default function DaftarWargaPage() {
                           Mengirim...
                         </>
                       ) : (
-                        <>Kirim Pendaftaran <IconArrow /></>
+                        <>Kirim Pendaftaran</>
                       )}
                     </button>
                   </div>
@@ -516,7 +509,7 @@ export default function DaftarWargaPage() {
 
 // ── Reusable sub-components ───────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <h3 className="text-base font-bold text-slate-700 mb-4 pb-2 border-b border-slate-100">{title}</h3>

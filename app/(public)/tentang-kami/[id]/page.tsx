@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Calendar, MapPin, User, ArrowLeft } from 'lucide-react';
+import { Calendar, MapPin, User } from 'lucide-react';
 
 function getYoutubeEmbedUrl(url: string) {
   let videoId = '';
@@ -75,7 +75,6 @@ export default async function ActivityDetailPage({
           href="/tentang-kami/galeri"
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors mb-10"
         >
-          <ArrowLeft className="h-4 w-4" />
           Kembali ke Galeri
         </Link>
 
@@ -145,7 +144,7 @@ export default async function ActivityDetailPage({
               Dokumentasi Foto
             </h2>
 
-            {/* First photo — large hero */}
+            {/* First photo: large hero */}
             <div className="relative overflow-hidden mb-4 aspect-[16/9] rounded-xl">
               <div
                 className="absolute inset-0 bg-cover bg-center"
@@ -156,7 +155,7 @@ export default async function ActivityDetailPage({
               <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent" />
             </div>
 
-            {/* Remaining photos — masonry grid */}
+            {/* Remaining photos: masonry grid */}
             {allPhotos.length > 1 && (
               <div className="columns-2 md:columns-3 gap-4 space-y-4">
                 {allPhotos.slice(1).map((url, i) => (

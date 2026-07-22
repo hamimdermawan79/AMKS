@@ -25,9 +25,10 @@ export default async function KesenianPage() {
   // Query Kesenian activities (entertainment events)
   const activities = await db.activity.findMany({
     where: { division: 'KESENIAN' },
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: [
+      { startAt: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' },
+    ],
   });
 
   // Query general posts (since kesenian manages active publications/posts of the dorm)

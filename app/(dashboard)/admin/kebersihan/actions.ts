@@ -172,7 +172,7 @@ export async function deletePemberitahuan(id: string) {
 /**
  * Delete a piket period and everything generated under it (assignments,
  * attendances, kerja bakti dates cascade via the schema). Fines already
- * issued for the period are NOT deleted silently — block deletion if any
+ * issued for the period are NOT deleted silently; block deletion if any
  * exist, so we never strip a warga's outstanding denda by accident.
  */
 export async function deletePiketPeriod(periodId: string) {
@@ -290,7 +290,7 @@ export async function selfPresensi(formData: FormData) {
 
 /**
  * Tutup periode piket: finalisasi denda (buat Fine + Bill untuk warga yang tidak
- * piket) dan tandai periode non-aktif. Idempoten — periode yang sudah ditutup
+ * piket) dan tandai periode non-aktif. Idempoten: periode yang sudah ditutup
  * (isActive=false) ditolak agar denda tidak terbit ganda.
  */
 export async function closePeriodAction(periodId: string) {
@@ -370,7 +370,7 @@ export async function recordFinePayment(data: {
       type: 'PEMASUKAN',
       category: 'Denda Piket',
       amount: v.amount,
-      description: `Pembayaran denda piket: ${fine.user.fullName}${v.note ? ` — ${v.note}` : ''}`,
+      description: `Pembayaran denda piket: ${fine.user.fullName}${v.note ? `: ${v.note}` : ''}`,
       occurredAt: new Date(),
       createdById: session.user.id,
       division: 'KEBERSIHAN',

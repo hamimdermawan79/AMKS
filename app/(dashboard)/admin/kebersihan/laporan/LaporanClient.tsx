@@ -14,7 +14,6 @@ import {
   CartesianGrid,
 } from "recharts";
 import {
-  ArrowLeft,
   CalendarRange,
   CheckCircle2,
   Coins,
@@ -253,7 +252,7 @@ export default function LaporanClient({
             href="/admin/kebersihan"
             className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" /> Kembali ke tampilan divisi
+            Kembali ke tampilan divisi
           </Link>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Laporan & Denda Piket
@@ -461,7 +460,7 @@ export default function LaporanClient({
                         <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-slate-100 px-2 text-xs font-bold text-muted-foreground">
                           {s.sectorLabel}
                         </span>
-                        <span className="min-w-[140px] flex-1 text-sm font-medium text-foreground">
+                        <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
                           {s.fullName}
                         </span>
                         {s.status === "piket" ? (
@@ -478,7 +477,7 @@ export default function LaporanClient({
                           </span>
                         )}
                         {s.complaint && (
-                          <span className="min-w-[160px] flex-1 text-xs italic text-muted-foreground">
+                          <span className="min-w-0 flex-1 text-xs italic text-muted-foreground">
                             “{s.complaint}”
                           </span>
                         )}
@@ -507,7 +506,7 @@ export default function LaporanClient({
         <section className="rounded-2xl border border-border p-6 shadow-sm">
           <h3 className="mb-1 font-semibold text-foreground">Denda per Warga (Sepanjang Masa)</h3>
           <p className="mb-5 text-xs text-muted-foreground">
-            Akumulasi denda final dari seluruh periode. Sinkron otomatis dengan Keuangan — jika dibayar di Keuangan, status di sini ikut berubah. Tidak hilang saat jadwal baru dibuat.
+            Akumulasi denda final dari seluruh periode. Sinkron otomatis dengan Keuangan; jika dibayar di Keuangan, status di sini ikut berubah. Tidak hilang saat jadwal baru dibuat.
           </p>
           {dendaAllTime.length > 0 ? (
             <div className="space-y-3">
@@ -586,7 +585,7 @@ export default function LaporanClient({
           <div className="absolute inset-0 bg-black/60" onClick={() => setPhotoView(null)} />
           <div className="relative z-10 max-h-[90vh] max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p className="text-sm font-medium text-foreground">Bukti Piket — {photoView.name}</p>
+              <p className="text-sm font-medium text-foreground">Bukti Piket: {photoView.name}</p>
               <button
                 onClick={() => setPhotoView(null)}
                 className="rounded-lg p-1.5 text-muted-foreground hover:bg-slate-100"

@@ -62,8 +62,11 @@ export default async function KeuanganPage() {
     },
   });
 
-  // Fetch bills with associated user info
+  // Fetch bills with associated user info (exclude SUPERADMIN)
   const bills = await db.bill.findMany({
+    where: {
+      user: { roles: { none: { role: { name: 'SUPERADMIN' } } } },
+    },
     include: {
       user: {
         select: {

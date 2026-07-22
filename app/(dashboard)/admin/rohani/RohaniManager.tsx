@@ -14,8 +14,6 @@ import {
   Clock,
   BookMarked,
   ShieldCheck,
-  ArrowRight,
-  ArrowLeft,
   Edit2,
   X,
   UserCheck,
@@ -230,7 +228,7 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
           {isMe && <span className="bg-amber-600 text-white text-[8px] font-bold px-1 rounded">Anda</span>}
         </div>
         <span className={`text-xs font-semibold truncate block ${isMe ? 'text-amber-950 font-bold' : 'text-amber-800'}`}>
-          {user ? user.fullName : '— Belum ditunjuk —'}
+          {user ? user.fullName : '- Belum ditunjuk -'}
         </span>
       </div>
       {isKelolaMode && (
@@ -249,7 +247,7 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
               href="/admin/rohani"
               className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4" /> Kembali ke tampilan divisi
+              Kembali ke tampilan divisi
             </Link>
           )}
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -267,7 +265,6 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
           >
             <ShieldCheck className="h-4 w-4" />
             Layanan Admin Rohani
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         )}
       </div>

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { handleLogout } from './logout-action';
 import NotificationBell from '@/components/ui/notification-bell';
+import SidebarNav, { type NavLinkItem } from './SidebarNav';
 
 export default async function DashboardLayout({
   children,
@@ -55,109 +56,59 @@ export default async function DashboardLayout({
     canViewAccessRequests ||
     canManageSystem;
 
+  // Build nav items server-side (RBAC-aware) for the client SidebarNav.
+  const navItems: NavLinkItem[] = [
+    { label: 'Dashboard', href: '/user' },
+    { label: 'Kebersihan', href: '/admin/kebersihan' },
+    { label: 'Kesenian', href: '/admin/kesenian' },
+    { label: 'Keolahragaan', href: '/admin/keolahragaan' },
+    { label: 'Rohani', href: '/admin/rohani' },
+    { label: 'Keuangan', href: '/admin/keuangan' },
+  ];
+
+  if (hasAdminSection) {
+    if (canManageUsers) {
+      navItems.push({ label: 'Warga', href: '/admin/warga' });
+      navItems.push({ label: 'Calon Warga Asrama', href: '/admin/calon-warga' });
+    }
+    if (canManageContent) {
+      navItems.push({ label: 'Konten & Gallery', href: '/admin/tentang-kami' });
+    }
+    if (canManageWorks) {
+      navItems.push({ label: 'Karya Ilmiah', href: '/admin/karya-ilmiah' });
+    }
+    if (canViewAccessRequests) {
+      navItems.push({ label: 'Permintaan Akses', href: '/admin/karya-ilmiah/permintaan-akses' });
+    }
+    if (canManageSystem) {
+      navItems.push({ label: 'WhatsApp Bot', href: '/admin/whatsapp' });
+      navItems.push({ label: 'Pengaturan Sistem', href: '/admin/pengaturan' });
+    }
+  }
+
+  if (!isFullAccess) {
+    navItems.push({ label: 'Pengaturan Akun', href: '/admin/akun' });
+  }
+
+  // Hrefs that should be preceded by a visual divider in the nav.
+  const dividerHrefs: string[] = ['/admin/warga', '/admin/whatsapp'];
+
   return (
-    <div className="min-h-screen bg-white flex">
-      {/* Sidebar */}
-      <aside className="w-64 glass border-r border-border flex-shrink-0">
-        <div className="p-6">
-          <Link href="/" className="flex items-center gap-3 mb-8 hover:opacity-80 smooth-transition">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-lg">
-              A
-            </div>
-            <span className="text-xl font-semibold text-foreground">AMKS</span>
-          </Link>
-
-          <div className="space-y-6">
-            {/* Navigation - All roles */}
-            <nav className="space-y-2">
-              <Link href="/user" className="nav-item">
-                Dashboard
-              </Link>
-
-              <Link href="/admin/kebersihan" className="nav-item">
-                Kebersihan
-              </Link>
-              <Link href="/admin/kesenian" className="nav-item">
-                Kesenian
-              </Link>
-              <Link href="/admin/keolahragaan" className="nav-item">
-                Keolahragaan
-              </Link>
-              <Link href="/admin/rohani" className="nav-item">
-                Rohani
-              </Link>
-              <Link href="/admin/keuangan" className="nav-item">
-                Keuangan
-              </Link>
-
-              {/* Divider */}
-              <div className="border-t border-border my-2" />
-
-              {/* Permission-driven admin section */}
-              {hasAdminSection && (
-                <>
-                  {canManageUsers && (
-                    <Link href="/admin/warga" className="nav-item">
-                      Warga
-                    </Link>
-                  )}
-                  {canManageUsers && (
-                    <Link href="/admin/calon-warga" className="nav-item">
-                      Calon Warga Asrama
-                    </Link>
-                  )}
-                  {canManageContent && (
-                    <Link href="/admin/tentang-kami" className="nav-item">
-                      Konten & Gallery
-                    </Link>
-                  )}
-                  {canManageWorks && (
-                    <Link href="/admin/karya-ilmiah" className="nav-item">
-                      Karya Ilmiah
-                    </Link>
-                  )}
-                  {canViewAccessRequests && (
-                    <Link href="/admin/karya-ilmiah/permintaan-akses" className="nav-item">
-                      Permintaan Akses
-                    </Link>
-                  )}
-                  {canManageSystem && (
-                    <>
-                      {/* Divider */}
-                      <div className="border-t border-border my-2" />
-                      <Link href="/admin/whatsapp" className="nav-item">
-                        WhatsApp Bot
-                      </Link>
-                      <Link href="/admin/pengaturan" className="nav-item">
-                        Pengaturan Sistem
-                      </Link>
-                    </>
-                  )}
-                </>
-              )}
-
-              {/* Account settings - non-admin roles */}
-              {!isFullAccess && (
-                <Link href="/admin/akun" className="nav-item">
-                  Pengaturan Akun
-                </Link>
-              )}
-            </nav>
-
-            {/* Logout */}
-            <form action={handleLogout}>
-              <button type="submit" className="w-full nav-item text-red-600 hover:bg-red-50">
-                Logout
-              </button>
-            </form>
-          </div>
-        </div>
-      </aside>
+    <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-x-hidden">
+      <SidebarNav
+        navItems={navItems}
+        dividerHrefs={dividerHrefs}
+        user={{
+          fullName: session.user.fullName,
+          jabatan: session.user.jabatan,
+          id: session.user.id,
+        }}
+      />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto flex flex-col bg-slate-50/20">
-        {/* Header bar */}
-        <header className="glass border-b border-border/80 py-4 px-8 flex items-center justify-between flex-shrink-0 z-20">
+      <main className="flex-1 min-w-0 overflow-auto flex flex-col bg-slate-50/20">
+        {/* Desktop header bar */}
+        <header className="hidden md:flex glass border-b border-border/80 py-4 px-8 items-center justify-between flex-shrink-0 z-20">
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <span className="font-semibold text-foreground">{session.user.fullName}</span>
             <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full border border-slate-200 uppercase font-bold tracking-wider">
@@ -169,7 +120,7 @@ export default async function DashboardLayout({
           </div>
         </header>
 
-        <div className="container mx-auto px-6 py-8 flex-1">
+        <div className="container mx-auto px-4 md:px-6 py-8 flex-1">
           {children}
         </div>
       </main>

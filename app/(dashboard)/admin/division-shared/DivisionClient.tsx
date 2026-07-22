@@ -15,7 +15,6 @@ import {
   FileText,
   AlertCircle,
   Loader2,
-  ArrowLeft,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Division } from '@prisma/client';
@@ -263,7 +262,6 @@ export default function DivisionClient({
             href={`/admin/${division.toLowerCase()}`}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
             Kembali ke tampilan divisi
           </Link>
           <span className={`badge ${theme.badge} font-bold text-xs uppercase tracking-wider`}>

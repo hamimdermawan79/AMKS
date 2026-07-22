@@ -4,8 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  ArrowRight,
   BarChart3,
   Bell,
   CalendarRange,
@@ -260,10 +258,10 @@ export default function KebersihanAdminClient({
             href="/admin/kebersihan"
             className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" /> Kembali ke tampilan divisi
+            Kembali ke tampilan divisi
           </Link>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Layanan Admin — Kebersihan
+            Layanan Admin: Kebersihan
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Buat jadwal piket, kelola peserta, dan kirim pemberitahuan.
@@ -275,7 +273,6 @@ export default function KebersihanAdminClient({
         >
           <BarChart3 className="h-4 w-4" />
           Laporan & Denda
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </Link>
       </div>
 
@@ -398,7 +395,7 @@ export default function KebersihanAdminClient({
               >
                 <option value="">
                   {available.length > 0
-                    ? "— Tambah warga —"
+                    ? "- Tambah warga -"
                     : "Semua warga sudah dipilih"}
                 </option>
                 {available.map((w) => (
@@ -677,7 +674,7 @@ function ScheduleTable({
                       key={`${date}|${si}`}
                       className="border-b border-r border-border bg-white px-1 py-2 text-center text-xs text-foreground last:border-r-0"
                     >
-                      {name ? shortName(name) : <span className="text-muted-foreground/30">—</span>}
+                      {name ? shortName(name) : <span className="text-muted-foreground/30">-</span>}
                     </div>
                   );
                 })}

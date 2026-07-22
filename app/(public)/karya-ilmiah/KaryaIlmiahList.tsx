@@ -66,7 +66,7 @@ export default function KaryaIlmiahList({
                     <span>{work.year}</span>
                   </div>
 
-                  {/* Aksi: tautan teks — Abstrak · Halaman Judul · Daftar Isi · Request Access */}
+                  {/* Aksi: tautan teks: Abstrak · Halaman Judul · Daftar Isi · Request Access */}
                   <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                     <FileLink url={work.abstractFileUrl} label="Abstrak" />
                     <FileLink url={work.titlePageFileUrl} label="Halaman Judul" />

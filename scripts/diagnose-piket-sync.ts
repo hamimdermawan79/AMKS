@@ -43,7 +43,7 @@ async function main() {
     if (b.status === 'LUNAS' && !hasPayments) flags.push('⚠️  LUNAS TAPI TIDAK ADA FINE PAYMENT (kebersihan tidak tahu)');
     if (b.status === 'BELUM_LUNAS' && hasPayments) flags.push('ℹ️  Ada cicilan belum lunas');
 
-    console.log(`[${b.status}] ${b.user.fullName} — Rp${b.amount.toLocaleString('id-ID')}`);
+    console.log(`[${b.status}] ${b.user.fullName}: Rp${b.amount.toLocaleString('id-ID')}`);
     console.log(`   Bill ID: ${b.id}`);
     console.log(`   Division: ${b.division ?? 'NULL (❌ belum di-set!)'}`);
     console.log(`   Fines: ${b.fines.length} | Payments: ${finePaid > 0 ? `Rp${finePaid.toLocaleString('id-ID')}` : '0'}`);
@@ -62,7 +62,7 @@ async function main() {
   if (orphanFines.length > 0) {
     console.log(`\n⚠️  ${orphanFines.length} Fine record TANPA billId (orphan):`);
     for (const f of orphanFines) {
-      console.log(`   ${f.user.fullName} — ${f.daysMissed} hari — Rp${f.amount.toLocaleString('id-ID')} [fineId: ${f.id}]`);
+      console.log(`   ${f.user.fullName}: ${f.daysMissed} hari: Rp${f.amount.toLocaleString('id-ID')} [fineId: ${f.id}]`);
     }
   } else {
     console.log('✅ Semua Fine record sudah punya billId');
@@ -85,7 +85,7 @@ async function main() {
     console.log(`\n🔴 ${lunasBillsWithoutFinePayment.length} Bill LUNAS tapi Fine-nya TIDAK PUNYA FinePayment:`);
     console.log('   → Ini yang menyebabkan Kebersihan laporan masih menunjukkan "Belum Terbayar"!');
     for (const b of lunasBillsWithoutFinePayment) {
-      console.log(`   ${b.user.fullName} — Rp${b.amount.toLocaleString('id-ID')} [billId: ${b.id}]`);
+      console.log(`   ${b.user.fullName}: Rp${b.amount.toLocaleString('id-ID')} [billId: ${b.id}]`);
     }
     console.log('\n   💡 Untuk memperbaiki, jalankan: npx tsx scripts/fix-piket-sync.ts');
   } else {

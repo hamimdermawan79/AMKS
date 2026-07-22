@@ -125,7 +125,7 @@ export async function submitPendaftaranCalonWarga(formData: FormData): Promise<{
       uniqueAdminIds.map((userId) =>
         createNotification({
           userId,
-          title: '🏠 Pendaftaran Calon Warga Baru',
+          title: 'Pendaftaran Calon Warga Baru',
           message: notifMessage,
           type: 'SYSTEM',
           referenceId: calonWarga.id,

@@ -18,7 +18,10 @@ export default async function HomePage() {
         .then((rows) => rows.length),
       // 3 kegiatan terbaru untuk preview galeri/kegiatan
       db.activity.findMany({
-        orderBy: { startAt: 'desc' },
+        orderBy: [
+          { startAt: { sort: 'desc', nulls: 'last' } },
+          { createdAt: 'desc' },
+        ],
         take: 3,
         select: {
           id: true,

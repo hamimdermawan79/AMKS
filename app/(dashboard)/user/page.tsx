@@ -122,11 +122,11 @@ export default async function DashboardPage() {
     );
   }
 
-  // Everyone else — Warga, Sekretaris, Bendahara — plain user dashboard.
+  // Everyone else: Warga, Sekretaris, Bendahara; plain user dashboard.
   return <UserDashboard {...dashboardProps} showAdminButton={false} />;
 }
 
-import { Users, Activity, GraduationCap, FileWarning, Settings, UsersRound, Wallet, ClipboardCheck, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Users, Activity, GraduationCap, FileWarning, Settings, UsersRound, Wallet, ClipboardCheck, ShieldCheck } from 'lucide-react';
 
 // ==================== ADMIN DASHBOARD ====================
 async function AdminDashboard({ session }: { session: any }) {
@@ -229,7 +229,7 @@ async function AdminDashboard({ session }: { session: any }) {
           <div className="flex items-center justify-between mb-6">
             <h2 className="font-bold text-slate-800">Pendaftar Terbaru</h2>
             <Link href="/admin/warga" className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
-              Lihat semua <ArrowRight className="h-3 w-3" />
+              Lihat semua
             </Link>
           </div>
           <div className="space-y-4 flex-1">

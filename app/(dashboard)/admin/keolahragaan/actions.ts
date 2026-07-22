@@ -2,7 +2,7 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { canFromSession } from '@/lib/rbac/can';
+import { canFromSession, isUserSuperAdminById } from '@/lib/rbac/can';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createNotification } from '@/lib/notifications';
@@ -122,6 +122,11 @@ export async function saveSportsAttendance(
 
   // Process each attendance
   for (const item of attendanceData) {
+    // Super Admin tidak menerima tagihan iuran/denda olahraga
+    if (await isUserSuperAdminById(item.userId)) {
+      continue;
+    }
+
     // 1. Check if there is an existing attendance
     const existing = await db.sportsAttendance.findUnique({
       where: {

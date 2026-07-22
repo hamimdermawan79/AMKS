@@ -2,7 +2,7 @@
 
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { CreditCard, GraduationCap, BookOpen, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import {   CreditCard, GraduationCap, BookOpen, CheckCircle2, Sparkles, Home } from 'lucide-react';
 import Link from 'next/link';
 
 const syarat = [
@@ -100,7 +100,7 @@ export default function SyaratWargaSection() {
   const headInView = useInView(headRef, { once: true });
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white py-24 md:py-32">
+    <section className="relative z-10 overflow-hidden py-24 md:py-32">
       {/* Subtle background decoration */}
       <div className="pointer-events-none absolute right-0 top-0 h-96 w-96 -translate-y-1/2 translate-x-1/2 rounded-full bg-blue-100/40 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 left-0 h-96 w-96 translate-y-1/2 -translate-x-1/2 rounded-full bg-indigo-100/30 blur-3xl" />
@@ -114,8 +114,10 @@ export default function SyaratWargaSection() {
           transition={{ duration: 0.5 }}
           className="mx-auto mb-16 max-w-2xl text-center"
         >
-          <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-600">
+          <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+            <span className="h-px w-8 bg-blue-400/70" />
             Syarat Pendaftaran
+            <span className="h-px w-8 bg-blue-400/70" />
           </span>
           <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Ingin Menjadi Warga Asrama?
@@ -181,7 +183,7 @@ export default function SyaratWargaSection() {
 
               <span className="relative flex items-center gap-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-lg backdrop-blur-sm">
-                  🏠
+                  <Home className="h-5 w-5" />
                 </span>
                 <span>
                   <span className="block text-[11px] font-medium text-white/70 leading-none mb-0.5">
@@ -191,7 +193,6 @@ export default function SyaratWargaSection() {
                     Daftar Menjadi Warga Asrama
                   </span>
                 </span>
-                <ArrowRight className="ml-1 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
               </span>
             </Link>
 

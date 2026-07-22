@@ -2,7 +2,7 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { canFromSession } from '@/lib/rbac/can';
+import { canFromSession, isUserSuperAdminById } from '@/lib/rbac/can';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createNotification } from '@/lib/notifications';
@@ -117,6 +117,11 @@ export async function addBill(data: {
   const session = await authorizeFinance('bill:update');
   const v = billSchema.parse(data);
 
+  // Super Admin tidak boleh menerima tagihan
+  if (await isUserSuperAdminById(v.userId)) {
+    throw new Error('Tagihan tidak dapat dibuat untuk akun Super Admin');
+  }
+
   const due = v.dueDate ? new Date(v.dueDate) : null;
 
   const bill = await db.bill.create({
@@ -167,8 +172,18 @@ export async function addBulkIuran(data: {
 
   const due = v.dueDate ? new Date(v.dueDate) : null;
 
+  // Filter out Super Admin — tidak boleh menerima tagihan
+  const eligibleUsers = (
+    await Promise.all(
+      v.users.map(async (u) => ({
+        ...u,
+        isSuperAdmin: await isUserSuperAdminById(u.userId),
+      }))
+    )
+  ).filter((u) => !u.isSuperAdmin);
+
   // Use a transaction or create multiple individually
-  for (const u of v.users) {
+  for (const u of eligibleUsers) {
     const bill = await db.bill.create({
       data: {
         userId: u.userId,

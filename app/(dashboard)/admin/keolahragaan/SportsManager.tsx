@@ -16,8 +16,6 @@ import {
   XCircle,
   AlertCircle,
   ShieldCheck,
-  ArrowRight,
-  ArrowLeft,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -266,7 +264,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
               href="/admin/keolahragaan"
               className="mb-2 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
             >
-              <ArrowLeft className="h-4 w-4" /> Kembali ke tampilan divisi
+              Kembali ke tampilan divisi
             </Link>
           )}
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -284,7 +282,6 @@ export default function SportsManager({ wargaList, activities, transactions, den
           >
             <ShieldCheck className="h-4 w-4" />
             Layanan Admin Keolahragaan
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         )}
       </div>
@@ -497,7 +494,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
                       })}
                     </td>
                     <td className="px-5 py-3.5 font-medium text-foreground">{tx.category || 'Lain-lain'}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground text-xs">{tx.description || '—'}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground text-xs">{tx.description || '-'}</td>
                     <td className={`px-5 py-3.5 text-right font-semibold whitespace-nowrap ${
                       tx.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-rose-600'
                     }`}>
@@ -584,7 +581,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
                       })}
                     </td>
                     <td className="px-5 py-3.5 text-xs text-muted-foreground max-w-[200px] truncate" title={denda.note || ''}>
-                      {denda.note || '—'}
+                      {denda.note || '-'}
                     </td>
                   </tr>
                   );

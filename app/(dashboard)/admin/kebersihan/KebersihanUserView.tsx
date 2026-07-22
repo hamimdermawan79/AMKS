@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState, useTransition, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight,
   Bell,
   CalendarClock,
   CheckCircle2,
@@ -345,7 +344,6 @@ export default function KebersihanUserView({
             >
               <ShieldCheck className="h-4 w-4" />
               Akses Layanan Admin
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
               href="/admin/kebersihan/laporan"
@@ -353,7 +351,6 @@ export default function KebersihanUserView({
             >
               <ClipboardCheck className="h-4 w-4" />
               Laporan & Denda
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
         )}
@@ -483,7 +480,7 @@ export default function KebersihanUserView({
         {announcements.length > 0 ? (
           <div className="flex flex-wrap gap-3">
             {announcements.map((a) => (
-              <div key={a.id} className="min-w-[280px] flex-1 rounded-lg border border-border p-3">
+              <div key={a.id} className="min-w-0 flex-1 rounded-lg border border-border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-medium text-foreground">{a.title}</p>
                   {a.pinned && (
@@ -508,7 +505,7 @@ export default function KebersihanUserView({
         )}
       </div>
 
-      {/* ===== JADWAL PIKET — CALENDAR TABLE ===== */}
+      {/* ===== JADWAL PIKET: CALENDAR TABLE ===== */}
       <div className="rounded-2xl border border-border bg-white p-6 shadow-sm">
         <h2 className="mb-5 font-semibold text-foreground">Jadwal Piket</h2>
         {hasPeriod && scheduledDates.length > 0 ? (
@@ -615,7 +612,7 @@ export default function KebersihanUserView({
                                 )}
                               </>
                             ) : (
-                              <span className="text-muted-foreground/30">—</span>
+                              <span className="text-muted-foreground/30">-</span>
                             )}
                           </div>
                         );

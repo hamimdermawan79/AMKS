@@ -29,7 +29,10 @@ export default async function TentangKamiAdminPage() {
 
   // Fetch activities
   const activities = await db.activity.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: [
+      { startAt: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' },
+    ],
     include: { createdBy: { select: { fullName: true } } },
   });
 

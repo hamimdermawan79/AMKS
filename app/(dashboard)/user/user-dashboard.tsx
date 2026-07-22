@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  ArrowRight,
   Bell,
   CalendarDays,
   Clock,
@@ -148,7 +147,6 @@ export default function UserDashboard({
             >
               <ShieldCheck className="h-4 w-4" />
               Akses Admin Panel
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           )}
 
@@ -157,24 +155,28 @@ export default function UserDashboard({
       </motion.div>
 
       {/* ===== QUICK STATS ===== */}
-      <motion.div variants={item} className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      {/* Mobile: 2-col compact grid (3rd card spans full row); Desktop: 3-col unchanged */}
+      <motion.div variants={item} className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5">
         <StatCard
           icon={<User className="h-5 w-5 text-emerald-600" />}
           label="Status Keanggotaan"
           value={session?.user?.status || "AKTIF"}
           badgeTone="emerald"
+          mobileSpanFull={false}
         />
         <StatCard
           icon={<ShieldCheck className="h-5 w-5 text-blue-600" />}
           label="Jabatan"
           value={jabatan}
           badgeTone="blue"
+          mobileSpanFull={false}
         />
         <StatCard
           icon={<CreditCard className="h-5 w-5 text-amber-600" />}
           label="Total Tagihan"
           value={fmtCurrency(totalTagihan)}
           badgeTone="amber"
+          mobileSpanFull={true}
           action={<Link href="/admin/keuangan" className="text-xs font-semibold text-amber-600 hover:text-amber-700 hover:underline px-2 py-1 bg-amber-100/50 rounded-md transition-colors">Details →</Link>}
         />
       </motion.div>
@@ -320,12 +322,14 @@ function StatCard({
   value,
   badgeTone,
   action,
+  mobileSpanFull = false,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   badgeTone: "emerald" | "blue" | "amber";
   action?: React.ReactNode;
+  mobileSpanFull?: boolean;
 }) {
   const toneMap = {
     emerald:
@@ -339,17 +343,19 @@ function StatCard({
     <motion.div
       whileHover={{ y: -4, scale: 1.01 }}
       transition={{ type: "spring", stiffness: 200, damping: 15 }}
-      className="relative overflow-hidden rounded-2xl border border-border bg-white p-6 shadow-sm transition-shadow hover:shadow-md flex flex-col justify-between"
+      className={`relative overflow-hidden rounded-2xl border border-border bg-white p-3 sm:p-6 shadow-sm transition-shadow hover:shadow-md flex flex-col justify-between ${
+        mobileSpanFull ? "col-span-2 sm:col-span-1" : ""
+      }`}
     >
       <div>
-        <div className="flex items-start justify-between">
-          <div className={`rounded-xl border p-2.5 ${toneMap[badgeTone]}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className={`rounded-lg border p-2 sm:rounded-xl sm:p-2.5 ${toneMap[badgeTone]}`}>
             {icon}
           </div>
-          {action && <div>{action}</div>}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
-        <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-        <p className="mt-1 text-2xl font-bold tracking-tight text-foreground">
+        <p className="mt-2 sm:mt-4 text-xs sm:text-sm text-muted-foreground">{label}</p>
+        <p className="mt-1 text-lg sm:text-2xl font-bold tracking-tight text-foreground">
           {value}
         </p>
       </div>

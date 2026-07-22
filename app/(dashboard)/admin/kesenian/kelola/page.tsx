@@ -28,9 +28,10 @@ export default async function KesenianKelolaPage() {
   // Query Kesenian activities (entertainment events)
   const activities = await db.activity.findMany({
     where: { division: 'KESENIAN' },
-    orderBy: {
-      createdAt: 'desc',
-    },
+    orderBy: [
+      { startAt: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' },
+    ],
   });
 
   return (

@@ -269,7 +269,7 @@ export async function replaceRohaniDuty(
 }
 
 /**
- * Activate backup officer — swaps the main petugas with the cadangan.
+ * Activate backup officer: swaps the main petugas with the cadangan.
  * mainRole: which main role is being replaced ('imamMaghrib' | 'imamIsha' | 'kultum')
  */
 export async function activateBackup(

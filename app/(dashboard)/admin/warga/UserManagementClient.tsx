@@ -70,7 +70,7 @@ const EMPTY_FORM = {
 };
 
 const DIVISIONS = [
-  { value: '', label: '— Tidak ada —' },
+  { value: '', label: '- Tidak ada -' },
   { value: 'KEBERSIHAN', label: 'Kebersihan' },
   { value: 'KESENIAN', label: 'Kesenian' },
   { value: 'KEOLAHRAGAAN', label: 'Keolahragaan' },
@@ -78,7 +78,7 @@ const DIVISIONS = [
 ];
 
 const JABATAN_OPTIONS = [
-  { value: '', label: '— Tidak ada / Warga —' },
+  { value: '', label: '- Tidak ada / Warga -' },
   { value: 'Ketua Asrama', label: 'Ketua Asrama' },
   { value: 'Sekretaris', label: 'Sekretaris' },
   { value: 'Bendahara', label: 'Bendahara' },
@@ -88,7 +88,7 @@ const JABATAN_OPTIONS = [
   { value: 'Ketua Divisi Rohani', label: 'Ketua Divisi Rohani' },
 ];
 
-// Roles that imply a jabatan — jabatan field is hidden when role implies position
+// Roles that imply a jabatan: jabatan field is hidden when role implies position
 const ROLE_TO_JABATAN: Record<string, string> = {
   KETUA_ASRAMA: 'Ketua Asrama',
   SEKRETARIS: 'Sekretaris',
@@ -318,7 +318,7 @@ export default function UserManagementClient({
                 {(canUpdate || canDelete) && (
                   <td className="text-center space-x-2">
                     {user.roles.some((r) => r.role.name === 'SUPERADMIN') ? (
-                      <span className="text-xs text-muted-foreground italic px-2">— Sistem —</span>
+                      <span className="text-xs text-muted-foreground italic px-2">- Sistem -</span>
                     ) : (
                       <>
                         {canUpdate && (
@@ -465,7 +465,7 @@ function UserForm({
 
   const getJabatanOptions = () => {
     const JABATAN_OPTIONS = [
-      { value: '', label: '— Tidak ada / Warga —' },
+      { value: '', label: '- Tidak ada / Warga -' },
       { value: 'Ketua Asrama', label: 'Ketua Asrama' },
       { value: 'Sekretaris', label: 'Sekretaris' },
       { value: 'Bendahara', label: 'Bendahara' },
@@ -495,7 +495,7 @@ function UserForm({
     const filteredRoles = roles.filter((r) => r.name !== 'SUPERADMIN' && r.name !== 'ALUMNI');
 
     return [
-      { value: '', label: '— Pilih Role —', disabled: false },
+      { value: '', label: '- Pilih Role -', disabled: false },
       ...filteredRoles.map((r) => {
         // Check globally exclusive roles (KETUA, SEKRETARIS, BENDAHARA)
         if (EXCLUSIVE_ROLE_NAMES.includes(r.name)) {
@@ -513,7 +513,7 @@ function UserForm({
             };
           }
         }
-        // DIVISION_HEAD — not globally exclusive, but per divisionScope
+        // DIVISION_HEAD: not globally exclusive, but per divisionScope
         // We show it as available; per-scope uniqueness is enforced when divisionScope is selected
         return { value: r.id, label: r.label, disabled: false };
       }),
@@ -628,7 +628,7 @@ function UserForm({
                 onChange={set('tahunMasuk')}
                 className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
-                <option value="">— Pilih Tahun —</option>
+                <option value="">- Pilih Tahun -</option>
                 {yearOptions.map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
@@ -651,7 +651,7 @@ function UserForm({
                   onChange={set('tahunKeluar')}
                   className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  <option value="">— Pilih Tahun —</option>
+                  <option value="">- Pilih Tahun -</option>
                   {yearOptions.map((y) => (
                     <option key={y} value={y}>{y}</option>
                   ))}
@@ -724,7 +724,7 @@ function UserForm({
           </div>
         </FormSection>
 
-        {/* Jabatan & Divisi — hanya tampil untuk warga aktif, dan hanya jika role tidak otomatis menetapkan jabatan */}
+        {/* Jabatan & Divisi: hanya tampil untuk warga aktif, dan hanya jika role tidak otomatis menetapkan jabatan */}
         {!isAlumni && (
           <FormSection title="Jabatan Organisasi" icon={<Briefcase className="h-4 w-4" />}>
             {roleImpliesJabatan ? (

@@ -40,7 +40,7 @@ export default async function KaryaIlmiahPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <HeroSection title="Repositori Karya Ilmiah" subtitle="Karya tulis ilmiah warga asrama — skripsi, tesis, jurnal, dan artikel" />
+      <HeroSection title="Repositori Karya Ilmiah" subtitle="Karya tulis ilmiah warga asrama: skripsi, tesis, jurnal, dan artikel" />
 
       {/* Content */}
       <section className="pb-24">

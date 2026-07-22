@@ -27,7 +27,12 @@
       "Bash(tasklist)",
       "PowerShell(Get-CimInstance *)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(node -e \"console.log\\('jspdf', require\\('jspdf/package.json'\\).version\\); console.log\\('html2canvas', require\\('html2canvas/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\('jspdf', require\\('jspdf/package.json'\\).version\\); console.log\\('html2canvas', require\\('html2canvas/package.json'\\).version\\)\")",
+      "mcp__context7__resolve-library-id",
+      "Bash(node *)",
+      "Bash(git checkout *)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:vortx_password123@localhost:5432/amks\" npx prisma *)",
+      "Bash(npm exec *)"
     ]
   }
 }

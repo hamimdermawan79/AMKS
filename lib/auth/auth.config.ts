@@ -13,7 +13,7 @@ export const authConfig = {
         nextUrl.pathname.startsWith('/user') || nextUrl.pathname.startsWith('/admin');
       const isOnLogin = nextUrl.pathname.startsWith('/login');
 
-      // Jangan redirect POST server action ke /login — itu menyebabkan
+      // Jangan redirect POST server action ke /login; itu menyebabkan
       // "Failed to fetch" / TypeError di Chrome. Biarkan action tangani auth sendiri.
       if (isServerAction) {
         return true;

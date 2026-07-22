@@ -10,7 +10,6 @@ import {
   Calendar,
   Tv,
   BarChart,
-  ArrowRight,
   ShieldCheck,
   Compass
 } from 'lucide-react';
@@ -84,7 +83,6 @@ export default function KesenianManager({ posts, activities, announcements, canM
           >
             <ShieldCheck className="h-4 w-4" />
             Layanan Admin Kesenian
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         )}
       </div>
@@ -217,7 +215,7 @@ export default function KesenianManager({ posts, activities, announcements, canM
                       href={`/tentang-kami`}
                       className="text-xs font-semibold text-purple-600 hover:underline flex items-center gap-1"
                     >
-                      Lihat Detail <ArrowRight className="h-3 w-3" />
+                      Lihat Detail
                     </Link>
                   </div>
                 </div>

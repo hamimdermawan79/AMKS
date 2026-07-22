@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  ArrowRight,
   Banknote,
   CheckCircle2,
   Clock,
@@ -120,7 +119,6 @@ export default function KeuanganUserView({
           >
             <ShieldCheck className="h-4 w-4" />
             Akses Layanan Admin
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         )}
       </div>

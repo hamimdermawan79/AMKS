@@ -42,7 +42,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
         setNotifications(notifRes.notifications);
       }
     } catch {
-      // Network/server unavailable — jangan spam console saat dev server restart
+      // Network/server unavailable; jangan spam console saat dev server restart
     }
   };
 

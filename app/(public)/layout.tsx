@@ -33,10 +33,10 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Karya Ilmiah', href: '/karya-ilmiah' },
   {
     label: 'Arsip & Dokumen',
     children: [
+      { label: 'Karya Ilmiah', href: '/karya-ilmiah' },
       { label: 'AD / ART', href: '/arsip-dokumen/ad-art' },
       { label: 'Buku Alumni', href: '/arsip-dokumen/buku-alumni' },
     ],
@@ -220,10 +220,6 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
           {/* Desktop Floating Navbar */}
           <nav className="pointer-events-auto hidden md:flex items-center gap-8 px-8 py-3.5 rounded-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-lg shadow-blue-900/5 absolute left-1/2 -translate-x-1/2 top-6">
-            <Link href="/karya-ilmiah" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
-              Karya Ilmiah
-            </Link>
-
             {/* Arsip & Dokumen Dropdown */}
             <div className="relative group">
               <span className="text-sm font-semibold text-slate-700 cursor-pointer hover:text-primary smooth-transition flex items-center gap-1.5">
@@ -234,6 +230,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </span>
               <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
                 <div className="bg-white/95 backdrop-blur-xl border border-white/80 shadow-xl shadow-blue-900/10 min-w-[200px] py-2 rounded-2xl">
+                  <Link href="/karya-ilmiah" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                    Karya Ilmiah
+                  </Link>
                   <Link href="/arsip-dokumen/ad-art" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
                     AD / ART
                   </Link>
@@ -271,14 +270,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               Hubungi Kami
             </Link>
 
-            <Link href="/daftar-warga" className="text-sm font-semibold text-white bg-primary hover:bg-primary/90 px-4 py-1.5 rounded-full smooth-transition shadow-sm shadow-primary/20">
+            <Link href="/daftar-warga" className="text-sm font-semibold text-white bg-primary hover:bg-primary/90 px-4 py-1.5 rounded-xl smooth-transition shadow-sm shadow-primary/20">
               Daftar jadi Warga
             </Link>
           </nav>
 
           {/* Right side: Pemda logo (desktop) + Hamburger (mobile) */}
           <div className="pointer-events-auto flex items-center gap-3">
-            {/* Pemda Sambas logo — hanya desktop */}
+            {/* Pemda Sambas logo: hanya desktop */}
             <div className="hidden lg:flex items-center gap-3 text-right">
               <div className="flex flex-col leading-none justify-center h-10">
                 <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Pemerintah Daerah</span>
@@ -291,7 +290,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </div>
             </div>
 
-            {/* Hamburger button — hanya mobile */}
+            {/* Hamburger button: hanya mobile */}
             <button
               onClick={() => setMobileOpen(true)}
               className="md:hidden flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 backdrop-blur-md border border-white/60 shadow-sm text-slate-700 transition hover:bg-white/90"
@@ -313,7 +312,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className="container mx-auto px-6 pt-14 pb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
 
-            {/* Kolom 1 — Brand */}
+            {/* Kolom 1: Brand */}
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-base shadow-sm">
@@ -325,7 +324,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 </div>
               </div>
               <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
-                Platform digital resmi Asrama Mahasiswa Kabupaten Sambas Yogyakarta — wadah warga, pengurus, dan calon warga asrama.
+                Platform digital resmi Asrama Mahasiswa Kabupaten Sambas Yogyakarta: wadah warga, pengurus, dan calon warga asrama.
               </p>
               {/* Sosmed */}
               <div className="mt-5 flex items-center gap-3">
@@ -350,7 +349,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </div>
             </div>
 
-            {/* Kolom 2 — Tautan Cepat */}
+            {/* Kolom 2: Tautan Cepat */}
             <div>
               <h3 className="mb-5 text-sm font-bold uppercase tracking-widest text-slate-300">Tautan Cepat</h3>
               <ul className="space-y-3 text-sm">
@@ -371,7 +370,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </ul>
             </div>
 
-            {/* Kolom 3 — Kontak */}
+            {/* Kolom 3: Kontak */}
             <div>
               <h3 className="mb-5 text-sm font-bold uppercase tracking-widest text-slate-300">Kontak</h3>
               <ul className="space-y-4 text-sm">

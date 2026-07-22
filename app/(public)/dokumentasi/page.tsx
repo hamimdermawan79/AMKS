@@ -11,7 +11,7 @@ export default async function DokumentasiPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <HeroSection title="Dokumentasi" subtitle="Dokumen resmi asrama — AD/ART, peraturan, dan panduan" />
+      <HeroSection title="Dokumentasi" subtitle="Dokumen resmi asrama: AD/ART, peraturan, dan panduan" />
 
       {/* Content */}
       <section className="pb-24">

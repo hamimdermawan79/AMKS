@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { motion, useScroll, useTransform, useInView, animate } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import {
-  ArrowRight, BookOpen, Palette, Heart, Users,
+  BookOpen, Palette, Heart, Users,
   GraduationCap, Calendar, MapPin, Images, ChevronDown, Quote,
+  Home, Zap, Building2,
 } from 'lucide-react';
 import MapSection from '@/components/MapSection';
 import SyaratWargaSection from '@/components/SyaratWargaSection';
@@ -107,19 +108,19 @@ export default function HomeClient({
   const heroOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0.3]);
 
   const stats = [
-    { label: 'Warga Aktif', value: totalWarga, suffix: '+', icon: '🏠' },
-    { label: 'Alumni', value: totalAlumni, suffix: '+', icon: '🎓' },
-    { label: 'Angkatan', value: totalAngkatan, suffix: '', icon: '📅' },
-    { label: 'Divisi Aktif', value: 4, suffix: '', icon: '⚡' },
+    { label: 'Warga Aktif', value: totalWarga, suffix: '+', icon: <Users className="h-5 w-5" /> },
+    { label: 'Alumni', value: totalAlumni, suffix: '+', icon: <GraduationCap className="h-5 w-5" /> },
+    { label: 'Angkatan', value: totalAngkatan, suffix: '', icon: <Calendar className="h-5 w-5" /> },
+    { label: 'Divisi Aktif', value: 4, suffix: '', icon: <Zap className="h-5 w-5" /> },
   ];
 
   return (
-    <div className="min-h-screen">
+    <div className="relative isolate min-h-screen bg-white">
 
       {/* ===== HERO ===== */}
       <motion.section
         style={{ scale: heroScale, opacity: heroOpacity }}
-        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white"
+        className="relative z-10 flex min-h-screen items-center justify-center overflow-hidden bg-white"
       >
         {/* Blobs */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-white" />
@@ -154,7 +155,7 @@ export default function HomeClient({
               Kabupaten Sambas Yogyakarta
             </motion.h1>
 
-            {/* Sub-description — BARU */}
+            {/* Sub-description: BARU */}
             <motion.p
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -178,18 +179,17 @@ export default function HomeClient({
               >
                 <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
                 <span className="relative z-10">Akses Warga Asrama</span>
-                <ArrowRight className="h-4 w-4" />
               </Link>
 
               <Link
                 href="/daftar-warga"
                 className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-7 py-4 text-base font-semibold text-slate-700 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
               >
-                🏠 Daftar Calon Warga
+                <Home className="h-4 w-4" /> Daftar Calon Warga
               </Link>
             </motion.div>
 
-            {/* Stat counters — BARU */}
+            {/* Stat counters: BARU */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -198,7 +198,7 @@ export default function HomeClient({
             >
               {stats.map((s) => (
                 <div key={s.label} className="flex flex-col items-center px-4 py-5 bg-white/60 hover:bg-white/80 transition-colors">
-                  <span className="text-2xl mb-1">{s.icon}</span>
+                  <span className="text-primary mb-1">{s.icon}</span>
                   <span className="text-2xl font-extrabold text-foreground tabular-nums">
                     <AnimatedCounter to={s.value} suffix={s.suffix} />
                   </span>
@@ -226,8 +226,15 @@ export default function HomeClient({
         </motion.div>
       </motion.section>
 
+      {/* ── Page-wide continuous ambient blobs ── */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-full overflow-hidden">
+        <div className="absolute left-[5%] top-[70vh] h-[800px] w-[800px] rounded-full bg-blue-200/25 blur-[150px]" />
+        <div className="absolute right-[10%] top-[180vh] h-[600px] w-[600px] rounded-full bg-indigo-200/20 blur-[140px]" />
+        <div className="absolute left-[40%] top-[300vh] h-[500px] w-[500px] rounded-full bg-sky-200/15 blur-[120px]" />
+      </div>
+
       {/* ===== DIVISI ===== */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-white to-slate-50 py-24 md:py-32">
+      <section className="relative z-10 overflow-hidden py-24 md:py-32">
         <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(ellipse_at_top_right,_rgba(37,99,235,0.05),_transparent_70%)]" />
         <div className="container relative mx-auto px-6">
           <motion.div
@@ -237,8 +244,10 @@ export default function HomeClient({
             transition={{ duration: 0.5 }}
             className="mx-auto mb-16 max-w-2xl text-center"
           >
-            <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-600">
+            <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+              <span className="h-px w-8 bg-blue-400/70" />
               Organisasi
+              <span className="h-px w-8 bg-blue-400/70" />
             </span>
             <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
               Divisi Asrama
@@ -274,10 +283,10 @@ export default function HomeClient({
         </div>
       </section>
 
-      {/* ===== SEKILAS PROFIL — BARU ===== */}
+      {/* ===== SEKILAS PROFIL: BARU ===== */}
       <AboutSection about={profileAbout} />
 
-      {/* ===== GALERI KEGIATAN PREVIEW — BARU ===== */}
+      {/* ===== GALERI KEGIATAN PREVIEW: BARU ===== */}
       {recentActivities.length > 0 && (
         <GaleriPreviewSection activities={recentActivities} />
       )}
@@ -292,7 +301,7 @@ export default function HomeClient({
       <TestimonialSection />
 
       {/* ===== CTA ===== */}
-      <section className="bg-white py-24 md:py-32">
+      <section className="relative z-10 py-24 md:py-32">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -319,8 +328,7 @@ export default function HomeClient({
                     href="/daftar-warga"
                     className="group inline-flex items-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-blue-700 shadow-lg transition-all hover:scale-105 hover:shadow-xl"
                   >
-                    🏠 Daftar Calon Warga
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    <Home className="h-4 w-4" /> Daftar Calon Warga
                   </Link>
                   <Link
                     href="/login"
@@ -342,7 +350,7 @@ export default function HomeClient({
 const testimonials = [
   {
     quote:
-      'Tinggal di AMKS bukan sekadar kost — ini adalah rumah kedua. Saya belajar berorganisasi, berteman lintas angkatan, dan tumbuh sebagai manusia yang lebih mandiri.',
+      'Tinggal di AMKS bukan sekadar kost; ini adalah rumah kedua. Saya belajar berorganisasi, berteman lintas angkatan, dan tumbuh sebagai manusia yang lebih mandiri.',
     name: 'Arif Zefrizen',
     year: 'Angkatan 2023',
     role: 'Alumni',
@@ -360,7 +368,7 @@ const testimonials = [
   },
   {
     quote:
-      'Program kegiatan divisinya variatif banget. Mulai dari olahraga, seni, sampai kajian rohani — semua ada. Tidak pernah bosan tinggal di sini.',
+      'Program kegiatan divisinya variatif banget. Mulai dari olahraga, seni, sampai kajian rohani; semua ada. Tidak pernah bosan tinggal di sini.',
     name: 'Al Hajj',
     year: 'Angkatan 2024',
     role: 'Alumni',
@@ -371,7 +379,7 @@ const testimonials = [
 
 function TestimonialSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-white to-blue-50/60 py-24 md:py-32">
+    <section className="relative overflow-hidden py-24 md:py-32">
       {/* Decorative blobs */}
       <div className="pointer-events-none absolute left-0 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-200/30 blur-3xl" />
       <div className="pointer-events-none absolute right-0 bottom-0 h-64 w-64 translate-x-1/3 translate-y-1/3 rounded-full bg-indigo-200/30 blur-3xl" />
@@ -384,8 +392,10 @@ function TestimonialSection() {
           transition={{ duration: 0.5 }}
           className="mx-auto mb-14 max-w-2xl text-center"
         >
-          <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-600">
+          <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+            <span className="h-px w-8 bg-blue-400/70" />
             Suara Warga
+            <span className="h-px w-8 bg-blue-400/70" />
           </span>
           <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Apa Kata Mereka?
@@ -440,13 +450,13 @@ function AboutSection({ about }: { about: string | null }) {
   const inView = useInView(ref, { once: true, margin: '-80px' });
 
   const highlights = [
-    { icon: '🏠', label: 'Hunian Nyaman', desc: 'Fasilitas lengkap untuk mahasiswa Sambas di Yogyakarta' },
-    { icon: '🤝', label: 'Komunitas Solid', desc: 'Kebersamaan dan rasa kekeluargaan yang erat antar sesama' },
-    { icon: '📚', label: 'Pengembangan Diri', desc: 'Ruang tumbuh akademik, seni, rohani, dan olahraga' },
+    { icon: <Home className="h-5 w-5" />, label: 'Hunian Nyaman', desc: 'Fasilitas lengkap untuk mahasiswa Sambas di Yogyakarta' },
+    { icon: <Users className="h-5 w-5" />, label: 'Komunitas Solid', desc: 'Kebersamaan dan rasa kekeluargaan yang erat antar sesama' },
+    { icon: <BookOpen className="h-5 w-5" />, label: 'Pengembangan Diri', desc: 'Ruang tumbuh akademik, seni, rohani, dan olahraga' },
   ];
 
   return (
-    <section ref={ref} className="relative overflow-hidden bg-white py-24 md:py-32">
+    <section ref={ref} className="relative overflow-hidden py-24 md:py-32">
       <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-blue-50/80 blur-3xl" />
 
       <div className="container relative mx-auto px-6">
@@ -458,8 +468,10 @@ function AboutSection({ about }: { about: string | null }) {
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6 }}
           >
-            <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-600">
+            <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+              <span className="h-px w-8 bg-blue-400/70" />
               Tentang Kami
+              <span className="h-px w-8 bg-blue-400/70" />
             </span>
             <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl leading-snug">
               Rumah Kedua{' '}
@@ -503,7 +515,6 @@ function AboutSection({ about }: { about: string | null }) {
                 className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all"
               >
                 Selengkapnya tentang asrama
-                <ArrowRight className="h-4 w-4" />
               </Link>
             </motion.div>
           </motion.div>
@@ -521,10 +532,10 @@ function AboutSection({ about }: { about: string | null }) {
 
             {/* Main card */}
             <div className="relative rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white shadow-2xl shadow-blue-500/30">
-              <div className="text-5xl mb-4">🏛️</div>
+              <div className="text-5xl mb-4"><Building2 className="h-12 w-12" /></div>
               <h3 className="text-2xl font-bold mb-2">AMKS Yogyakarta</h3>
               <p className="text-white/75 text-sm leading-relaxed mb-6">
-                Asrama Mahasiswa Kabupaten Sambas — menjadi rumah, sekolah, dan komunitas bagi generasi Sambas.
+                Asrama Mahasiswa Kabupaten Sambas: rumah, sekolah, dan komunitas bagi generasi Sambas.
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -545,7 +556,7 @@ function AboutSection({ about }: { about: string | null }) {
                 href="/tentang-kami"
                 className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-white/20 backdrop-blur-sm py-3 text-sm font-semibold transition-colors hover:bg-white/30"
               >
-                Lihat Profil Lengkap <ArrowRight className="h-4 w-4" />
+                Lihat Profil Lengkap
               </Link>
             </div>
           </motion.div>
@@ -558,7 +569,7 @@ function AboutSection({ about }: { about: string | null }) {
 // ── Galeri Preview Section ─────────────────────────────────────────────────
 function GaleriPreviewSection({ activities }: { activities: ActivityPreview[] }) {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white py-24 md:py-32">
+    <section className="relative overflow-hidden py-24 md:py-32">
       <div className="pointer-events-none absolute right-0 bottom-0 h-80 w-80 translate-x-1/3 translate-y-1/3 rounded-full bg-blue-100/50 blur-3xl" />
 
       <div className="container relative mx-auto px-6">
@@ -570,8 +581,10 @@ function GaleriPreviewSection({ activities }: { activities: ActivityPreview[] })
           className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12"
         >
           <div>
-            <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-600">
+            <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+              <span className="h-px w-8 bg-blue-400/70" />
               Galeri Kegiatan
+              <span className="h-px w-8 bg-blue-400/70" />
             </span>
             <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
               Kegiatan Terkini

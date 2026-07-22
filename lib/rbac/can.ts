@@ -147,6 +147,17 @@ export async function isSuperAdmin(user: User | null | undefined): Promise<boole
 }
 
 /**
+ * Check if a given userId belongs to the SUPERADMIN role.
+ * Independent of session — callable from cron, server actions, etc.
+ */
+export async function isUserSuperAdminById(userId: string): Promise<boolean> {
+  const count = await db.userRole.count({
+    where: { userId, role: { name: 'SUPERADMIN' } },
+  });
+  return count > 0;
+}
+
+/**
  * Check if user can access all division pages (SuperAdmin, Ketua, Sekretaris)
  */
 export async function canAccessAllDivisions(user: User | null | undefined): Promise<boolean> {

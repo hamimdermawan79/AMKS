@@ -21,7 +21,6 @@ import {
   HelpCircle,
   X,
   ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -165,7 +164,7 @@ export default function KeuanganClient({
 
   // Helper to compute trend label
   const calcTrend = (current: number, previous: number) => {
-    if (!previous) return { label: '— Stabil', color: 'text-muted-foreground', icon: null };
+    if (!previous) return { label: '- Stabil', color: 'text-muted-foreground', icon: null };
     const diff = current - previous;
     const perc = (diff / previous) * 100;
     if (perc > 0) {
@@ -182,7 +181,7 @@ export default function KeuanganClient({
         icon: <TrendingDown className="h-3 w-3 mr-1" />, // red down
       };
     }
-    return { label: '— Stabil', color: 'text-muted-foreground', icon: null };
+    return { label: '- Stabil', color: 'text-muted-foreground', icon: null };
   };
 
   const [chartRange, setChartRange] = useState('15 Hari');
@@ -292,7 +291,7 @@ export default function KeuanganClient({
 
   const renderTrendIndicator = (bulanIni: number, bulanLalu: number) => {
     if (!bulanLalu || bulanLalu === 0) {
-      return <div className="text-xs text-muted-foreground mt-1">— Stabil</div>;
+      return <div className="text-xs text-muted-foreground mt-1">- Stabil</div>;
     }
     const diff = bulanIni - bulanLalu;
     const pct = (diff / bulanLalu) * 100;
@@ -309,7 +308,7 @@ export default function KeuanganClient({
         </div>
       );
     } else {
-      return <div className="text-xs text-muted-foreground mt-1">— Stabil</div>;
+      return <div className="text-xs text-muted-foreground mt-1">- Stabil</div>;
     }
   };
 
@@ -1753,7 +1752,7 @@ export default function KeuanganClient({
               {topDebtors.length === 0 ? (
                 <div className="py-12 text-center text-sm font-semibold text-emerald-600 bg-emerald-50/50 rounded-xl border border-emerald-100 flex flex-col items-center justify-center gap-2">
                   <span className="text-2xl">🎉</span>
-                  <span>Tidak ada tunggakan — semua tagihan lunas!</span>
+                  <span>Tidak ada tunggakan: semua tagihan lunas!</span>
                 </div>
               ) : (
                 <div className="h-96 w-full pt-4">
@@ -1857,11 +1856,7 @@ export default function KeuanganClient({
                           >
                             <td className="font-semibold text-foreground flex items-center gap-2 pl-6 py-4">
                               <span className="p-1 hover:bg-slate-100 rounded transition-colors flex items-center justify-center">
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                )}
+                                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
                               </span>
                               <span className={isMyLedger ? 'text-amber-700' : ''}>{led.fullName}</span>
                               {isMyLedger && (
