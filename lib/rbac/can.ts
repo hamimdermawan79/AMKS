@@ -170,3 +170,15 @@ export async function canAccessAllDivisions(user: User | null | undefined): Prom
     'division:manage:keamanan',
   ]);
 }
+
+/**
+ * Check if a given userId belongs to the SUPERADMIN role.
+ * Independent of session — callable from cron, server actions, etc.
+ */
+export async function isUserSuperAdminById(userId: string): Promise<boolean> {
+  const count = await db.userRole.count({
+    where: { userId, role: { name: 'SUPERADMIN' } },
+  });
+  return count > 0;
+}
+

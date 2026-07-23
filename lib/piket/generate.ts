@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { createNotification } from '@/lib/notifications';
+import { isUserSuperAdminById } from '@/lib/rbac/can';
 
 interface GeneratePiketOptions {
   startDate: Date;
@@ -193,6 +194,9 @@ export async function closePiketPeriod(periodId: string) {
 
   for (const [userId, daysMissed] of missedDaysMap.entries()) {
     if (daysMissed === 0) continue;
+
+    // Super Admin tidak dikenai denda piket
+    if (await isUserSuperAdminById(userId)) continue;
 
     const amount = daysMissed * period.finePerDay;
 

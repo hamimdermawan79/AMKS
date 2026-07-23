@@ -4,7 +4,10 @@ import HeroSection from '@/components/HeroSection';
 
 export default async function GaleriPage() {
   const activities = await db.activity.findMany({
-    orderBy: { startAt: 'desc' },
+    orderBy: [
+      { startAt: { sort: 'desc', nulls: 'last' } },
+      { createdAt: 'desc' },
+    ],
     take: 24,
   });
 
