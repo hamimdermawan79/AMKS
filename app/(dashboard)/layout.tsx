@@ -85,6 +85,9 @@ export default async function DashboardLayout({
           <Link href="/admin/rohani" className="nav-item">
             Rohani
           </Link>
+          <Link href="/admin/keamanan" className="nav-item">
+            Keamanan
+          </Link>
           <Link href="/admin/keuangan" className="nav-item">
             Keuangan
           </Link>

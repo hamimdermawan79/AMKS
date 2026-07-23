@@ -17,6 +17,7 @@ enum Division {
   KESENIAN
   KEOLAHRAGAAN
   ROHANI
+  KEAMANAN
 }
 
 enum WargaStatus {

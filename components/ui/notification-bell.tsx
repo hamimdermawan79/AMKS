@@ -124,12 +124,12 @@ export default function NotificationBell({ userId }: { userId: string }) {
       {/* Bell Trigger Icon */}
       <button
         onClick={handleToggle}
-        className="relative p-2 text-muted-foreground hover:text-foreground hover:bg-slate-100 rounded-full transition-all focus:outline-none"
+        className="relative flex items-center justify-center h-10 w-10 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-slate-100 transition-all focus:outline-none"
         title="Notifikasi"
       >
-        <Bell className="h-6 w-6" />
+        <Bell className="h-5 w-5 shrink-0" />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-white leading-none shrink-0 shadow-sm">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

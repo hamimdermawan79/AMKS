@@ -18,6 +18,7 @@ const divisiConfig: Record<string, { label: string }> = {
   KESENIAN: { label: 'Divisi Kesenian' },
   KEOLAHRAGAAN: { label: 'Divisi Keolahragaan' },
   ROHANI: { label: 'Divisi Rohani' },
+  KEAMANAN: { label: 'Divisi Keamanan' },
 };
 
 function getRole(u: Person) {
@@ -150,7 +151,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
           </div>
 
           <div className="relative z-10 mt-4">
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-5">
               {Object.entries(divisiConfig).map(([divisiId, cfg], colIdx) => {
                 const head = divHeads.find(h => h.divisionScope === divisiId);
                 const anggota = warga.filter(w => w.divisionScope === divisiId);

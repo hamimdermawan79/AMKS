@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { motion, useScroll, useTransform, useInView, animate } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import {
-  ArrowRight, BookOpen, Palette, Heart, Users,
+  ArrowRight, BookOpen, Palette, Heart, Users, ShieldCheck,
   Calendar, MapPin, Images, ChevronDown, Quote,
 } from 'lucide-react';
 import MapSection from '@/components/MapSection';
@@ -96,6 +96,7 @@ const divisi = [
   { icon: Palette, name: 'Kesenian', desc: 'Kegiatan seni, budaya, dan kreativitas warga', color: 'bg-purple-100 text-purple-600' },
   { icon: Heart, name: 'Keolahragaan', desc: 'Olahraga, turnamen, dan kesehatan fisik', color: 'bg-rose-100 text-rose-600' },
   { icon: Users, name: 'Rohani', desc: 'Kegiatan keagamaan dan pengembangan spiritual', color: 'bg-amber-100 text-amber-600' },
+  { icon: ShieldCheck, name: 'Keamanan', desc: 'Maintenance CCTV, pengamanan lingkungan, dan inventaris', color: 'bg-blue-100 text-blue-600' },
 ];
 
 const divisionColorMap: Record<string, string> = {
@@ -103,6 +104,7 @@ const divisionColorMap: Record<string, string> = {
   KESENIAN: 'from-purple-500 to-violet-500',
   KEOLAHRAGAAN: 'from-rose-500 to-pink-500',
   ROHANI: 'from-amber-500 to-orange-500',
+  KEAMANAN: 'from-blue-500 to-indigo-500',
 };
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -124,7 +126,7 @@ export default function HomeClient({
     { label: 'Warga Aktif', value: totalWarga, suffix: '+', icon: '🏠' },
     { label: 'Alumni', value: totalAlumni, suffix: '+', icon: '🎓' },
     { label: 'Angkatan', value: totalAngkatan, suffix: '', icon: '📅' },
-    { label: 'Divisi Aktif', value: 4, suffix: '', icon: '⚡' },
+    { label: 'Divisi Aktif', value: 5, suffix: '', icon: '⚡' },
   ];
 
   return (
@@ -258,11 +260,11 @@ export default function HomeClient({
               Divisi Asrama
             </h2>
             <p className="mt-3 text-sm md:text-base text-muted-foreground">
-              Empat pilar kegiatan yang mewadahi minat, bakat, dan pengembangan diri warga
+              Lima pilar kegiatan yang mewadahi minat, bakat, keamanan, dan pengembangan diri warga
             </p>
           </motion.div>
 
-          <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+          <div className="mx-auto grid max-w-5xl grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-5">
             {divisi.map((item, i) => {
               const Icon = item.icon;
               return (

@@ -70,6 +70,15 @@ export async function can(
       return effectiveScope.toUpperCase() === requiredDivision.toUpperCase();
     }
 
+    // For CCTV access, if user has a divisionScope set (e.g. DIVISION_HEAD of another division), restrict to KEAMANAN only.
+    if (permissionCode === 'cctv:view') {
+      const effectiveScope = userWithRoles.divisionScope ?? user.divisionScope ?? null;
+      if (effectiveScope) {
+        return effectiveScope.toUpperCase() === 'KEAMANAN';
+      }
+      return true;
+    }
+
     return true;
   }
 
@@ -158,5 +167,6 @@ export async function canAccessAllDivisions(user: User | null | undefined): Prom
     'division:manage:kesenian',
     'division:manage:keolahragaan',
     'division:manage:rohani',
+    'division:manage:keamanan',
   ]);
 }

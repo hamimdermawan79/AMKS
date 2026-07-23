@@ -76,10 +76,12 @@ const DIVISIONS = [
   { value: 'KESENIAN', label: 'Kesenian' },
   { value: 'KEOLAHRAGAAN', label: 'Keolahragaan' },
   { value: 'ROHANI', label: 'Rohani' },
+  { value: 'KEAMANAN', label: 'Keamanan' },
 ];
 
 const JABATAN_OPTIONS = [
   { value: '', label: '— Tidak ada / Warga —' },
+  { value: 'Calon Warga', label: 'Calon Warga' },
   { value: 'Ketua Asrama', label: 'Ketua Asrama' },
   { value: 'Sekretaris', label: 'Sekretaris' },
   { value: 'Bendahara', label: 'Bendahara' },
@@ -87,6 +89,7 @@ const JABATAN_OPTIONS = [
   { value: 'Ketua Divisi Kesenian', label: 'Ketua Divisi Kesenian' },
   { value: 'Ketua Divisi Keolahragaan', label: 'Ketua Divisi Keolahragaan' },
   { value: 'Ketua Divisi Rohani', label: 'Ketua Divisi Rohani' },
+  { value: 'Ketua Divisi Keamanan', label: 'Ketua Divisi Keamanan' },
 ];
 
 // Roles that imply a jabatan — jabatan field is hidden when role implies position

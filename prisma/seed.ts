@@ -10,6 +10,7 @@ const ROLES = [
   { name: 'BENDAHARA', label: 'Bendahara', isSystem: true },
   { name: 'DIVISION_HEAD', label: 'Ketua Divisi', isSystem: true },
   { name: 'WARGA', label: 'Warga', isSystem: true },
+  { name: 'CALON_WARGA', label: 'Calon Warga', isSystem: true },
   { name: 'ALUMNI', label: 'Alumni', isSystem: true },
 ];
 
@@ -83,6 +84,10 @@ const PERMISSIONS = [
   { code: 'division:manage:kesenian', label: 'Kelola divisi Kesenian', group: 'Division' },
   { code: 'division:manage:keolahragaan', label: 'Kelola divisi Keolahragaan', group: 'Division' },
   { code: 'division:manage:rohani', label: 'Kelola divisi Rohani', group: 'Division' },
+  { code: 'division:manage:keamanan', label: 'Kelola divisi Keamanan', group: 'Division' },
+
+  // CCTV
+  { code: 'cctv:view', label: 'Lihat info akun CCTV asrama', group: 'CCTV' },
 ];
 
 // Role-Permission mapping
@@ -101,7 +106,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'fine:read', 'fine:generate', 'fine:settle',
     'finance:read', 'finance:transaction:create', 'finance:transaction:update', 'finance:transaction:delete',
     'bill:read', 'bill:update',
-    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani',
+    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan',
+    'cctv:view',
   ],
   KETUA: [
     // Access all pages + manajerial global
@@ -116,7 +122,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'fine:read', 'fine:generate', 'fine:settle',
     'finance:read', 'finance:transaction:create', 'finance:transaction:update', 'finance:transaction:delete',
     'bill:read', 'bill:update',
-    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani',
+    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan',
+    'cctv:view',
   ],
   SEKRETARIS: [
     // Access all pages (documents, announcements) + manage karya ilmiah & access requests
@@ -146,10 +153,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'announcement:create', 'announcement:read', 'announcement:update', 'announcement:delete',
     'piket:schedule', 'piket:attendance:mark', 'piket:read',
     'fine:read',
-    // Division management permissions. The role grants all four; `can()` narrows
+    // Division management permissions. The role grants all five; `can()` narrows
     // each head to their own division by matching the user's divisionScope, so a
-    // Kebersihan head can only manage Kebersihan, etc.
-    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani',
+    // Kebersihan head can only manage Kebersihan, Keamanan head only Keamanan, etc.
+    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan',
+    // Ketua divisi keamanan dapat melihat info CCTV; can() scope check ensures
+    // only the head with divisionScope=KEAMANAN actually gets this in practice.
+    'cctv:view',
   ],
   WARGA: [
     // Read-only
@@ -158,6 +168,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'work:read',
     'piket:read', 'piket:attendance:mark',
     'fine:read', 'bill:read',
+  ],
+  CALON_WARGA: [
+    // Read-only / pelihat saja
+    'user:read',
+    'document:read', 'post:read', 'activity:read', 'announcement:read',
+    'work:read',
+    'piket:read',
   ],
   ALUMNI: [
     // Alumni only get read-only access, no tasks

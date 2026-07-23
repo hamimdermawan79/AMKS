@@ -48,7 +48,7 @@ interface DivisionClientProps {
   division: Division;
   divisionLabel: string;
   description: string;
-  themeColor: 'purple' | 'amber' | 'emerald';
+  themeColor: 'purple' | 'amber' | 'emerald' | 'blue';
   announcements: Announcement[];
   activities: Activity[];
   canManage: boolean;
@@ -113,6 +113,17 @@ export default function DivisionClient({
       accentBg: 'bg-emerald-50',
       pinBg: 'bg-teal-50 text-teal-700 border-teal-200',
       glow: 'shadow-emerald-500/5',
+    },
+    blue: {
+      gradient: 'from-blue-500/20 via-indigo-500/5 to-transparent',
+      border: 'border-blue-200/50',
+      badge: 'bg-blue-50 text-blue-700 border-blue-200',
+      primaryBtn: 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500',
+      tabActive: 'border-blue-600 text-blue-600',
+      accent: 'text-blue-600',
+      accentBg: 'bg-blue-50',
+      pinBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      glow: 'shadow-blue-500/5',
     },
   }[themeColor];
 
