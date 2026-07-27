@@ -50,7 +50,6 @@ const navItems: NavItem[] = [
       { label: 'Struktur Organisasi', href: '/tentang-kami/struktur' },
     ],
   },
-  { label: 'Daftar Warga', href: '/daftar-warga' },
   { label: 'Hubungi Kami', href: '/hubungi-kami' },
 ];
 
@@ -82,15 +81,16 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             transition={{ type: 'spring', stiffness: 300, damping: 32 }}
             className="fixed right-0 top-0 z-50 flex h-full w-[80vw] max-w-sm flex-col bg-white shadow-2xl"
           >
-            {/* Header drawer */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+            {/* Header drawer — SIMAS branding */}
+            <motion.div 
+              className="flex items-center justify-between border-b border-slate-100 px-6 py-5"
+              layoutId="brand-head"
+            >
               <Link href="/" onClick={onClose} className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-lg font-bold text-white shadow-sm">
-                  A
-                </div>
+                <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-10 h-10 rounded-xl object-contain shadow-sm" />
                 <div className="flex flex-col leading-none">
-                  <span className="text-base font-semibold text-slate-800">AMKS</span>
-                  <span className="text-[10px] font-medium text-slate-500">Asrama Kab. Sambas</span>
+                  <span className="text-base font-semibold text-slate-800">SIMAS-KS</span>
+                  <span className="text-[10px] font-medium text-slate-500">Sistem Informasi Manajemen Asrama Kabupaten Sambas</span>
                 </div>
               </Link>
               <button
@@ -100,13 +100,11 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               >
                 <X className="h-5 w-5" />
               </button>
-            </div>
+            </motion.div>
 
             {/* Nav items */}
             <nav className="flex-1 overflow-y-auto px-4 py-4">
               {navItems.map((item) => {
-                const isDaftarWarga = item.label === 'Daftar Warga';
-
                 if (item.children) {
                   const isOpen = openGroup === item.label;
                   return (
@@ -160,11 +158,7 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     key={item.label}
                     href={item.href!}
                     onClick={onClose}
-                    className={
-                      isDaftarWarga
-                        ? 'my-1 flex items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm shadow-primary/20 transition hover:bg-primary/90'
-                        : 'block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-primary'
-                    }
+                    className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-primary"
                   >
                     {item.label}
                   </Link>
@@ -172,14 +166,21 @@ function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               })}
             </nav>
 
-            {/* Footer drawer */}
-            <div className="border-t border-slate-100 px-6 py-4">
+            {/* Action buttons */}
+            <div className="border-t border-slate-100 px-6 py-4 space-y-2">
               <Link
                 href="/login"
                 onClick={onClose}
-                className="flex w-full items-center justify-center rounded-xl border border-primary/30 bg-blue-50 px-4 py-3 text-sm font-bold text-primary transition hover:bg-blue-100"
+                className="flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white shadow-sm shadow-primary/20 transition hover:bg-primary/90"
               >
-                Login Warga
+                Akses Warga Asrama
+              </Link>
+              <Link
+                href="/daftar-warga"
+                onClick={onClose}
+                className="flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-primary/30 hover:text-primary"
+              >
+                Daftar Calon Warga
               </Link>
             </div>
           </motion.div>
@@ -199,24 +200,27 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       {/* Navigation */}
-      <motion.div
+        <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 z-50 w-full pointer-events-none"
+        className="fixed top-0 z-40 w-full pointer-events-none"
       >
-        <header className="relative w-full px-6 lg:px-10 py-6 flex justify-between items-start pointer-events-none">
-          {/* Logo */}
-          <div className="pointer-events-auto">
+          <header className="relative w-full px-6 lg:px-10 py-6 flex justify-between items-start pointer-events-none">
+          {/* Logo — animates into sidebar when open */}
+          <motion.div 
+            className="pointer-events-auto"
+            layoutId="brand-head"
+            animate={{ opacity: mobileOpen ? 0 : 1 }}
+            transition={{ duration: 0.25 }}
+          >
             <Link href="/" className="flex items-center gap-3 smooth-transition hover:opacity-80">
-              <div className="w-10 h-10 rounded-xl bg-primary shadow-sm flex items-center justify-center text-white font-bold text-lg">
-                A
-              </div>
+              <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-10 h-10 rounded-xl object-contain shadow-sm" />
               <div className="flex flex-col leading-none">
-                <span className="text-lg font-semibold text-slate-800 tracking-tight">AMKS</span>
-                <span className="text-[11px] font-medium text-slate-500">Asrama Mahasiswa Kab. Sambas</span>
+                <span className="text-lg font-semibold text-slate-800 tracking-tight">SIMAS-KS</span>
+                <span className="text-[10px] font-medium text-slate-500">Sistem Informasi Manajemen Asrama - Kabupaten Sambas</span>
               </div>
             </Link>
-          </div>
+          </motion.div>
 
           {/* Desktop Floating Navbar */}
           <nav className="pointer-events-auto hidden md:flex items-center gap-8 px-8 py-3.5 rounded-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-lg shadow-blue-900/5 absolute left-1/2 -translate-x-1/2 top-6">
@@ -280,8 +284,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             {/* Pemda Sambas logo: hanya desktop */}
             <div className="hidden lg:flex items-center gap-3 text-right">
               <div className="flex flex-col leading-none justify-center h-10">
-                <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Pemerintah Daerah</span>
-                <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Kabupaten Sambas</span>
+                <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Pemerintah Daerah Kabupaten Sambas</span>
                 <span className="text-[10px] font-medium text-slate-500 mt-0.5">Kalimantan Barat</span>
               </div>
               <div className="w-10 h-10 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-slate-400 text-xs font-medium border border-white overflow-hidden shadow-sm shrink-0">
@@ -315,12 +318,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             {/* Kolom 1: Brand */}
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-base shadow-sm">
-                  A
-                </div>
+                <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-9 h-9 rounded-xl object-contain shadow-sm" />
                 <div className="flex flex-col leading-none">
-                  <span className="text-base font-bold text-white">AMKS</span>
-                  <span className="text-[11px] text-slate-500">Asrama Mahasiswa Kab. Sambas</span>
+                  <span className="text-base font-bold text-white">SIMAS-KS</span>
+                  <span className="text-[11px] text-slate-500">Sistem Manajemen Asrama - Kabupaten Sambas</span>
                 </div>
               </div>
               <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
@@ -376,8 +377,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <ul className="space-y-4 text-sm">
                 <li className="flex items-start gap-3">
                   <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <a href="mailto:amksjogja@gmail.com" className="text-slate-400 transition hover:text-primary">
-                    amksjogja@gmail.com
+                  <a href="mailto:support@amksjogja.com" className="text-slate-400 transition hover:text-primary">
+                    support@amksjogja.com
                   </a>
                 </li>
                 <li className="flex items-start gap-3">
@@ -391,7 +392,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <span className="text-slate-400 leading-relaxed">
                     {/* Ganti dengan alamat lengkap sebelum launch */}
-                    Jl. [Nama Jalan], Yogyakarta,<br />
+                    Jl. Garuda, Gang Beo No.328, Umbulharjo, Yogyakarta,<br />
                     Daerah Istimewa Yogyakarta
                   </span>
                 </li>

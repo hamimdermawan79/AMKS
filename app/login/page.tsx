@@ -119,9 +119,9 @@ export default function LoginPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-              className="mb-10 inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/60 backdrop-blur-xl border border-blue-200/50 shadow-xl shadow-blue-500/10"
+              className="mb-10 inline-flex h-20 w-20 items-center justify-center"
             >
-              <span className="text-4xl font-extrabold tracking-tighter text-primary">A</span>
+              <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="h-full w-full object-contain" />
             </motion.div>
 
             <motion.h1
@@ -130,14 +130,22 @@ export default function LoginPage() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="mb-6 text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-slate-800"
             >
-              Sistem Informasi<br />
-              <span className="text-primary">Manajemen Asrama</span>
+              <span className="italic text-primary">SIMAS-KS</span>
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
+              className="mb-6 text-sm font-semibold uppercase tracking-[0.15em] text-primary/70 xl:text-base"
+            >
+              Sistem Informasi Manajemen Asrama Kabupaten Sambas
+            </motion.p>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.55 }}
               className="text-base xl:text-lg text-slate-600 max-w-md leading-relaxed"
             >
               Platform digital terintegrasi untuk mendukung kegiatan, kolaborasi, dan pengelolaan warga asrama secara modern.
@@ -157,9 +165,14 @@ export default function LoginPage() {
             className="relative z-10 w-full max-w-md mx-auto"
           >
             <motion.div variants={fadeInUp} className="mb-10 lg:hidden text-center">
-              <Link href="/" className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-3xl font-bold text-white shadow-xl shadow-blue-500/20">
-                A
+              <Link href="/" className="inline-flex items-center gap-3">
+                <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="h-12 w-12 object-contain" />
+                <div className="flex flex-col leading-none text-left">
+                  <span className="text-xl font-bold tracking-tight text-slate-800">SIMAS-KS</span>
+                  <span className="text-[10px] font-medium text-slate-500">Sistem Manajemen Asrama</span>
+                </div>
               </Link>
+              <div className="mt-6 h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
             </motion.div>
 
             <motion.div variants={fadeInUp}>

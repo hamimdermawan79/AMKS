@@ -66,10 +66,11 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
       <aside className="hidden md:flex w-64 glass border-r border-border flex-shrink-0 flex-col">
         <div className="p-6 flex flex-col h-full">
           <Link href="/" className="flex items-center gap-3 mb-8 hover:opacity-80 smooth-transition">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-lg">
-              A
+            <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-10 h-10 rounded-lg object-contain shadow-sm" />
+            <div className="flex flex-col leading-none">
+              <span className="text-xl font-semibold text-foreground">SIMAS-KS</span>
+              <span className="text-[10px] font-medium text-muted-foreground mt-0.5">Sistem Manajemen Asrama</span>
             </div>
-            <span className="text-xl font-semibold text-foreground">AMKS</span>
           </Link>
 
           <div className="space-y-6 flex-1">
@@ -95,10 +96,8 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
         </button>
 
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-sm">
-            A
-          </div>
-          <span className="text-base font-semibold text-foreground">AMKS</span>
+          <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-8 h-8 rounded-lg object-contain shadow-sm" />
+          <span className="text-base font-semibold text-foreground">SIMAS-KS</span>
         </Link>
 
         <NotificationBell userId={user.id} />
@@ -131,12 +130,10 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
               {/* Drawer header */}
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-lg font-bold text-white shadow-sm">
-                    A
-                  </div>
+                  <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="h-9 w-9 rounded-xl object-contain shadow-sm" />
                   <div className="flex flex-col leading-none">
-                    <span className="text-base font-semibold text-slate-800">AMKS</span>
-                    <span className="text-[10px] font-medium text-slate-500">Asrama Kab. Sambas</span>
+                    <span className="text-base font-semibold text-slate-800">SIMAS-KS</span>
+                    <span className="text-[10px] font-medium text-slate-500">Sistem Manajemen Asrama</span>
                   </div>
                 </Link>
                 <button

@@ -120,10 +120,10 @@ export default function HomeClient({
       {/* ===== HERO ===== */}
       <motion.section
         style={{ scale: heroScale, opacity: heroOpacity }}
-        className="relative z-10 flex min-h-screen items-center justify-center overflow-hidden bg-white"
+        className="relative z-10 flex min-h-screen items-center justify-center overflow-hidden"
       >
         {/* Blobs */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-white" />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-50 via-white to-blue-50/50" />
         <div className="pointer-events-none absolute -left-[10%] top-0 h-[700px] w-[700px] rounded-[40%_60%_70%_30%] bg-primary/20 mix-blend-multiply blur-[120px] animate-blob" />
         <div className="pointer-events-none absolute left-[15%] -top-[10%] h-[600px] w-[600px] rounded-[60%_40%_30%_70%] bg-blue-200/40 mix-blend-multiply blur-[120px] animate-blob animation-delay-2000" />
         <div className="pointer-events-none absolute -left-[5%] bottom-[-10%] h-[600px] w-[600px] rounded-[50%_50%_60%_40%] bg-blue-300/30 mix-blend-multiply blur-[120px] animate-blob animation-delay-4000" />
@@ -131,82 +131,189 @@ export default function HomeClient({
         {mounted && <FloatingOrbs />}
 
         <div className="container relative mx-auto px-6">
-          <div className="mx-auto max-w-3xl text-center">
-            {/* Label */}
-            <motion.p
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="mb-4 text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground md:text-base"
-            >
-              Selamat Datang di
-            </motion.p>
+          <div className="flex flex-col lg:grid lg:grid-cols-12 lg:items-center lg:gap-14">
 
-            {/* H1 */}
-            <motion.h1
-              initial={{ opacity: 0, y: 28 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-balance text-3xl font-bold leading-snug tracking-tight text-foreground md:text-5xl lg:text-6xl"
-            >
-              Layanan Terpadu Warga{' '}
-              <span className="text-primary">Asrama Mahasiswa</span>
-              <br />
-              Kabupaten Sambas Yogyakarta
-            </motion.h1>
+            {/* ── Mobile hero ── */}
+            <div className="lg:hidden">
+              {/* Typography left + Mascot right (overlapping, clipped right) */}
+              <div className="relative overflow-x-clip">
+                {/* Mascot — bright, shifted right so part is clipped */}
+                <motion.img
+                  src="/images/1-mascott.webp"
+                  alt="Mascot SIMAS-KS"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  className="pointer-events-none absolute right-[-8%] top-0 h-[130%] w-auto object-contain drop-shadow-xl select-none"
+                />
 
-            {/* Sub-description: BARU */}
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-6 text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
-            >
-              Platform digital resmi untuk warga, pengurus, dan calon warga Asrama Mahasiswa
-              Kabupaten Sambas di Daerah Istimewa Yogyakarta.
-            </motion.p>
+                {/* Typography — left aligned, z above mascot */}
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  className="relative z-10 max-w-[65%] text-3xl font-black leading-[1.08] tracking-tight text-foreground sm:text-4xl"
+                >
+                  Tempat<br />
+                  Berkumpul<br />
+                  Biak Sambas<br />
+                  di{' '}<span className="italic text-primary">Yogyakarta</span>
+                </motion.h1>
+              </div>
 
-            {/* CTA Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
-              <Link
-                href="/login"
-                className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-8 py-4 text-base font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
+              {/* Narasi — full width */}
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+                className="mt-8 text-justify text-sm leading-relaxed text-muted-foreground"
               >
-                <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
-                <span className="relative z-10">Akses Warga Asrama</span>
-              </Link>
+                <span className="font-semibold text-foreground">SIMAS-KS</span> merupakan platform digital resmi Asrama Mahasiswa Kabupaten Sambas di Yogyakarta — wadah terpadu untuk administrasi, pendaftaran calon warga, dan informasi kegiatan asrama.
+              </motion.p>
 
-              <Link
-                href="/daftar-warga"
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-7 py-4 text-base font-semibold text-slate-700 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
+              {/* CTA Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="mt-8 flex flex-col w-full gap-4"
               >
-                <Home className="h-4 w-4" /> Daftar Calon Warga
-              </Link>
-            </motion.div>
+                <Link
+                  href="/login"
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-6 py-3.5 text-sm font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
+                >
+                  <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
+                  <span className="relative z-10">Akses Warga Asrama</span>
+                </Link>
+                <Link
+                  href="/daftar-warga"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-6 py-3.5 text-sm font-semibold text-slate-700 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
+                >
+                  <Home className="h-4 w-4" /> Daftar Calon Warga
+                </Link>
+              </motion.div>
 
-            {/* Stat counters: BARU */}
+              {/* KPI single line */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+                className="mt-8 flex items-center justify-center gap-5"
+              >
+                {stats.map((s) => (
+                  <div key={s.label} className="flex items-center gap-1">
+                    <span className="text-primary [&>svg]:h-3 [&>svg]:w-3">{s.icon}</span>
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-extrabold leading-none tabular-nums text-foreground">
+                        <AnimatedCounter to={s.value} suffix={s.suffix} />
+                      </span>
+                      <span className="text-[8px] font-medium leading-none text-muted-foreground">{s.label}</span>
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* ── Desktop layout (unchanged) ── */}
+            <div className="hidden w-full lg:col-span-7 lg:block">
+              <motion.h1
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+                className="text-6xl font-black leading-[1.05] tracking-tight text-foreground lg:text-7xl"
+              >
+                Tempat Berkumpul<br />
+                Biak Sambas<br />
+                di{' '}
+                <span className="italic text-primary">Yogyakarta</span>
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.45 }}
+                className="mt-6 max-w-2xl text-justify text-sm leading-relaxed text-muted-foreground"
+              >
+                <span className="font-semibold text-foreground">SIMAS-KS</span> merupakan platform digital resmi yang dikelola untuk mendukung pengelolaan Asrama Mahasiswa Kabupaten Sambas di Daerah Istimewa Yogyakarta. Sistem ini menjadi wadah terpadu bagi warga asrama, pengurus, dan calon warga dalam mengakses layanan administrasi, informasi, serta pendaftaran calon warga baru, pengelolaan data huni, hingga penyampaian informasi dan kegiatan asrama.
+              </motion.p>
+
+              {/* CTA Buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="mt-8 flex flex-row items-center gap-4"
+              >
+                <Link
+                  href="/login"
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-8 py-4 text-base font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
+                >
+                  <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
+                  <span className="relative z-10">Akses Warga Asrama</span>
+                </Link>
+
+                <Link
+                  href="/daftar-warga"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-7 py-4 text-base font-semibold text-slate-700 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
+                >
+                  <Home className="h-4 w-4" /> Daftar Calon Warga
+                </Link>
+              </motion.div>
+            </div>
+
+            {/* Right — mascot (desktop only) */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.9 }}
-              className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-white/60 shadow-sm bg-white/30 backdrop-blur-xl divide-x divide-white/40"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.35 }}
+              className="relative hidden justify-end lg:col-span-5 lg:flex"
             >
-              {stats.map((s) => (
-                <div key={s.label} className="flex flex-col items-center px-4 py-5 bg-white/60 hover:bg-white/80 transition-colors">
-                  <span className="text-primary mb-1">{s.icon}</span>
-                  <span className="text-2xl font-extrabold text-foreground tabular-nums">
-                    <AnimatedCounter to={s.value} suffix={s.suffix} />
-                  </span>
-                  <span className="text-xs font-medium text-muted-foreground mt-0.5 text-center leading-tight">{s.label}</span>
-                </div>
-              ))}
+              <svg className="absolute inset-0 h-full w-full overflow-visible opacity-[0.15]" viewBox="0 0 500 500" fill="none">
+                <line x1="50" y1="100" x2="150" y2="80" stroke="currentColor" strokeWidth="0.5" />
+                <line x1="180" y1="60" x2="250" y2="120" stroke="currentColor" strokeWidth="0.5" />
+                <line x1="280" y1="150" x2="380" y2="100" stroke="currentColor" strokeWidth="0.5" />
+                <line x1="120" y1="250" x2="80" y2="320" stroke="currentColor" strokeWidth="0.5" />
+                <line x1="320" y1="280" x2="400" y2="250" stroke="currentColor" strokeWidth="0.5" />
+                <line x1="200" y1="350" x2="300" y2="380" stroke="currentColor" strokeWidth="0.5" />
+                <path d="M60 180 L100 150 L140 190 L110 230 Z" stroke="currentColor" strokeWidth="0.4" />
+                <path d="M360 160 L410 130 L440 180 L390 210 Z" stroke="currentColor" strokeWidth="0.4" />
+                <path d="M250 400 L290 360 L330 390 L290 430 Z" stroke="currentColor" strokeWidth="0.4" />
+                <path d="M80 400 L120 370 L150 410 L100 440 Z" stroke="currentColor" strokeWidth="0.4" />
+                <path d="M380 320 L430 290 L460 340 L410 370 Z" stroke="currentColor" strokeWidth="0.4" />
+                <circle cx="180" cy="80" r="15" stroke="currentColor" strokeWidth="0.3" />
+                <circle cx="420" cy="220" r="20" stroke="currentColor" strokeWidth="0.3" />
+                <circle cx="150" cy="380" r="12" stroke="currentColor" strokeWidth="0.3" />
+                <circle cx="380" cy="420" r="18" stroke="currentColor" strokeWidth="0.3" />
+              </svg>
+              <motion.img
+                src="/images/1-mascott.webp"
+                alt="Mascot SIMAS-KS"
+                className="relative z-10 h-auto w-full max-w-xl translate-x-14 drop-shadow-2xl"
+                animate={{ y: [0, -12, 0] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+              />
             </motion.div>
           </div>
+
+          {/* Stat counters — desktop only, centered */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.9 }}
+            className="mx-auto mt-10 hidden items-center justify-center gap-6 sm:flex sm:flex-wrap md:gap-8"
+          >
+            {stats.map((s) => (
+              <div key={s.label} className="flex items-center gap-2.5">
+                <span className="text-primary">{s.icon}</span>
+                <div className="flex flex-col">
+                  <span className="text-base font-extrabold leading-tight tabular-nums text-foreground">
+                    <AnimatedCounter to={s.value} suffix={s.suffix} />
+                  </span>
+                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">{s.label}</span>
+                </div>
+              </div>
+            ))}
+          </motion.div>
         </div>
 
         {/* Scroll indicator */}
@@ -235,6 +342,8 @@ export default function HomeClient({
 
       {/* ===== DIVISI ===== */}
       <section className="relative z-10 overflow-hidden py-24 md:py-32">
+        {/* Gradient blending from Hero */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-blue-50/50 to-transparent" />
         <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(ellipse_at_top_right,_rgba(37,99,235,0.05),_transparent_70%)]" />
         <div className="container relative mx-auto px-6">
           <motion.div

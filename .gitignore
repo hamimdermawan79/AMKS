@@ -38,3 +38,6 @@ next-env.d.ts
 
 # whatsapp bot credentials
 /whatsapp-auth/
+
+# Claude Code worktrees
+.claude/worktrees/

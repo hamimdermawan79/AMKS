@@ -234,6 +234,11 @@ bills.forEach((b) => {
 });
 const agingData = agingBuckets;
 
+// Fetch iuran config
+const iuranConfig = await db.iuranConfig.findFirst() || await db.iuranConfig.create({
+  data: { baseAmount: 50000, wifiAddon: 30000 },
+});
+
 return (
     <div className="space-y-8">
       <div>
@@ -246,6 +251,7 @@ return (
       </div>
 
       <KeuanganClient
+        iuranConfig={iuranConfig}
         transactions={transactions.map((t) => ({
           id: t.id,
           type: t.type,

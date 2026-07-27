@@ -450,6 +450,17 @@ model WaMessage {
   @@map("wa_messages")
 }
 
+/// Konfigurasi harga iuran & WiFi bulanan — satu baris saja, replace jika perlu.
+model IuranConfig {
+  id         String   @id @default(cuid())
+  baseAmount Int      @default(50000) /// Iuran asrama (default Rp 50.000)
+  wifiAddon  Int      @default(30000) /// Tambahan WiFi (default Rp 30.000)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+
+  @@map("iuran_config")
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   actorId   String

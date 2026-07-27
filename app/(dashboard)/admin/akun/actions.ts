@@ -6,33 +6,27 @@ import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-const accountSchema = z.object({
-  phone: z
-    .string()
-    .regex(/^62\d{9,13}$/, 'Format nomor WA: 62xxx (9-13 digit)'),
-  password: z.string().optional(),
+const passwordSchema = z.object({
+  password: z.string().min(6, 'Password minimal 6 karakter'),
 });
 
-export async function updateOwnAccount(data: { phone: string; password?: string }) {
+export async function updateOwnAccount(data: { password?: string }) {
   const session = await auth();
 
   if (!session?.user) {
     throw new Error('Unauthorized');
   }
 
-  const validated = accountSchema.parse(data);
-
-  const updateData: any = {
-    phone: validated.phone,
-  };
-
-  if (validated.password && validated.password.length >= 6) {
-    updateData.passwordHash = await bcrypt.hash(validated.password, 10);
+  if (!data.password) {
+    return { success: true };
   }
+
+  const validated = passwordSchema.parse(data);
+  const passwordHash = await bcrypt.hash(validated.password, 10);
 
   await db.user.update({
     where: { id: session.user.id },
-    data: updateData,
+    data: { passwordHash },
   });
 
   revalidatePath('/admin/akun');

@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
 import AccountSettingsClient from './AccountSettingsClient';
 
 export default async function AccountSettingsPage() {
@@ -9,11 +10,16 @@ export default async function AccountSettingsPage() {
     redirect('/login');
   }
 
+  const userRecord = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { phone: true, status: true },
+  });
+
   const user = {
     id: session.user.id,
     username: session.user.username,
     fullName: session.user.fullName,
-    phone: '',
+    phone: userRecord?.phone || '',
     status: session.user.status,
   };
 
@@ -22,7 +28,7 @@ export default async function AccountSettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-1">Pengaturan Akun</h1>
         <p className="text-sm text-muted-foreground">
-          Perbarui informasi pribadi dan kata sandi Anda
+          Kelola kata sandi dan informasi akun Anda
         </p>
       </div>
 
