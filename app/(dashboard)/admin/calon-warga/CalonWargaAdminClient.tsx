@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { updateCalonWargaStatus } from '@/app/(public)/daftar-warga/actions';
+import { updateCalonWargaStatus, deleteCalonWarga } from '@/app/(public)/daftar-warga/actions';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -61,6 +61,7 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
   const [filterStatus, setFilterStatus] = useState<CalonWargaStatus | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [catatan, setCatatan] = useState('');
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -104,6 +105,20 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
       setSelected((prev) => (prev ? { ...prev, status, catatanAdmin: catatan || null } : null));
     }
     setUpdating(false);
+  }
+
+  async function handleDelete() {
+    if (!selected) return;
+    if (!confirm(`Hapus data calon warga "${selected.namaLengkap}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+    setDeleting(true);
+    const res = await deleteCalonWarga(selected.id);
+    if (res.success) {
+      setData((prev) => prev.filter((c) => c.id !== selected.id));
+      setSelected(null);
+    } else {
+      alert(res.error || 'Gagal menghapus data.');
+    }
+    setDeleting(false);
   }
 
   function openDetail(c: CalonWarga) {
@@ -398,6 +413,13 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
                       ❌ Tolak
                     </button>
                   </div>
+                  <button
+                    disabled={deleting || updating}
+                    onClick={handleDelete}
+                    className="w-full mt-2 py-2.5 rounded-xl border border-red-300 text-red-600 font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {deleting ? 'Menghapus...' : '🗑️ Hapus Permanen Data Ini'}
+                  </button>
                 </DetailSection>
               </div>
             </motion.div>

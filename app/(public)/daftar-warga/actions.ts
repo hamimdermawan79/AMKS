@@ -188,3 +188,35 @@ export async function updateCalonWargaStatus(
     return { success: false, error: message };
   }
 }
+
+export async function deleteCalonWarga(
+  id: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const canAccess = await canFromSession('user:delete');
+    if (!canAccess) throw new Error('Unauthorized');
+
+    // Ambil data untuk hapus file foto dari disk
+    const record = await db.calonWarga.findUnique({ where: { id } });
+    if (!record) return { success: false, error: 'Data tidak ditemukan.' };
+
+    // Hapus dari database
+    await db.calonWarga.delete({ where: { id } });
+
+    // Hapus file foto dari disk (abaikan jika file tidak ada)
+    const toDelete = [record.fotoKtp, record.fotoFormal].filter(Boolean);
+    await Promise.all(
+      toDelete.map((url) => {
+        const filePath = path.join(process.cwd(), 'public', url);
+        return unlink(filePath).catch(() => {});
+      })
+    );
+
+    revalidatePath('/admin/calon-warga');
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Gagal menghapus data.';
+    return { success: false, error: message };
+  }
+}
+
