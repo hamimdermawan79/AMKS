@@ -82,6 +82,7 @@ export async function saveProfile(data: {
 
   revalidatePath('/tentang-kami');
   revalidatePath('/admin/tentang-kami');
+  revalidatePath('/');
 }
 
 export async function createActivity(formData: FormData) {
@@ -129,6 +130,7 @@ export async function createActivity(formData: FormData) {
 
   revalidatePath('/tentang-kami');
   revalidatePath('/admin/tentang-kami');
+  revalidatePath('/');
 }
 
 export async function deleteActivity(id: string) {
@@ -156,6 +158,7 @@ export async function deleteActivity(id: string) {
 
   revalidatePath('/tentang-kami');
   revalidatePath('/admin/tentang-kami');
+  revalidatePath('/');
 }
 
 export async function uploadDoc(formData: FormData) {

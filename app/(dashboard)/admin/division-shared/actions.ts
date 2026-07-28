@@ -79,6 +79,7 @@ export async function addAnnouncementAction(division: Division, data: {
   }
 
   revalidatePath(`/admin/${division.toLowerCase()}`);
+  revalidatePath('/');
   return { success: true, id: announcement.id };
 }
 
@@ -93,6 +94,7 @@ export async function deleteAnnouncementAction(division: Division, id: string) {
   await db.announcement.delete({ where: { id } });
 
   revalidatePath(`/admin/${division.toLowerCase()}`);
+  revalidatePath('/');
   return { success: true };
 }
 
@@ -134,6 +136,7 @@ export async function addActivityAction(division: Division, data: {
   });
 
   revalidatePath(`/admin/${division.toLowerCase()}`);
+  revalidatePath('/');
   return { success: true, id: activity.id };
 }
 
@@ -148,6 +151,7 @@ export async function deleteActivityAction(division: Division, id: string) {
   await db.activity.delete({ where: { id } });
 
   revalidatePath(`/admin/${division.toLowerCase()}`);
+  revalidatePath('/');
   return { success: true };
 }
 
@@ -166,5 +170,6 @@ export async function toggleAnnouncementPinAction(division: Division, id: string
 
   revalidatePath(`/admin/${division.toLowerCase()}`);
   revalidatePath(`/admin/${division.toLowerCase()}/kelola`);
+  revalidatePath('/');
   return { success: true };
 }
