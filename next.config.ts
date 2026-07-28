@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
     ],
   },
   images: {
+    unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 0,
     remotePatterns: [
