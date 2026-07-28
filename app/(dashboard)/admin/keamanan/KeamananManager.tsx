@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ShieldCheck,
@@ -73,8 +73,11 @@ function CopyButton({ text }: { text: string }) {
 export default function KeamananManager({ activities, announcements, canManage, canViewCctv }: Props) {
   const [activeTab, setActiveTab] = useState<'cctv' | 'kegiatan'>('cctv');
   const [showPassword, setShowPassword] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  const now = new Date();
+  useEffect(() => setIsMounted(true), []);
+
+  const now = isMounted ? new Date() : new Date(0); // Use epoch for SSR so it's consistent
   const nextEvent = activities
     .filter(a => a.startAt && new Date(a.startAt) >= now)
     .sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime())[0] || null;
