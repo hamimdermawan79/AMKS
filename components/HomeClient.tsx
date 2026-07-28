@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { motion, useScroll, useTransform, useInView, animate } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import {
-  BookOpen, Palette, Heart, Users,
+  BookOpen, Palette, Heart, Users, ShieldCheck,
   GraduationCap, Calendar, MapPin, Images, ChevronDown, Quote,
   Home, Zap, Building2,
 } from 'lucide-react';
@@ -83,6 +83,7 @@ const divisi = [
   { icon: Palette, name: 'Kesenian', desc: 'Kegiatan seni, budaya, dan kreativitas warga', color: 'bg-purple-100 text-purple-600' },
   { icon: Heart, name: 'Keolahragaan', desc: 'Olahraga, turnamen, dan kesehatan fisik', color: 'bg-rose-100 text-rose-600' },
   { icon: Users, name: 'Rohani', desc: 'Kegiatan keagamaan dan pengembangan spiritual', color: 'bg-amber-100 text-amber-600' },
+  { icon: ShieldCheck, name: 'Keamanan', desc: 'Maintenance CCTV, pengamanan lingkungan, dan inventaris', color: 'bg-blue-100 text-blue-600' },
 ];
 
 const divisionColorMap: Record<string, string> = {
@@ -90,6 +91,7 @@ const divisionColorMap: Record<string, string> = {
   KESENIAN: 'from-purple-500 to-violet-500',
   KEOLAHRAGAAN: 'from-rose-500 to-pink-500',
   ROHANI: 'from-amber-500 to-orange-500',
+  KEAMANAN: 'from-blue-500 to-indigo-500',
 };
 
 // ── Main component ─────────────────────────────────────────────────────────
@@ -111,7 +113,7 @@ export default function HomeClient({
     { label: 'Warga Aktif', value: totalWarga, suffix: '+', icon: <Users className="h-5 w-5" /> },
     { label: 'Alumni', value: totalAlumni, suffix: '+', icon: <GraduationCap className="h-5 w-5" /> },
     { label: 'Angkatan', value: totalAngkatan, suffix: '', icon: <Calendar className="h-5 w-5" /> },
-    { label: 'Divisi Aktif', value: 4, suffix: '', icon: <Zap className="h-5 w-5" /> },
+    { label: 'Divisi Aktif', value: 5, suffix: '', icon: <Zap className="h-5 w-5" /> },
   ];
 
   return (

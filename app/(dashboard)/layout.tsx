@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { handleLogout } from './logout-action';
 import NotificationBell from '@/components/ui/notification-bell';
-import SidebarShell from '@/components/ui/SidebarShell';
+import SidebarNav, { type NavLinkItem } from './SidebarNav';
 
 export default async function DashboardLayout({
   children,
@@ -56,114 +56,62 @@ export default async function DashboardLayout({
     canViewAccessRequests ||
     canManageSystem;
 
-  // Konten navigasi sidebar — dipakai di desktop dan mobile overlay
-  const navContent = (
-    <div className="p-6 flex flex-col flex-1">
-      <Link href="/" className="flex items-center gap-3 mb-8 hover:opacity-80 smooth-transition pr-8 md:pr-0">
-        <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-          A
-        </div>
-        <span className="text-xl font-semibold text-foreground">AMKS</span>
-      </Link>
+  // Build nav items server-side (RBAC-aware) for the client SidebarNav.
+  const navItems: NavLinkItem[] = [
+    { label: 'Dashboard', href: '/user' },
+    { label: 'Kebersihan', href: '/admin/kebersihan' },
+    { label: 'Kesenian', href: '/admin/kesenian' },
+    { label: 'Keolahragaan', href: '/admin/keolahragaan' },
+    { label: 'Rohani', href: '/admin/rohani' },
+    { label: 'Keamanan', href: '/admin/keamanan' },
+    { label: 'Keuangan', href: '/admin/keuangan' },
+  ];
 
-      <div className="space-y-6 flex-1">
-        {/* Navigation - All roles */}
-        <nav className="space-y-1">
-          <Link href="/user" className="nav-item">
-            Dashboard
-          </Link>
+  if (hasAdminSection) {
+    if (canManageUsers) {
+      navItems.push({ label: 'Warga', href: '/admin/warga' });
+      navItems.push({ label: 'Calon Warga Asrama', href: '/admin/calon-warga' });
+    }
+    if (canManageContent) {
+      navItems.push({ label: 'Konten & Gallery', href: '/admin/tentang-kami' });
+    }
+    if (canManageWorks) {
+      navItems.push({ label: 'Karya Ilmiah', href: '/admin/karya-ilmiah' });
+    }
+    if (canViewAccessRequests) {
+      navItems.push({ label: 'Permintaan Akses', href: '/admin/karya-ilmiah/permintaan-akses' });
+    }
+    if (canManageSystem) {
+      navItems.push({ label: 'WhatsApp Bot', href: '/admin/whatsapp' });
+      navItems.push({ label: 'Pengaturan Sistem', href: '/admin/pengaturan' });
+    }
+  }
 
-          <Link href="/admin/kebersihan" className="nav-item">
-            Kebersihan
-          </Link>
-          <Link href="/admin/kesenian" className="nav-item">
-            Kesenian
-          </Link>
-          <Link href="/admin/keolahragaan" className="nav-item">
-            Keolahragaan
-          </Link>
-          <Link href="/admin/rohani" className="nav-item">
-            Rohani
-          </Link>
-          <Link href="/admin/keamanan" className="nav-item">
-            Keamanan
-          </Link>
-          <Link href="/admin/keuangan" className="nav-item">
-            Keuangan
-          </Link>
+  if (!isFullAccess) {
+    navItems.push({ label: 'Pengaturan Akun', href: '/admin/akun' });
+  }
 
-          {/* Divider */}
-          <div className="border-t border-border my-2" />
-
-          {/* Permission-driven admin section */}
-          {hasAdminSection && (
-            <>
-              {canManageUsers && (
-                <Link href="/admin/warga" className="nav-item">
-                  Warga
-                </Link>
-              )}
-              {canManageUsers && (
-                <Link href="/admin/calon-warga" className="nav-item">
-                  Calon Warga Asrama
-                </Link>
-              )}
-              {canManageContent && (
-                <Link href="/admin/tentang-kami" className="nav-item">
-                  Konten & Gallery
-                </Link>
-              )}
-              {canManageWorks && (
-                <Link href="/admin/karya-ilmiah" className="nav-item">
-                  Karya Ilmiah
-                </Link>
-              )}
-              {canViewAccessRequests && (
-                <Link href="/admin/karya-ilmiah/permintaan-akses" className="nav-item">
-                  Permintaan Akses
-                </Link>
-              )}
-              {canManageSystem && (
-                <>
-                  {/* Divider */}
-                  <div className="border-t border-border my-2" />
-                  <Link href="/admin/whatsapp" className="nav-item">
-                    WhatsApp Bot
-                  </Link>
-                  <Link href="/admin/pengaturan" className="nav-item">
-                    Pengaturan Sistem
-                  </Link>
-                </>
-              )}
-            </>
-          )}
-
-          {/* Account settings - non-admin roles */}
-          {!isFullAccess && (
-            <Link href="/admin/akun" className="nav-item">
-              Pengaturan Akun
-            </Link>
-          )}
-        </nav>
-
-        {/* Logout */}
-        <form action={handleLogout}>
-          <button type="submit" className="w-full nav-item text-red-600 hover:bg-red-50">
-            Logout
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+  // Hrefs that should be preceded by a visual divider in the nav.
+  const dividerHrefs: string[] = ['/admin/warga', '/admin/whatsapp'];
 
   return (
-    <SidebarShell
-      navContent={navContent}
-      userName={session.user.fullName}
-      userJabatan={session.user.jabatan ?? null}
-      notificationBell={<NotificationBell userId={session.user.id} />}
-    >
-      {children}
-    </SidebarShell>
+    <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-x-hidden">
+      <SidebarNav
+        navItems={navItems}
+        dividerHrefs={dividerHrefs}
+        user={{
+          fullName: session.user.fullName,
+          jabatan: session.user.jabatan ?? null,
+          id: session.user.id,
+        }}
+      >
+        <NotificationBell userId={session.user.id} />
+      </SidebarNav>
+
+      {/* Main content */}
+      <main className="flex-1 min-w-0">
+        {children}
+      </main>
+    </div>
   );
 }
