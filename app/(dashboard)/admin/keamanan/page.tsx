@@ -47,7 +47,12 @@ export default async function KeamananPage() {
         location: a.location,
         startAt: a.startAt ? a.startAt.toISOString() : null,
       }))}
-      announcements={announcements}
+      announcements={announcements.map(a => ({
+        id: a.id,
+        title: a.title,
+        body: a.body,
+        createdAt: a.createdAt.toISOString(),
+      }))}
       canManage={canManage}
       canViewCctv={canViewCctv}
     />

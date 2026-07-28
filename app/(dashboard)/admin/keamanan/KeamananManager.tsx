@@ -35,7 +35,7 @@ type AnnouncementType = {
   id: string;
   title: string;
   body: string;
-  createdAt: Date;
+  createdAt: string;
 };
 
 type Props = {
