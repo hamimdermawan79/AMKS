@@ -17,9 +17,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/daftar-warga`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
   ];
 
-  // Dynamic: published works
-  const works = await db.work.findMany({
-    where: { published: true },
+  // Dynamic: published scientific works
+  const works = await db.scientificWork.findMany({
+    where: { isPublished: true },
     select: { id: true, updatedAt: true },
   });
 

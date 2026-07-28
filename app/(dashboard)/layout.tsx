@@ -104,9 +104,7 @@ export default async function DashboardLayout({
           jabatan: session.user.jabatan ?? null,
           id: session.user.id,
         }}
-      >
-        <NotificationBell userId={session.user.id} />
-      </SidebarNav>
+      />
 
       {/* Main content */}
       <main className="flex-1 min-w-0 p-6 md:p-8">
