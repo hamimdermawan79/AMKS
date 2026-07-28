@@ -21,11 +21,16 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 0,
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**.vercel.app',
+      },
+    ],
+    localPatterns: [
+      {
+        pathname: '/uploads/**',
       },
     ],
   },
