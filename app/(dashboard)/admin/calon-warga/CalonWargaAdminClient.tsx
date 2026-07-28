@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { updateCalonWargaStatus } from '@/app/(public)/daftar-warga/actions';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -63,6 +63,9 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
   const [updating, setUpdating] = useState(false);
   const [catatan, setCatatan] = useState('');
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => setIsMounted(true), []);
 
   const filtered = useMemo(() => {
     return data.filter((c) => {
@@ -109,6 +112,7 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
   }
 
   function formatDate(iso: string) {
+    if (!isMounted) return '...';
     return new Date(iso).toLocaleDateString('id-ID', {
       day: 'numeric',
       month: 'long',
@@ -206,13 +210,15 @@ export default function CalonWargaAdminClient({ initialData }: Props) {
                     <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                        <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 flex-shrink-0">
+                        <div className="relative w-9 h-9 rounded-full overflow-hidden border border-slate-200 flex-shrink-0 bg-slate-100">
                           <Image
                             src={c.fotoFormal}
                             alt={c.namaLengkap}
                             fill
                             sizes="36px"
                             className="object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            unoptimized
                           />
                         </div>
                         <div>
