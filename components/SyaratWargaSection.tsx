@@ -2,7 +2,7 @@
 
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { CreditCard, GraduationCap, BookOpen, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { CreditCard, GraduationCap, BookOpen, CheckCircle2, ArrowRight, Sparkles, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 
 const syarat = [
@@ -85,8 +85,10 @@ function TimelineItem({
         transition={{ duration: 0.5, delay: index * 0.15 + 0.1 }}
         className="pb-12 pt-1"
       >
-        <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${item.tagColor} mb-3`}>
+        <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+          <span className="h-px w-6 bg-blue-400/70" />
           {item.tag}
+          <span className="h-px w-6 bg-blue-400/70" />
         </span>
         <h3 className="text-lg font-bold text-foreground md:text-xl">{item.title}</h3>
         <p className="mt-2 leading-relaxed text-muted-foreground">{item.desc}</p>
@@ -114,8 +116,10 @@ export default function SyaratWargaSection() {
           transition={{ duration: 0.5 }}
           className="mx-auto mb-12 md:mb-16 max-w-2xl text-center"
         >
-          <span className="mb-3 inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-600">
+          <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
+            <span className="h-px w-8 bg-blue-400/70" />
             Syarat Pendaftaran
+            <span className="h-px w-8 bg-blue-400/70" />
           </span>
           <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
             Ingin Menjadi Warga Asrama?

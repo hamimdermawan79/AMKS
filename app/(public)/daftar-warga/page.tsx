@@ -4,27 +4,17 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { submitPendaftaranCalonWarga } from './actions';
 
-// ── Icons ──────────────────────────────────────────────────────────────────
-function IconCheck() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
-function IconArrow() {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-    </svg>
-  );
-}
+import { Check, ArrowRight, AlertCircle, Loader2, FileImage, MessageCircle, CreditCard, GraduationCap, BookOpen, Home, Camera, User, Users, PartyPopper, Lightbulb } from 'lucide-react';
+
+// ── Icon helpers ───────────────────────────────────────────────────────────
+function IconCheck() { return <Check className="w-5 h-5" strokeWidth={2.5} />; }
+function IconArrow() { return <ArrowRight className="w-5 h-5" strokeWidth={2} />; }
 
 // ── Syarat data ────────────────────────────────────────────────────────────
 const SYARAT = [
   {
     no: 1,
-    icon: '🪪',
+    icon: <CreditCard className="w-6 h-6" />,
     judul: 'KTP Asli Sambas',
     deskripsi:
       'Memiliki Kartu Tanda Penduduk (KTP) asli yang terdaftar di wilayah Kabupaten Sambas, Kalimantan Barat.',
@@ -32,7 +22,7 @@ const SYARAT = [
   },
   {
     no: 2,
-    icon: '🎓',
+    icon: <GraduationCap className="w-6 h-6" />,
     judul: 'Mahasiswa Aktif di Yogyakarta',
     deskripsi:
       'Sedang menempuh pendidikan aktif di perguruan tinggi (universitas, institut, atau sekolah tinggi) yang berada di wilayah Daerah Istimewa Yogyakarta.',
@@ -40,7 +30,7 @@ const SYARAT = [
   },
   {
     no: 3,
-    icon: '📜',
+    icon: <BookOpen className="w-6 h-6" />,
     judul: 'Menaati AD / ART Asrama',
     deskripsi:
       'Bersedia membaca, memahami, dan menaati seluruh Anggaran Dasar / Anggaran Rumah Tangga (AD/ART) serta tata tertib peraturan yang berlaku di asrama.',
@@ -115,7 +105,7 @@ export default function DaftarWargaPage() {
           className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
-            🏠 Pendaftaran Calon Warga
+            <Home className="w-4 h-4" /> Pendaftaran Calon Warga
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-3">
             Bergabung dengan Asrama <br />
@@ -214,9 +204,7 @@ export default function DaftarWargaPage() {
                             }`}
                           >
                             {syaratChecked[i] && (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
+                              <Check className="w-3.5 h-3.5" strokeWidth={3} />
                             )}
                           </div>
                         </div>
@@ -228,9 +216,7 @@ export default function DaftarWargaPage() {
                               : 'bg-slate-100 text-slate-500'
                           }`}
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                          <AlertCircle className="w-3.5 h-3.5" strokeWidth={2} />
                           {s.detail}
                         </div>
                       </div>
@@ -242,7 +228,7 @@ export default function DaftarWargaPage() {
               {/* Instruction */}
               <div className="text-center mb-6 text-sm text-slate-400">
                 {allChecked
-                  ? '✅ Semua syarat terpenuhi! Kamu bisa melanjutkan pendaftaran.'
+                  ? <span className="inline-flex items-center gap-1.5"><Check className="w-4 h-4" /> Semua syarat terpenuhi! Kamu bisa melanjutkan pendaftaran.</span>
                   : `Klik setiap syarat untuk mencentangnya (${syaratChecked.filter(Boolean).length}/3 terpenuhi)`}
               </div>
 
@@ -257,7 +243,7 @@ export default function DaftarWargaPage() {
                 }`}
               >
                 Lanjut Isi Formulir Pendaftaran
-                <IconArrow />
+                <ArrowRight className="w-5 h-5" />
               </motion.button>
             </motion.div>
           )}
@@ -280,7 +266,7 @@ export default function DaftarWargaPage() {
                 <form ref={formRef} onSubmit={handleSubmit} className="p-8 space-y-8">
 
                   {/* ── Foto ─────────────────────────────────────────────── */}
-                  <Section title="📸 Foto Dokumen & Diri">
+                  <Section title={<span className="inline-flex items-center gap-2"><Camera className="w-5 h-5" /> Foto Dokumen & Diri</span>}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <FileUpload
                         name="fotoKtp"
@@ -304,7 +290,7 @@ export default function DaftarWargaPage() {
                   </Section>
 
                   {/* ── Data Pribadi ──────────────────────────────────────── */}
-                  <Section title="👤 Data Pribadi">
+                  <Section title={<span className="inline-flex items-center gap-2"><User className="w-5 h-5" /> Data Pribadi</span>}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field name="namaLengkap" label="Nama Lengkap" required placeholder="Nama sesuai KTP" className="sm:col-span-2" />
                       <Field name="asalDaerahSambas" label="Asal Daerah di Sambas" required placeholder="Contoh: Kec. Sambas, Desa Dalam Kaum" className="sm:col-span-2" />
@@ -313,7 +299,7 @@ export default function DaftarWargaPage() {
                   </Section>
 
                   {/* ── Data Akademik ─────────────────────────────────────── */}
-                  <Section title="🎓 Data Akademik">
+                  <Section title={<span className="inline-flex items-center gap-2"><GraduationCap className="w-5 h-5" /> Data Akademik</span>}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field name="jurusan" label="Jurusan / Program Studi" required placeholder="Contoh: Teknik Informatika" />
                       <Field name="namaUniversitas" label="Nama Universitas / Institut / Sekolah Tinggi" required placeholder="Contoh: Universitas Gadjah Mada" className="sm:col-span-2" />
@@ -348,7 +334,7 @@ export default function DaftarWargaPage() {
                   </Section>
 
                   {/* ── Data Orang Tua ────────────────────────────────────── */}
-                  <Section title="👨‍👩‍👦 Data Orang Tua">
+                  <Section title={<span className="inline-flex items-center gap-2"><Users className="w-5 h-5" /> Data Orang Tua</span>}>
                     <div className="grid grid-cols-1 gap-6">
                       {/* Ayah */}
                       <div>
@@ -374,9 +360,7 @@ export default function DaftarWargaPage() {
                   {/* ── Error msg ──────────────────────────────────────────── */}
                   {errorMsg && (
                     <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-                      <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" strokeWidth={2} />
                       {errorMsg}
                     </div>
                   )}
@@ -397,10 +381,7 @@ export default function DaftarWargaPage() {
                     >
                       {isSubmitting ? (
                         <>
-                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                          </svg>
+                          <Loader2 className="w-5 h-5 animate-spin" />
                           Mengirim...
                         </>
                       ) : (
@@ -429,7 +410,7 @@ export default function DaftarWargaPage() {
                   transition={{ delay: 0.15, type: 'spring', stiffness: 260, damping: 18 }}
                   className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 text-4xl shadow-lg"
                 >
-                  🎉
+                  <PartyPopper className="w-12 h-12" />
                 </motion.div>
                 <h2 className="text-2xl font-bold text-white mb-1">Yeay! Pendaftaran Berhasil!</h2>
                 <p className="text-white/75 text-sm">
@@ -485,9 +466,7 @@ export default function DaftarWargaPage() {
                 <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-white/20 rounded-xl">
-                      <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
-                      </svg>
+                      <MessageCircle className="w-6 h-6" />
                     </div>
                     <div>
                       <h4 className="font-bold text-base">Gabung Komunitas WhatsApp AMKS</h4>
@@ -502,13 +481,13 @@ export default function DaftarWargaPage() {
                     rel="noopener noreferrer"
                     className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white text-emerald-700 font-bold text-sm hover:bg-emerald-50 transition-all shadow-sm"
                   >
-                    💬 Klik Disini Untuk Join Komunitas WA
+                    <MessageCircle className="w-4 h-4" /> Klik Disini Untuk Join Komunitas WA
                   </a>
                 </div>
 
                 {/* Info banner */}
                 <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200">
-                  <span className="text-xl">💡</span>
+                  <Lightbulb className="w-5 h-5" />
                   <p className="text-xs text-amber-800 leading-relaxed">
                     <strong>Tips:</strong> Jika ada pertanyaan, hubungi pengurus melalui nomor yang tertera di halaman{' '}
                     <a href="/hubungi-kami" className="underline font-semibold">Hubungi Kami</a>.
@@ -612,9 +591,7 @@ function FileUpload({
           <img src={preview} alt="preview" className="absolute inset-0 w-full h-full object-cover rounded-xl" />
         ) : (
           <>
-            <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            <FileImage className="w-8 h-8 text-slate-400" strokeWidth={1.5} />
             <span className="text-sm font-medium text-slate-500">Klik untuk upload</span>
             {hint && <span className="text-xs text-slate-400 text-center">{hint}</span>}
           </>
@@ -622,7 +599,7 @@ function FileUpload({
         <input id={name} name={name} type="file" accept={accept} required={required} onChange={onChange} className="sr-only" />
       </label>
       {preview && (
-        <p className="text-xs text-green-600 font-medium">✓ Foto berhasil dipilih</p>
+        <p className="text-xs text-green-600 font-medium"><Check className="w-3 h-3 inline" /> Foto berhasil dipilih</p>
       )}
     </div>
   );

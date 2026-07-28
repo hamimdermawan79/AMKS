@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X, Mail, Phone, MapPin } from 'lucide-react';
 
 // SVG inline untuk sosial media (tidak tersedia di lucide-react versi proyek ini)
@@ -33,12 +33,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Karya Ilmiah', href: '/karya-ilmiah' },
   {
     label: 'Arsip & Dokumen',
     children: [
       { label: 'AD / ART', href: '/arsip-dokumen/ad-art' },
       { label: 'Buku Alumni', href: '/arsip-dokumen/buku-alumni' },
+      { label: 'Karya Ilmiah', href: '/karya-ilmiah' },
     ],
   },
   {
@@ -200,50 +200,45 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       {/* Mobile Menu */}
       <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} />
 
-      {/* Navigation */}
-        <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 z-40 w-full pointer-events-none"
-      >
-          <header className="relative w-full px-6 lg:px-10 py-6 flex justify-between items-start pointer-events-none">
-          {/* Logo — animates into sidebar when open */}
-          <motion.div 
+      {/* Overlay layer: transparent, absolute (scrolls away with hero) */}
+      <div className="absolute top-0 z-30 w-full pointer-events-none">
+        <div className="relative w-full px-6 lg:px-10 py-6 flex justify-between items-start pointer-events-none">
+          {/* Logo SIMAS */}
+          <motion.div
             className="pointer-events-auto"
             layoutId="brand-head"
             animate={{ opacity: mobileOpen ? 0 : 1 }}
             transition={{ duration: 0.25 }}
           >
-            <Link href="/" className="flex items-center gap-3 smooth-transition hover:opacity-80">
-              <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-10 h-10 rounded-xl object-contain shadow-sm" />
+            <Link href="/" className="flex items-center gap-1.5 xl:gap-2 smooth-transition hover:opacity-80">
+              <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-7 h-7 xl:w-8 2xl:w-10 xl:h-8 2xl:h-10 rounded-lg xl:rounded-xl object-contain shadow-sm" />
               <div className="flex flex-col leading-none">
-                <span className="text-lg font-semibold text-slate-800 tracking-tight">SIMAS-KS</span>
-                <span className="text-[10px] font-medium text-slate-500">Sistem Informasi Manajemen Asrama - Kabupaten Sambas</span>
+                <span className="text-[10px] xl:text-xs 2xl:text-sm font-semibold text-slate-800 tracking-tight">SIMAS-KS</span>
+                <span className="text-[8px] xl:text-[9px] 2xl:text-[10px] font-medium text-slate-500">Sistem Informasi Manajemen Asrama</span>
               </div>
             </Link>
           </motion.div>
 
-          {/* Desktop Floating Navbar */}
-          <nav className="pointer-events-auto hidden lg:flex items-center gap-8 px-8 py-3.5 rounded-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-lg shadow-blue-900/5 absolute left-1/2 -translate-x-1/2 top-6">
-            <Link href="/karya-ilmiah" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
-              Karya Ilmiah
-            </Link>
-
+          {/* Desktop Floating Navbar — fixed, stays on scroll, viewport-centered */}
+          <nav className="pointer-events-auto hidden lg:flex items-center gap-2 xl:gap-4 2xl:gap-6 px-2.5 xl:px-4 2xl:px-6 py-1.5 xl:py-2 2xl:py-2.5 rounded-full bg-white/40 backdrop-blur-2xl border border-white/60 shadow-md shadow-blue-900/5 fixed top-4 xl:top-5 2xl:top-6 left-1/2 -translate-x-1/2 z-40">
             {/* Arsip & Dokumen Dropdown */}
             <div className="relative group">
-              <span className="text-sm font-semibold text-slate-700 cursor-pointer hover:text-primary smooth-transition flex items-center gap-1.5">
+              <span className="text-[10px] xl:text-xs 2xl:text-sm font-semibold text-slate-700 cursor-pointer hover:text-primary smooth-transition flex items-center gap-0.5 xl:gap-1 whitespace-nowrap">
                 Arsip & Dokumen
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 xl:w-3 xl:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                 </svg>
               </span>
-              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
-                <div className="bg-white/95 backdrop-blur-xl border border-white/80 shadow-xl shadow-blue-900/10 min-w-[200px] py-2 rounded-2xl">
-                  <Link href="/arsip-dokumen/ad-art" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
+                <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-md shadow-blue-900/5 min-w-[140px] py-1 rounded-lg">
+                  <Link href="/arsip-dokumen/ad-art" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
                     AD / ART
                   </Link>
-                  <Link href="/arsip-dokumen/buku-alumni" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                  <Link href="/arsip-dokumen/buku-alumni" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
                     Buku Alumni
+                  </Link>
+                  <Link href="/karya-ilmiah" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
+                    Karya Ilmiah
                   </Link>
                 </div>
               </div>
@@ -251,52 +246,45 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
             {/* Tentang Kami Dropdown */}
             <div className="relative group">
-              <Link href="/tentang-kami" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition flex items-center gap-1.5">
+              <Link href="/tentang-kami" className="text-[10px] xl:text-xs 2xl:text-sm font-semibold text-slate-700 hover:text-primary smooth-transition flex items-center gap-0.5 xl:gap-1 whitespace-nowrap">
                 Tentang Kami
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 xl:w-3 xl:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                 </svg>
               </Link>
-              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
-                <div className="bg-white/95 backdrop-blur-xl border border-white/80 shadow-xl shadow-blue-900/10 min-w-[200px] py-2 rounded-2xl">
-                  <Link href="/tentang-kami" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
+                <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-md shadow-blue-900/5 min-w-[140px] py-1 rounded-lg">
+                  <Link href="/tentang-kami" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
                     Profil Asrama
                   </Link>
-                  <Link href="/tentang-kami/galeri" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                  <Link href="/tentang-kami/galeri" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
                     Galeri Kegiatan
                   </Link>
-                  <Link href="/tentang-kami/struktur" className="block px-5 py-2.5 text-sm font-medium text-slate-700 hover:text-primary hover:bg-white/50 smooth-transition">
+                  <Link href="/tentang-kami/struktur" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
                     Struktur Organisasi
                   </Link>
                 </div>
               </div>
             </div>
 
-            <Link href="/hubungi-kami" className="text-sm font-semibold text-slate-700 hover:text-primary smooth-transition">
+            <Link href="/hubungi-kami" className="text-[10px] xl:text-xs 2xl:text-sm font-semibold text-slate-700 hover:text-primary smooth-transition whitespace-nowrap">
               Hubungi Kami
             </Link>
 
-            <Link href="/daftar-warga" className="text-sm font-semibold text-white bg-primary hover:bg-primary/90 px-4 py-1.5 rounded-full smooth-transition shadow-sm shadow-primary/20">
+            <Link href="/daftar-warga" className="text-[10px] xl:text-xs 2xl:text-sm font-semibold text-white bg-primary hover:bg-primary/90 px-2 xl:px-2.5 2xl:px-3 py-1 xl:py-1.5 rounded-full smooth-transition shadow-sm shadow-primary/20 whitespace-nowrap">
               Daftar jadi Warga
             </Link>
           </nav>
 
-          {/* Right side: Pemda logo (desktop) + Hamburger (mobile) */}
+          {/* Right side: AMKS branding + Hamburger */}
           <div className="pointer-events-auto flex items-center gap-3">
-            {/* AMKS logo — hanya desktop */}
-            <div className="hidden lg:flex items-center gap-3 text-right">
-              <div className="flex flex-col leading-none justify-center h-10">
-                <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Asrama Mahasiswa Kabupaten Sambas</span>
-                <span className="text-[10px] font-medium text-slate-500 mt-0.5">Yogyakarta</span>
+            <div className="hidden lg:flex items-center gap-1.5 xl:gap-2 2xl:gap-3 text-right">
+              <div className="flex flex-col leading-none justify-center h-7 xl:h-8 2xl:h-10">
+                <span className="text-[9px] xl:text-[11px] 2xl:text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Asrama Mahasiswa Kabupaten Sambas</span>
+                <span className="text-[8px] xl:text-[9px] 2xl:text-[10px] font-medium text-slate-500 mt-0.5">Yogyakarta</span>
               </div>
-              <img
-                src="/images/3-amks-logo.webp"
-                alt="AMKS Yogyakarta"
-                className="w-10 h-10 rounded-full object-contain shadow-sm shrink-0"
-              />
+              <img src="/images/3-amks-logo.webp" alt="AMKS Yogyakarta" className="w-7 h-7 xl:w-8 2xl:w-10 xl:h-8 2xl:h-10 rounded-full object-contain shadow-sm shrink-0" />
             </div>
-
-            {/* Hamburger button — hanya mobile */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 backdrop-blur-md border border-white/60 shadow-sm text-slate-700 transition hover:bg-white/90"
@@ -305,8 +293,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               <Menu className="h-5 w-5" />
             </button>
           </div>
-        </header>
-      </motion.div>
+        </div>
+      </div>
 
       {/* Main Content */}
       <main className="flex-1">

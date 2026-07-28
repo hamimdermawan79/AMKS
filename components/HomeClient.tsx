@@ -175,7 +175,7 @@ export default function HomeClient({
                 transition={{ duration: 0.5, delay: 0.35 }}
                 className="mt-8 text-justify text-sm leading-relaxed text-muted-foreground"
               >
-                <span className="inline-flex items-center gap-2 align-middle"><img src="/images/3-amks-logo.webp" alt="AMKS" className="h-5 w-5 rounded object-contain inline" /><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi Asrama Mahasiswa Kabupaten Sambas di Yogyakarta — wadah terpadu untuk administrasi, pendaftaran calon warga, dan informasi kegiatan asrama.
+                <span className="inline-flex items-center gap-2 align-middle"><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi Asrama Mahasiswa Kabupaten Sambas di Yogyakarta - wadah terpadu untuk administrasi, pendaftaran calon warga, dan informasi kegiatan asrama.
               </motion.p>
 
               {/* CTA Buttons */}
@@ -227,7 +227,7 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 28 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.3 }}
-                className="text-6xl font-black leading-[1.05] tracking-tight text-foreground lg:text-7xl"
+                className="text-5xl font-black leading-[1.05] tracking-tight text-foreground xl:text-6xl 2xl:text-7xl"
               >
                 Tempat Berkumpul<br />
                 Biak Sambas<br />
@@ -241,7 +241,7 @@ export default function HomeClient({
                 transition={{ duration: 0.6, delay: 0.45 }}
                 className="mt-6 max-w-2xl text-justify text-sm leading-relaxed text-muted-foreground"
               >
-                <span className="inline-flex items-center gap-2 align-middle"><img src="/images/3-amks-logo.webp" alt="AMKS" className="h-5 w-5 rounded object-contain inline" /><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi yang dikelola untuk mendukung pengelolaan Asrama Mahasiswa Kabupaten Sambas di Daerah Istimewa Yogyakarta. Sistem ini menjadi wadah terpadu bagi warga asrama, pengurus, dan calon warga dalam mengakses layanan administrasi, informasi, serta pendaftaran calon warga baru, pengelolaan data huni, hingga penyampaian informasi dan kegiatan asrama.
+                <span className="inline-flex items-center gap-2 align-middle"><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi yang dikelola untuk mendukung pengelolaan Asrama Mahasiswa Kabupaten Sambas di Daerah Istimewa Yogyakarta. Sistem ini menjadi wadah terpadu bagi warga asrama, pengurus, dan calon warga dalam mengakses layanan administrasi, informasi, serta pendaftaran calon warga baru, pengelolaan data huni, hingga penyampaian informasi dan kegiatan asrama.
               </motion.p>
 
               {/* CTA Buttons */}
@@ -253,7 +253,7 @@ export default function HomeClient({
               >
                 <Link
                   href="/login"
-                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-8 py-4 text-base font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-5 xl:px-8 py-3 xl:py-4 text-sm xl:text-base font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
                 >
                   <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
                   <span className="relative z-10">Akses Warga Asrama</span>
@@ -261,7 +261,7 @@ export default function HomeClient({
 
                 <Link
                   href="/daftar-warga"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-7 py-4 text-base font-semibold text-slate-700 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/40 backdrop-blur-2xl px-5 xl:px-7 py-3 xl:py-4 text-sm xl:text-base font-semibold text-slate-700 transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
                 >
                   <Home className="h-4 w-4" /> Daftar Calon Warga
                 </Link>
@@ -295,9 +295,10 @@ export default function HomeClient({
               <motion.img
                 src="/images/1-mascott.webp"
                 alt="Mascot SIMAS-KS"
-                className="relative z-10 h-auto w-full max-w-xl translate-x-14 drop-shadow-2xl"
-                animate={isLowEnd ? {} : { y: [0, -12, 0] }}
-                transition={isLowEnd ? {} : { duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+                className="relative z-10 h-auto w-full max-w-lg xl:max-w-xl translate-x-14 drop-shadow-2xl"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}
               />
             </motion.div>
           </div>
@@ -307,37 +308,22 @@ export default function HomeClient({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.9 }}
-            className="mx-auto mt-10 hidden items-center justify-center gap-6 sm:flex sm:flex-wrap md:gap-8"
+            className="mx-auto mt-10 hidden items-center justify-center gap-6 lg:flex lg:flex-wrap md:gap-8"
           >
             {stats.map((s) => (
               <div key={s.label} className="flex items-center gap-2.5">
                 <span className="text-primary">{s.icon}</span>
                 <div className="flex flex-col">
-                  <span className="text-base font-extrabold leading-tight tabular-nums text-foreground">
+                  <span className="text-sm xl:text-base font-extrabold leading-tight tabular-nums text-foreground">
                     <AnimatedCounter to={s.value} suffix={s.suffix} />
                   </span>
-                  <span className="text-[10px] font-medium leading-tight text-muted-foreground">{s.label}</span>
+                  <span className="text-[10px] xl:text-xs font-medium leading-tight text-muted-foreground">{s.label}</span>
                 </div>
               </div>
             ))}
           </motion.div>
         </div>
 
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 0.6 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-muted-foreground"
-        >
-          <span className="text-[11px] font-medium uppercase tracking-widest">Scroll</span>
-          <motion.div
-            animate={isLowEnd ? {} : { y: [0, 6, 0] }}
-            transition={isLowEnd ? {} : { repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
-          >
-            <ChevronDown className="h-5 w-5" />
-          </motion.div>
-        </motion.div>
       </motion.section>
 
       {/* ── Page-wide continuous ambient blobs ── */}
@@ -369,11 +355,11 @@ export default function HomeClient({
               Divisi Asrama
             </h2>
             <p className="mt-3 text-muted-foreground">
-              Empat pilar kegiatan yang mewadahi minat, bakat, dan pengembangan diri warga
+              Lima pilar kegiatan yang mewadahi minat, bakat, dan pengembangan diri warga
             </p>
           </motion.div>
 
-          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
             {divisi.map((item, i) => {
               const Icon = item.icon;
               return (
@@ -385,13 +371,12 @@ export default function HomeClient({
                   viewport={{ once: true, margin: '-40px' }}
                   variants={cardReveal}
                   whileHover={{ y: -6, transition: { type: 'spring', stiffness: 200, damping: 18 } }}
-                  className="group rounded-2xl border border-border bg-white p-6 text-center shadow-sm transition-shadow hover:shadow-md"
+                  className="group flex flex-col items-center justify-center rounded-2xl border border-border bg-white p-3 sm:p-4 text-center shadow-sm transition-shadow hover:shadow-md lg:aspect-[3/4]"
                 >
-                  <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl ${item.color} transition-all group-hover:scale-110`}>
-                    <Icon className="h-6 w-6" />
+                  <div className={`mx-auto mb-2 sm:mb-3 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl ${item.color} transition-all group-hover:scale-110`}>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="font-semibold text-foreground">{item.name}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{item.desc}</p>
+                  <h3 className="text-xs sm:text-sm font-semibold text-foreground leading-tight">{item.name}</h3>
                 </motion.div>
               );
             })}

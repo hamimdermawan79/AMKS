@@ -2,6 +2,8 @@ import { db } from '@/lib/db';
 import GaleriGrid from './GaleriGrid';
 import HeroSection from '@/components/HeroSection';
 
+export const dynamic = 'force-dynamic';
+
 export default async function GaleriPage() {
   const activities = await db.activity.findMany({
     orderBy: [

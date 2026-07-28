@@ -81,7 +81,7 @@ function FloatingModal({ children }: { children: React.ReactNode }) {
         filter: isLowEnd ? undefined : { duration: 0.5 },
       }}
       style={{ transformOrigin: 'center center' }}
-      className="relative z-10 flex w-full max-w-[1200px] flex-col lg:flex-row bg-white rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden shadow-[0_30px_100px_-15px_rgba(37,99,235,0.2)] min-h-[600px] lg:min-h-[700px] border border-white/50"
+      className="relative z-10 flex w-full max-w-[720px] xl:max-w-[1000px] flex-col lg:flex-row bg-white rounded-2xl xl:rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_-15px_rgba(37,99,235,0.15)] h-[420px] lg:h-[480px] xl:h-[520px] border border-white/50"
     >
       {children}
     </motion.div>
@@ -130,15 +130,15 @@ export default function LoginPage() {
       {/* The Floating Modal */}
       <FloatingModal>
         {/* Left Panel - Branding */}
-        <div className="relative hidden lg:flex flex-1 items-center justify-center p-12 xl:p-20 overflow-hidden">
+        <div className="relative hidden lg:flex w-[55%] items-center justify-center p-5 xl:p-12 overflow-hidden">
           {mounted && <LeftPanelBackground />}
-          
-          <div className="relative z-20 w-full max-w-md xl:max-w-lg mx-auto">
+
+          <div className="relative z-20 w-full pl-6 xl:pl-10">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-              className="mb-10 inline-flex h-20 w-20 items-center justify-center"
+              className="mb-3 flex h-24 w-24 items-center justify-center"
             >
               <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="h-full w-full object-contain" />
             </motion.div>
@@ -147,7 +147,7 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="mb-6 text-4xl xl:text-5xl font-bold leading-tight tracking-tight text-slate-800"
+              className="text-2xl xl:text-4xl font-black leading-none tracking-tight text-slate-800 w-fit"
             >
               <span className="italic text-primary">SIMAS-KS</span>
             </motion.h1>
@@ -156,24 +156,16 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="mb-6 text-sm font-semibold uppercase tracking-[0.15em] text-primary/70 xl:text-base"
+              className="mt-2 text-[10px] xl:text-xs font-semibold uppercase tracking-[0.15em] text-primary/70 leading-tight w-full max-w-sm xl:max-w-md"
             >
               Sistem Informasi Manajemen Asrama Kabupaten Sambas
             </motion.p>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.55 }}
-              className="text-base xl:text-lg text-slate-600 max-w-md leading-relaxed"
-            >
-              Platform digital terintegrasi untuk mendukung kegiatan, kolaborasi, dan pengelolaan warga asrama secara modern.
-            </motion.p>
           </div>
         </div>
 
         {/* Right Panel - Login Form */}
-        <div className="flex w-full lg:w-[450px] xl:w-[500px] flex-col justify-center px-8 py-12 sm:px-16 lg:px-12 xl:px-16 relative bg-white z-20">
+        <div className="flex w-full lg:w-[45%] flex-col justify-center px-8 py-8 sm:px-10 lg:px-8 xl:px-10 relative bg-white z-20">
           {/* Subtle background element for mobile */}
           <div className="absolute top-0 right-0 -mr-32 -mt-32 h-96 w-96 rounded-full bg-blue-50 blur-[100px] lg:hidden" />
           
@@ -195,24 +187,24 @@ export default function LoginPage() {
             </motion.div>
 
             <motion.div variants={fadeInUp}>
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Selamat Datang</h2>
-              <p className="text-slate-500 mb-10">Silakan masuk ke akun Anda untuk melanjutkan.</p>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-1">Selamat Datang</h2>
+              <p className="text-xs text-slate-500 mb-6">Silakan masuk ke akun Anda untuk melanjutkan.</p>
             </motion.div>
 
-            <motion.form variants={fadeInUp} onSubmit={handleSubmit} className="space-y-6">
+            <motion.form variants={fadeInUp} onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  className="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800 border border-red-100"
+                  className="rounded-lg bg-red-50 p-3 text-xs font-medium text-red-800 border border-red-100"
                 >
                   {error}
                 </motion.div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label htmlFor="username" className="mb-2 block text-sm font-semibold text-slate-700">
+                  <label htmlFor="username" className="mb-1 block text-xs font-semibold text-slate-700">
                     Username
                   </label>
                   <div className="relative">
@@ -221,7 +213,7 @@ export default function LoginPage() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-900 transition-all focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10"
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 transition-all focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/10"
                       placeholder="Masukkan username Anda"
                       required
                       disabled={loading}
@@ -230,7 +222,7 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">
+                  <label htmlFor="password" className="mb-1 block text-xs font-semibold text-slate-700">
                     Password
                   </label>
                   <div className="relative">
@@ -239,7 +231,7 @@ export default function LoginPage() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm text-slate-900 transition-all focus:border-primary focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/10"
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 transition-all focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/10"
                       placeholder="••••••••"
                       required
                       disabled={loading}
@@ -251,11 +243,11 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full overflow-hidden rounded-xl bg-primary px-4 py-4 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-500/40 disabled:cursor-not-allowed disabled:opacity-70"
+                className="group relative w-full overflow-hidden rounded-lg bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/40 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                     Memproses...
                   </span>
                 ) : (
@@ -266,15 +258,15 @@ export default function LoginPage() {
               </button>
             </motion.form>
 
-            <motion.div variants={fadeInUp} className="mt-10 text-center">
-              <p className="text-sm font-medium text-slate-600">
+            <motion.div variants={fadeInUp} className="mt-6 text-center">
+              <p className="text-[10px] font-medium text-slate-600">
                 Gabung Bersama Kami Demi Mewujudkan Impian Anda di Masa Depan
               </p>
             </motion.div>
 
-            <motion.div variants={fadeInUp} className="mt-8 text-center">
-              <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-primary transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <motion.div variants={fadeInUp} className="mt-4 text-center">
+              <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-primary transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
                 Kembali ke Beranda

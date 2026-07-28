@@ -33,7 +33,18 @@
       "Bash(git rm *)",
       "Bash(Remove-Item \"components/ui/SidebarShell.tsx\" -ErrorAction SilentlyContinue)",
       "PowerShell(Remove-Item *)",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "PowerShell(git *)",
+      "PowerShell(git -C C:\\\\Project\\\\AMKS-Git\\\\AMKS show sub:app/\\\\\\(dashboard\\\\\\)/layout.tsx 2>$null | Select-Object -First 120)",
+      "PowerShell(git -C C:\\\\Project\\\\AMKS-Git\\\\AMKS show sub:app/\\\\\\(dashboard\\\\\\)/SidebarNav.tsx 2>$null | Select-Object -First 180)",
+      "PowerShell(git -C C:\\\\Project\\\\AMKS-Git\\\\AMKS show sub:app/\\\\\\(public\\\\\\)/layout.tsx 2>$null | Select-Object -First 300)",
+      "Bash(git -C \"/c/Project/AMKS-Git/AMKS\" show sub:app/\\\\\\(public\\\\\\)/layout.tsx)",
+      "Bash(git -C \"/c/Project/AMKS-Git/AMKS\" show sub:app/\\\\\\(dashboard\\\\\\)/layout.tsx)",
+      "Bash(git -C \"/c/Project/AMKS-Git/AMKS\" show sub:app/\\\\\\(dashboard\\\\\\)/SidebarNav.tsx)",
+      "Bash(git -C \"/c/Project/AMKS-Git/AMKS\" ls-tree -r sub --name-only)",
+      "Bash(git -C \"/c/Project/AMKS-Git/AMKS\" diff main..sub -- app/\\\\\\(public\\\\\\)/layout.tsx)",
+      "Bash(git -C \"/c/Project/AMKS-Git/AMKS\" diff main..UI-Fixing -- app/\\\\\\(public\\\\\\)/layout.tsx)",
+      "Bash(git -C \"/c/Project/AMKS-Git/AMKS\" diff main..sub -- app/\\\\\\(dashboard\\\\\\)/layout.tsx)"
     ]
   }
 }

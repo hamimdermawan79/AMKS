@@ -129,6 +129,7 @@ export async function createActivity(formData: FormData) {
   });
 
   revalidatePath('/tentang-kami');
+  revalidatePath('/tentang-kami/galeri');
   revalidatePath('/admin/tentang-kami');
   revalidatePath('/');
 }
@@ -157,6 +158,7 @@ export async function deleteActivity(id: string) {
   await db.activity.delete({ where: { id } });
 
   revalidatePath('/tentang-kami');
+  revalidatePath('/tentang-kami/galeri');
   revalidatePath('/admin/tentang-kami');
   revalidatePath('/');
 }
