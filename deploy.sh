@@ -94,7 +94,7 @@ fi
 
 # --- 8. Build ---------------------------------------------------------------
 echo "[8/9] Installing dependencies and building..."
-npm ci
+npm install
 npx prisma generate
 npx prisma migrate deploy
 npm run build
