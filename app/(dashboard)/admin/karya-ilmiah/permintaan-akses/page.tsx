@@ -34,7 +34,7 @@ export default async function PermintaanAksesPage() {
   const canManage = await canFromSession('access_request:manage');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Permintaan Akses Karya Ilmiah

@@ -47,7 +47,7 @@ export default async function TentangKamiAdminPage({
   const initialTab = resolvedParams.tab === 'galeri' || resolvedParams.tab === 'dokumen' ? resolvedParams.tab : 'profil';
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-slate-800 mb-2">Konten & Gallery</h1>
         <p className="text-slate-500">Pilih modul di bawah ini untuk mengelola konten publik halaman Tentang Kami dan Dokumentasi.</p>

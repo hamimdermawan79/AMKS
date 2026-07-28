@@ -26,5 +26,9 @@ export default async function WhatsAppBotPage() {
     redirect('/user');
   }
 
-  return <WhatsAppBotClient />;
+  return (
+    <div className="max-w-4xl mx-auto">
+      <WhatsAppBotClient />
+    </div>
+  );
 }

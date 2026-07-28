@@ -39,11 +39,13 @@ export default async function KesenianPage() {
   });
 
   return (
-    <KesenianManager
-      posts={posts}
-      activities={activities}
-      announcements={announcements}
-      canManage={canManage}
-    />
+    <div className="max-w-6xl mx-auto">
+      <KesenianManager
+        posts={posts}
+        activities={activities}
+        announcements={announcements}
+        canManage={canManage}
+      />
+    </div>
   );
 }

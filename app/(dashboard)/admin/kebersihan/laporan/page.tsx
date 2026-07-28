@@ -216,7 +216,8 @@ export default async function LaporanPage({
     .sort((a, b) => b.remaining - a.remaining || a.fullName.localeCompare(b.fullName));
 
   return (
-    <LaporanClient
+    <div className="max-w-7xl mx-auto">
+      <LaporanClient
       periods={periods.map((p) => ({
         id: p.id,
         startDate: p.startDate.toISOString(),
@@ -245,5 +246,6 @@ export default async function LaporanPage({
         totalUnpaidAllTime: totalFinedAllTime - totalPaidAllTime,
       }}
     />
+    </div>
   );
 }

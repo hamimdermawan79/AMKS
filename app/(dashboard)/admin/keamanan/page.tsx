@@ -37,7 +37,8 @@ export default async function KeamananPage() {
   });
 
   return (
-    <KeamananManager
+    <div className="max-w-6xl mx-auto">
+      <KeamananManager
       activities={activities.map(a => ({
         id: a.id,
         title: a.title,
@@ -49,5 +50,6 @@ export default async function KeamananPage() {
       canManage={canManage}
       canViewCctv={canViewCctv}
     />
+    </div>
   );
 }

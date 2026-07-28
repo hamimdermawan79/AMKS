@@ -25,7 +25,7 @@ export default async function AccountSettingsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-2xl">
+    <div className="space-y-8 max-w-2xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-1">Pengaturan Akun</h1>
         <p className="text-sm text-muted-foreground">

@@ -240,7 +240,7 @@ const iuranConfig = await db.iuranConfig.findFirst() || await db.iuranConfig.cre
 });
 
 return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-7xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Keuangan Asrama

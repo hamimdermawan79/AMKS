@@ -83,12 +83,14 @@ export default async function RohaniKelolaPage() {
   const sortedQueues = queuesData.sort((a, b) => a.oldestDutyTime - b.oldestDutyTime);
 
   return (
-    <RohaniManager
-      schedules={schedules}
+    <div className="max-w-6xl mx-auto">
+      <RohaniManager
+        schedules={schedules}
       queues={sortedQueues.map(({ oldestDutyTime, ...rest }) => rest)}
       isAdmin={true}
       isKelolaMode={true}
       currentUserId={session.user.id}
     />
+    </div>
   );
 }

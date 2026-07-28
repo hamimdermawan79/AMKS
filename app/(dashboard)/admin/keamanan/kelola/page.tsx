@@ -37,7 +37,8 @@ export default async function KeamananKelolaPage() {
   });
 
   return (
-    <DivisionClient
+    <div className="max-w-6xl mx-auto">
+      <DivisionClient
       division={divisionKey}
       divisionLabel="Keamanan"
       description="Mengelola keamanan asrama, jadwal maintenance CCTV bulanan, serta penyelenggaraan kegiatan keamanan lingkungan asrama."
@@ -59,5 +60,6 @@ export default async function KeamananKelolaPage() {
       }))}
       canManage={true}
     />
+    </div>
   );
 }

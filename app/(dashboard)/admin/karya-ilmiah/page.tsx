@@ -38,7 +38,7 @@ export default async function KaryaIlmiahAdminPage() {
   const canDelete = await canFromSession('work:delete');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold text-foreground mb-2">
           Repositori Karya Ilmiah

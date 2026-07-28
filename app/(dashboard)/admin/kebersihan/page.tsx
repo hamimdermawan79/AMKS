@@ -122,7 +122,8 @@ export default async function KebersihanPage() {
   );
 
   return (
-    <KebersihanUserView
+    <div className="max-w-6xl mx-auto">
+      <KebersihanUserView
       canManage={canManage}
       hasPeriod={!!period}
       sectorCount={sectorCount}
@@ -140,5 +141,6 @@ export default async function KebersihanPage() {
       actualDenda={actualDenda}
       hasFines={myFines.length > 0}
     />
+    </div>
   );
 }

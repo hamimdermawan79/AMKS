@@ -72,7 +72,8 @@ export default async function KeolahragaanPage() {
   });
 
   return (
-    <SportsManager
+    <div className="max-w-6xl mx-auto">
+      <SportsManager
       wargaList={wargaList}
       activities={activities.map((a) => ({
         ...a,
@@ -96,5 +97,6 @@ export default async function KeolahragaanPage() {
       isKelolaMode={false}
       currentUserId={session.user.id}
     />
+    </div>
   );
 }

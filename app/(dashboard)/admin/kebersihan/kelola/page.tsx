@@ -67,7 +67,8 @@ export default async function KebersihanKelolaPage() {
   });
 
   return (
-    <KebersihanAdminClient
+    <div className="max-w-6xl mx-auto">
+      <KebersihanAdminClient
       warga={warga}
       activePeriod={
         activePeriod
@@ -89,5 +90,6 @@ export default async function KebersihanKelolaPage() {
       scheduleData={scheduleData}
       sectorCount={activePeriod?.peoplePerDay ?? 0}
     />
+    </div>
   );
 }

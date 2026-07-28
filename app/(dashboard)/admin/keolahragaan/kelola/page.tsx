@@ -75,8 +75,9 @@ export default async function KeolahragaanKelolaPage() {
   });
 
   return (
-    <SportsManager
-      wargaList={wargaList}
+    <div className="max-w-6xl mx-auto">
+      <SportsManager
+        wargaList={wargaList}
       activities={activities.map((a) => ({
         ...a,
         attendance: a.attendance.map((att) => ({
@@ -99,5 +100,6 @@ export default async function KeolahragaanKelolaPage() {
       isKelolaMode={true}
       currentUserId={session.user.id}
     />
+    </div>
   );
 }

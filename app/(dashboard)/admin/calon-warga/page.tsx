@@ -23,5 +23,9 @@ export default async function CalonWargaAdminPage() {
     updatedAt: c.updatedAt.toISOString(),
   }));
 
-  return <CalonWargaAdminClient initialData={serialized} />;
+  return (
+    <div className="max-w-5xl mx-auto">
+      <CalonWargaAdminClient initialData={serialized} />
+    </div>
+  );
 }

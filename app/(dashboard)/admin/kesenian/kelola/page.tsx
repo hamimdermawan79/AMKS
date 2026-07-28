@@ -34,8 +34,9 @@ export default async function KesenianKelolaPage() {
   });
 
   return (
-    <DivisionClient
-      division="KESENIAN"
+    <div className="max-w-6xl mx-auto">
+      <DivisionClient
+        division="KESENIAN"
       divisionLabel="Kesenian"
       description="Mengelola publikasi kegiatan asrama, serta merencanakan event hiburan dan kreasi seni warga asrama sebulan sekali."
       themeColor="purple"
@@ -56,5 +57,6 @@ export default async function KesenianKelolaPage() {
       }))}
       canManage={true}
     />
+    </div>
   );
 }
