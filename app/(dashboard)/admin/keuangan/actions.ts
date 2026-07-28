@@ -412,3 +412,41 @@ export async function extendBillDueDate(billId: string) {
   revalidatePath('/admin/keuangan');
   return { success: true };
 }
+
+// ── Iuran Config ──
+
+export async function getIuranConfig() {
+  await authorizeFinance('finance:read');
+  const config = await db.iuranConfig.findFirst();
+  if (!config) {
+    return db.iuranConfig.create({
+      data: { baseAmount: 50000, wifiAddon: 30000 },
+    });
+  }
+  return config;
+}
+
+const iuranConfigSchema = z.object({
+  baseAmount: z.number().int().min(0, 'Harga tidak boleh negatif'),
+  wifiAddon: z.number().int().min(0, 'Harga tidak boleh negatif'),
+});
+
+export async function updateIuranConfig(data: { baseAmount: number; wifiAddon: number }) {
+  const session = await authorizeFinance('bill:update');
+  const v = iuranConfigSchema.parse(data);
+
+  const existing = await db.iuranConfig.findFirst();
+  if (existing) {
+    await db.iuranConfig.update({
+      where: { id: existing.id },
+      data: { baseAmount: v.baseAmount, wifiAddon: v.wifiAddon },
+    });
+  } else {
+    await db.iuranConfig.create({
+      data: { baseAmount: v.baseAmount, wifiAddon: v.wifiAddon },
+    });
+  }
+
+  revalidatePath('/admin/keuangan');
+  return { success: true };
+}

@@ -27,7 +27,12 @@
       "Bash(tasklist)",
       "PowerShell(Get-CimInstance *)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(node -e \"console.log\\('jspdf', require\\('jspdf/package.json'\\).version\\); console.log\\('html2canvas', require\\('html2canvas/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\('jspdf', require\\('jspdf/package.json'\\).version\\); console.log\\('html2canvas', require\\('html2canvas/package.json'\\).version\\)\")",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(Remove-Item \"components/ui/SidebarShell.tsx\" -ErrorAction SilentlyContinue)",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }

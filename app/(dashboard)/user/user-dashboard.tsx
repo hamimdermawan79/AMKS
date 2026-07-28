@@ -137,7 +137,7 @@ export default function UserDashboard({
               Halo, {name}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground md:text-base">
-              Selamat Datang di Dashboard AMKS
+              Selamat Datang di Dashboard SIMAS-KS
             </p>
           </div>
 
@@ -198,7 +198,7 @@ export default function UserDashboard({
               </div>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Saat ini tidak ada pengumuman baru. Pantau terus dashboard ini
-                untuk informasi terkini dari pengurus AMKS.
+                untuk informasi terkini dari pengurus SIMAS-KS.
               </p>
             </div>
           </motion.div>

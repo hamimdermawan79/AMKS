@@ -95,6 +95,32 @@ export default async function KebersihanPage() {
       present: a.attendance?.status === 'HADIR',
     }));
 
+  // Fetch actual denda (Fine records) for this user with payment history
+  const myFines = await db.fine.findMany({
+    where: { userId: myId },
+    include: {
+      payments: { select: { amount: true } },
+      bill: { select: { id: true, status: true } },
+      period: { select: { startDate: true, endDate: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Compute actual denda stats from Fine records
+  const actualDenda = myFines.reduce(
+    (acc, f) => {
+      const paid = f.payments.reduce((s, p) => s + p.amount, 0);
+      const isLunas = paid >= f.amount || f.bill?.status === 'LUNAS';
+      return {
+        totalDenda: acc.totalDenda + f.amount,
+        totalTerbayar: acc.totalTerbayar + paid,
+        totalSisa: acc.totalSisa + Math.max(0, f.amount - paid),
+        isLunas: isLunas && acc.isLunas, // true only if ALL fines are lunas
+      };
+    },
+    { totalDenda: 0, totalTerbayar: 0, totalSisa: 0, isLunas: myFines.length === 0 }
+  );
+
   return (
     <KebersihanUserView
       canManage={canManage}
@@ -111,6 +137,8 @@ export default async function KebersihanPage() {
       myNextPiket={myNextPiket}
       nextKerjaBakti={nextKerjaBakti ? nextKerjaBakti.date.toISOString() : null}
       myAssignments={myAssignments}
+      actualDenda={actualDenda}
+      hasFines={myFines.length > 0}
     />
   );
 }

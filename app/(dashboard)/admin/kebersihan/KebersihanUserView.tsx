@@ -58,6 +58,13 @@ type Props = {
     sector: number;
     present: boolean;
   }[];
+  actualDenda: {
+    totalDenda: number;
+    totalTerbayar: number;
+    totalSisa: number;
+    isLunas: boolean;
+  };
+  hasFines: boolean;
 };
 
 /* ─── Helpers ─── */
@@ -230,6 +237,8 @@ export default function KebersihanUserView({
   myNextPiket,
   nextKerjaBakti,
   myAssignments,
+  actualDenda,
+  hasFines,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -664,15 +673,20 @@ export default function KebersihanUserView({
               </div>
               <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                  <Wallet className="h-3.5 w-3.5" /> Estimasi Denda
+                  <Wallet className="h-3.5 w-3.5" /> Denda Aktif
                 </div>
                 <p className="mt-1 text-lg font-bold text-amber-700">
-                  {formatRupiah(stats.estimasiDenda)}
+                  {hasFines ? formatRupiah(actualDenda.totalSisa) : formatRupiah(stats.estimasiDenda)}
                 </p>
               </div>
             </div>
 
-            {stats.tidakPiket > 0 && (
+            {hasFines && actualDenda.totalSisa > 0 && (
+              <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50/60 px-4 py-3 text-xs text-blue-700">
+                <span className="font-semibold">Denda Resmi:</span> Total Rp{formatRupiah(actualDenda.totalDenda)} · Terbayar Rp{formatRupiah(actualDenda.totalTerbayar)} · Sisa <b>Rp{formatRupiah(actualDenda.totalSisa)}</b>. Status ini sinkron dengan modul Keuangan.
+              </div>
+            )}
+            {!hasFines && stats.tidakPiket > 0 && (
               <p className="mb-5 text-xs text-muted-foreground">
                 Estimasi denda dihitung dari {stats.tidakPiket} hari tidak piket ×{" "}
                 {formatRupiah(finePerDay)}/hari. Angka final ditetapkan saat periode ditutup oleh
