@@ -3,14 +3,14 @@ set -e
 
 # =============================================================================
 # AMKS Production Deploy Script
-# Repo: https://github.com/hamimdermawan79/AMKS.git
+# Repo: git@github.com:hamimdermawan79/AMKS.git
 # OS: Ubuntu 24.04
 # Domain: amksyogyakarta.my.id
 # Tunnel ID: 28775a88-5ec6-47af-8134-5f249ea1780f
 # =============================================================================
 
 APP_DIR="/var/www/amks"
-REPO_URL="https://github.com/hamimdermawan79/AMKS.git"
+REPO_URL="git@github.com:hamimdermawan79/AMKS.git"
 BRANCH="Production"
 DOMAIN="amksyogyakarta.my.id"
 TUNNEL_ID="28775a88-5ec6-47af-8134-5f249ea1780f"
@@ -65,13 +65,13 @@ fi
 
 # --- 6. Clone / update repo -------------------------------------------------
 echo "[6/9] Cloning / updating repository..."
-if [ -d "$APP_DIR" ]; then
+if [ -d "$APP_DIR/.git" ]; then
     cd "$APP_DIR"
     git fetch origin
     git reset --hard origin/$BRANCH
 else
     sudo mkdir -p "$APP_DIR"
-    sudo chown $USER:$USER "$APP_DIR"
+    sudo chown -R $USER:$USER "$APP_DIR"
     git clone --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
     cd "$APP_DIR"
 fi
