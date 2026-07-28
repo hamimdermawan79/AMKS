@@ -1,5 +1,16 @@
 import { db } from '@/lib/db';
 import HeroSection from '@/components/HeroSection';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Profil Asrama',
+  description:
+    'Profil lengkap Asrama Mahasiswa Kabupaten Sambas Yogyakarta — sejarah, visi misi, fasilitas, dan kehidupan warga asrama.',
+  openGraph: {
+    title: 'Profil Asrama | SIMAS-KS',
+    description: 'Kenali lebih dekat AMKS Yogyakarta — asrama mahasiswa Kabupaten Sambas.',
+  },
+};
 
 export default async function ProfilAsramaPage() {
   const profile = await db.asramaProfile.findFirst();

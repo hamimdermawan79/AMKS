@@ -1,5 +1,17 @@
 import { db } from '@/lib/db';
 import BukuAlumniClient from './BukuAlumniClient';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Buku Alumni',
+  description:
+    'Direktori alumni Asrama Mahasiswa Kabupaten Sambas Yogyakarta. Kenali jejak perjalanan warga AMKS yang telah lulus.',
+  openGraph: {
+    title: 'Buku Alumni | SIMAS-KS',
+    description: 'Kenali alumni dan jejak perjalanan warga AMKS Yogyakarta.',
+    type: 'website',
+  },
+};
 
 export const dynamic = 'force-dynamic';
 

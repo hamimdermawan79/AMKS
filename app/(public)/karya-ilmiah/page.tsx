@@ -4,9 +4,14 @@ import KaryaIlmiahList from './KaryaIlmiahList';
 import HeroSection from '@/components/HeroSection';
 
 export const metadata: Metadata = {
-  title: 'Karya Ilmiah',
+  title: 'Repositori Karya Ilmiah',
   description:
-    'Repositori karya tulis ilmiah warga Asrama Mahasiswa Kabupaten Sambas Yogyakarta.',
+    'Kumpulan karya tulis ilmiah warga Asrama Mahasiswa Kabupaten Sambas Yogyakarta. Jurnal, penelitian, dan makalah dari mahasiswa Sambas.',
+  openGraph: {
+    title: 'Repositori Karya Ilmiah | SIMAS-KS',
+    description: 'Jelajahi karya ilmiah terbitan warga asrama mahasiswa Sambas.',
+    type: 'website',
+  },
 };
 
 export const dynamic = 'force-dynamic';
