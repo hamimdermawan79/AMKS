@@ -29,15 +29,12 @@ export default function NotificationBell({ userId }: { userId: string }) {
   // Fetch data
   const fetchData = async () => {
     if (!userId) return;
-
     try {
       const [countRes, notifRes] = await Promise.all([
         getUnreadCount(),
         getUserNotifications(5),
       ]);
-
       setUnreadCount(countRes.count ?? 0);
-
       if (notifRes.success && notifRes.notifications) {
         setNotifications(notifRes.notifications);
       }
@@ -48,10 +45,24 @@ export default function NotificationBell({ userId }: { userId: string }) {
 
   useEffect(() => {
     fetchData();
-
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    // Poll 60s; pause when tab hidden to save Safari scroll/battery
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const startPolling = () => {
+      interval = setInterval(fetchData, 60000);
+    };
+    const stopPolling = () => {
+      if (interval) clearInterval(interval);
+    };
+    const onVis = () => {
+      if (document.hidden) stopPolling();
+      else { fetchData(); startPolling(); }
+    };
+    startPolling();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [userId]);
 
   // Handle click outside to close dropdown
@@ -61,7 +72,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
         setIsOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside, { passive: true });
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 

@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useIsLowEndDevice } from '@/lib/animation-utils';
 
 // Abstract Orbs for the left panel to give a unique branding feel (Soft White-Blue)
 function LeftPanelBackground() {
@@ -56,6 +57,37 @@ const fadeInUp = {
   animate: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } },
 };
 
+function FloatingModal({ children }: { children: React.ReactNode }) {
+  const isLowEnd = useIsLowEndDevice();
+
+  const initial = isLowEnd
+    ? { opacity: 0, y: 40, scale: 0.95, rotateX: 8 }
+    : { opacity: 0, y: 80, scale: 0.92, rotateX: 15, filter: 'blur(10px)' };
+
+  const animate = isLowEnd
+    ? { opacity: 1, y: 0, scale: 1, rotateX: 0 }
+    : { opacity: 1, y: 0, scale: 1, rotateX: 0, filter: 'blur(0px)' };
+
+  return (
+    <motion.div
+      initial={initial}
+      animate={animate}
+      transition={{
+        type: 'spring',
+        stiffness: 80,
+        damping: 15,
+        mass: 1.2,
+        opacity: { duration: 0.4 },
+        filter: isLowEnd ? undefined : { duration: 0.5 },
+      }}
+      style={{ transformOrigin: 'center center' }}
+      className="relative z-10 flex w-full max-w-[1200px] flex-col lg:flex-row bg-white rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden shadow-[0_30px_100px_-15px_rgba(37,99,235,0.2)] min-h-[600px] lg:min-h-[700px] border border-white/50"
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -96,20 +128,7 @@ export default function LoginPage() {
       {mounted && <HeroBackgroundBlurred />}
       
       {/* The Floating Modal */}
-      <motion.div 
-        initial={{ opacity: 0, y: 80, scale: 0.92, rotateX: 15, filter: 'blur(10px)' }}
-        animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0, filter: 'blur(0px)' }}
-        transition={{ 
-          type: "spring",
-          stiffness: 80,
-          damping: 15,
-          mass: 1.2,
-          opacity: { duration: 0.4 },
-          filter: { duration: 0.5 }
-        }}
-        style={{ transformOrigin: "center center" }}
-        className="relative z-10 flex w-full max-w-[1200px] flex-col lg:flex-row bg-white rounded-[2rem] lg:rounded-[2.5rem] overflow-hidden shadow-[0_30px_100px_-15px_rgba(37,99,235,0.2)] min-h-[600px] lg:min-h-[700px] border border-white/50"
-      >
+      <FloatingModal>
         {/* Left Panel - Branding */}
         <div className="relative hidden lg:flex flex-1 items-center justify-center p-12 xl:p-20 overflow-hidden">
           {mounted && <LeftPanelBackground />}
@@ -263,7 +282,7 @@ export default function LoginPage() {
             </motion.div>
           </motion.div>
         </div>
-      </motion.div>
+      </FloatingModal>
     </div>
   );
 }

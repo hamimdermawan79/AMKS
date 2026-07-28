@@ -32,7 +32,8 @@
       "Bash(git add *)",
       "Bash(git rm *)",
       "Bash(Remove-Item \"components/ui/SidebarShell.tsx\" -ErrorAction SilentlyContinue)",
-      "PowerShell(Remove-Item *)"
+      "PowerShell(Remove-Item *)",
+      "Bash(npx next *)"
     ]
   }
 }

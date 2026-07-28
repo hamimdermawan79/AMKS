@@ -17,18 +17,25 @@ const POSITION: [number, number] = [-7.8055022, 110.3838086]; // Asrama Mahasisw
 
 function ZoomAnimator() {
   const map = useMap();
-  
+
   useEffect(() => {
-    // Start zoomed out, then fly to the zoomed in position after a short delay
+    const isLowEnd = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      && window.matchMedia('(pointer: coarse)').matches;
+
+    if (isLowEnd) {
+      // Mobile: fast fly, minimal tile download
+      const timer = setTimeout(() => {
+        map.flyTo(POSITION, 18, { duration: 1 });
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+    // Desktop: cinematic zoom
     const timer = setTimeout(() => {
-      map.flyTo(POSITION, 18, {
-        duration: 3, // seconds for "zoom out to zoom in" effect
-      });
-    }, 800); 
-    
+      map.flyTo(POSITION, 18, { duration: 3 });
+    }, 800);
     return () => clearTimeout(timer);
   }, [map]);
-  
+
   return null;
 }
 

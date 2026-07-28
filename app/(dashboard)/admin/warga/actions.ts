@@ -16,9 +16,9 @@ const ALLOWED_IMG = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
 // Validation schemas
 const createUserSchema = z.object({
-  username: z.string().min(3, 'Username minimal 3 karakter'),
-  fullName: z.string().min(1, 'Nama lengkap wajib diisi').regex(/^[a-zA-Z\s]+$/, 'Nama hanya boleh berisi huruf dan spasi'),
-  phone: z.string().regex(/^62\d{9,13}$/, 'Format nomor WA: 62xxx (9-13 digit)'),
+  username: z.string().min(3, 'Username minimal 3 karakter').regex(/^[a-z0-9_]+$/, 'Username hanya boleh huruf kecil, angka, dan underscore'),
+  fullName: z.string().min(1, 'Nama lengkap wajib diisi').regex(/^[\p{L}\p{M}\s.'-]+$/u, 'Nama hanya boleh berisi huruf, spasi, titik, tanda petik, atau tanda hubung'),
+  phone: z.string().regex(/^(\+?62|0)\d{9,13}$/, 'Format nomor WA tidak valid (contoh: 6281234567890 atau 081234567890)'),
   password: z.string().min(6, 'Password minimal 6 karakter'),
   status: z.enum(['AKTIF', 'ALUMNI']),
   roleIds: z.array(z.string()).min(1, 'Minimal 1 role harus dipilih'),
@@ -31,8 +31,8 @@ const createUserSchema = z.object({
 });
 
 const updateUserSchema = z.object({
-  fullName: z.string().min(1, 'Nama lengkap wajib diisi').regex(/^[a-zA-Z\s]+$/, 'Nama hanya boleh berisi huruf dan spasi'),
-  phone: z.string().regex(/^62\d{9,13}$/, 'Format nomor WA: 62xxx (9-13 digit)'),
+  fullName: z.string().min(1, 'Nama lengkap wajib diisi').regex(/^[\p{L}\p{M}\s.'-]+$/u, 'Nama hanya boleh berisi huruf, spasi, titik, tanda petik, atau tanda hubung'),
+  phone: z.string().regex(/^(\+?62|0)\d{9,13}$/, 'Format nomor WA tidak valid (contoh: 6281234567890 atau 081234567890)'),
   password: z.string().optional(),
   status: z.enum(['AKTIF', 'ALUMNI']),
   roleIds: z.array(z.string()).min(1, 'Minimal 1 role harus dipilih'),
@@ -199,7 +199,7 @@ export async function createUser(data: {
     data: {
       username: validated.username,
       fullName: validated.fullName,
-      phone: validated.phone,
+      phone: normalizePhone(validated.phone),
       passwordHash,
       photoUrl,
       status: validated.status as any,
@@ -271,7 +271,7 @@ export async function updateUser(
   // Prepare update data
   const updateData: any = {
     fullName: validated.fullName,
-    phone: validated.phone,
+    phone: normalizePhone(validated.phone),
     status: validated.status as any,
     divisionScope: validated.status === 'ALUMNI' ? null : ((data.divisionScope as any) || null),
     jabatan: validated.status === 'ALUMNI' ? null : (validated.jabatan || null),
@@ -362,6 +362,16 @@ export async function deleteUser(userId: string) {
   revalidatePath('/admin/warga');
   revalidatePath('/arsip-dokumen/buku-alumni');
   return { success: true };
+}
+
+function normalizePhone(phone: string): string {
+  // Remove + prefix if present
+  let normalized = phone.replace(/^\+/, '');
+  // Replace leading 0 with 62
+  if (normalized.startsWith('0')) {
+    normalized = '62' + normalized.slice(1);
+  }
+  return normalized;
 }
 
 async function savePhoto(file: File): Promise<string> {

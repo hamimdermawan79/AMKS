@@ -229,6 +229,70 @@ body {
   animation: slideIn 0.4s ease-out;
 }
 
+/* ── Mobile Safari Performance Optimizations ───────────────────────────────
+   These rules degrade expensive compositing effects on touch/mobile devices
+   while leaving desktop visuals completely unchanged.
+   Key targets: backdrop-filter blur, mix-blend-multiply, feTurbulence noise.
+   ponytail: if Safari fixes compositor in iOS 19+, revisit these rules.
+─────────────────────────────────────────────────────────────────────────── */
+
+/* Disable backdrop-filter on mobile to avoid Safari compositor thrashing */
+@media (hover: none) and (pointer: coarse) {
+  .glass,
+  .glass-dark,
+  .glass-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+  }
+
+  /* Navbar mobile: solid instead of blur */
+  header.glass,
+  aside.glass,
+  nav[class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  /* Reduce heavy blur radii on decorative blobs */
+  .blur-\[120px\],
+  .blur-3xl {
+    filter: blur(40px) !important;
+  }
+
+  /* Disable mix-blend-multiply (expensive on iOS) */
+  .mix-blend-multiply {
+    mix-blend-mode: normal !important;
+  }
+
+  /* Hide SVG noise overlays entirely on mobile */
+  div[style*="feTurbulence"],
+  div[style*="noiseFilter"] {
+    display: none !important;
+  }
+
+  /* Disable infinite blob animations on mobile */
+  .animate-blob {
+    animation: none !important;
+  }
+}
+
+/* iOS Safari specific: suppress -webkit-backdrop-filter where possible */
+@supports (-webkit-touch-callout: none) {
+  @media (hover: none) and (pointer: coarse) {
+    .backdrop-blur-sm,
+    .backdrop-blur-md,
+    .backdrop-blur-lg,
+    .backdrop-blur-xl,
+    .backdrop-blur-2xl,
+    .backdrop-blur-3xl {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+  }
+}
+
 /* Printing styles for Monthly Report (Tugas 5) */
 @media print {
   body {

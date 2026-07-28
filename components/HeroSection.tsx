@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { useIsLowEndDevice } from '@/lib/animation-utils';
 
 function FloatingOrbs() {
   const orbs = [
@@ -9,6 +10,7 @@ function FloatingOrbs() {
     { size: 180, x: '75%', y: '15%', color: 'bg-indigo-200/18', dur: 26, delay: 2 },
     { size: 140, x: '50%', y: '60%', color: 'bg-sky-200/18', dur: 20, delay: 1 },
   ];
+  const isLowEnd = useIsLowEndDevice();
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -17,8 +19,8 @@ function FloatingOrbs() {
           key={i}
           className={`absolute rounded-full blur-3xl ${o.color}`}
           style={{ width: o.size, height: o.size, left: o.x, top: o.y }}
-          animate={{ x: [0, 18, -12, 0], y: [0, -18, 10, 0], scale: [1, 1.04, 0.97, 1] }}
-          transition={{ duration: o.dur, delay: o.delay, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+          animate={isLowEnd ? {} : { x: [0, 18, -12, 0], y: [0, -18, 10, 0], scale: [1, 1.04, 0.97, 1] }}
+          transition={isLowEnd ? {} : { duration: o.dur, delay: o.delay, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
         />
       ))}
     </div>

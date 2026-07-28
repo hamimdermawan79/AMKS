@@ -40,7 +40,8 @@ const cardItem = {
 };
 
 export default function StrukturBagan({ users }: { users: Person[] }) {
-  const ketua = users.find((u) => getRole(u) === 'KETUA' || getRole(u) === 'SUPERADMIN');
+  // Cari ketua terlebih dahulu, baru superadmin sebagai fallback
+  const ketua = users.find((u) => getRole(u) === 'KETUA') || users.find((u) => getRole(u) === 'SUPERADMIN');
   const sekretaris = users.filter((u) => getRole(u) === 'SEKRETARIS');
   const bendahara = users.filter((u) => getRole(u) === 'BENDAHARA');
   const divHeads = users.filter((u) => getRole(u) === 'DIVISION_HEAD');

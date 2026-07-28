@@ -12,7 +12,7 @@ export default function WhatsAppBotClient() {
   const [message, setMessage] = useState('');
   const [sendResult, setSendResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -38,9 +38,22 @@ export default function WhatsAppBotClient() {
 
   useEffect(() => {
     fetchStatus();
-    intervalRef.current = setInterval(fetchStatus, 4000);
-    return () => {
+    // 15s interval; pause when tab hidden to reduce Safari overhead
+    const startPolling = () => {
+      intervalRef.current = setInterval(fetchStatus, 15000);
+    };
+    const stopPolling = () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+    const onVis = () => {
+      if (document.hidden) stopPolling();
+      else { fetchStatus(); startPolling(); }
+    };
+    startPolling();
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, [fetchStatus]);
 

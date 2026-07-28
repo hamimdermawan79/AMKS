@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import MapSection from '@/components/MapSection';
 import SyaratWargaSection from '@/components/SyaratWargaSection';
+import { useIsLowEndDevice } from '@/lib/animation-utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface ActivityPreview {
@@ -37,6 +38,7 @@ function FloatingOrbs() {
     { size: 200, x: '70%', y: '30%', color: 'bg-indigo-200/20', dur: 24, delay: 3 },
     { size: 160, x: '50%', y: '65%', color: 'bg-sky-200/20', dur: 22, delay: 1 },
   ];
+  const isLowEnd = useIsLowEndDevice();
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       {orbs.map((o, i) => (
@@ -44,8 +46,8 @@ function FloatingOrbs() {
           key={i}
           className={`absolute rounded-full blur-3xl ${o.color}`}
           style={{ width: o.size, height: o.size, left: o.x, top: o.y }}
-          animate={{ x: [0, 20, -15, 0], y: [0, -20, 10, 0], scale: [1, 1.05, 0.97, 1] }}
-          transition={{ duration: o.dur, delay: o.delay, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+          animate={isLowEnd ? {} : { x: [0, 20, -15, 0], y: [0, -20, 10, 0], scale: [1, 1.05, 0.97, 1] }}
+          transition={isLowEnd ? {} : { duration: o.dur, delay: o.delay, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
         />
       ))}
     </div>
@@ -105,9 +107,12 @@ export default function HomeClient({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  const isLowEnd = useIsLowEndDevice();
   const { scrollYProgress } = useScroll();
-  const heroScale = useTransform(scrollYProgress, [0, 0.3], [1, 0.98]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0.3]);
+  const heroScaleRaw = useTransform(scrollYProgress, [0, 0.3], [1, 0.98]);
+  const heroOpacityRaw = useTransform(scrollYProgress, [0, 0.25], [1, 0.3]);
+  const heroScale = isLowEnd ? 1 : heroScaleRaw;
+  const heroOpacity = isLowEnd ? 1 : heroOpacityRaw;
 
   const stats = [
     { label: 'Warga Aktif', value: totalWarga, suffix: '+', icon: <Users className="h-5 w-5" /> },
@@ -291,8 +296,8 @@ export default function HomeClient({
                 src="/images/1-mascott.webp"
                 alt="Mascot SIMAS-KS"
                 className="relative z-10 h-auto w-full max-w-xl translate-x-14 drop-shadow-2xl"
-                animate={{ y: [0, -12, 0] }}
-                transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+                animate={isLowEnd ? {} : { y: [0, -12, 0] }}
+                transition={isLowEnd ? {} : { duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
               />
             </motion.div>
           </div>
@@ -327,8 +332,8 @@ export default function HomeClient({
         >
           <span className="text-[11px] font-medium uppercase tracking-widest">Scroll</span>
           <motion.div
-            animate={{ y: [0, 6, 0] }}
-            transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+            animate={isLowEnd ? {} : { y: [0, 6, 0] }}
+            transition={isLowEnd ? {} : { repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
           >
             <ChevronDown className="h-5 w-5" />
           </motion.div>
