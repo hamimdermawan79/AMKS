@@ -170,7 +170,7 @@ export default function HomeClient({
                 transition={{ duration: 0.5, delay: 0.35 }}
                 className="mt-8 text-justify text-sm leading-relaxed text-muted-foreground"
               >
-                <span className="font-semibold text-foreground">SIMAS-KS</span> merupakan platform digital resmi Asrama Mahasiswa Kabupaten Sambas di Yogyakarta — wadah terpadu untuk administrasi, pendaftaran calon warga, dan informasi kegiatan asrama.
+                <span className="inline-flex items-center gap-2 align-middle"><img src="/images/3-amks-logo.webp" alt="AMKS" className="h-5 w-5 rounded object-contain inline" /><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi Asrama Mahasiswa Kabupaten Sambas di Yogyakarta — wadah terpadu untuk administrasi, pendaftaran calon warga, dan informasi kegiatan asrama.
               </motion.p>
 
               {/* CTA Buttons */}
@@ -236,7 +236,7 @@ export default function HomeClient({
                 transition={{ duration: 0.6, delay: 0.45 }}
                 className="mt-6 max-w-2xl text-justify text-sm leading-relaxed text-muted-foreground"
               >
-                <span className="font-semibold text-foreground">SIMAS-KS</span> merupakan platform digital resmi yang dikelola untuk mendukung pengelolaan Asrama Mahasiswa Kabupaten Sambas di Daerah Istimewa Yogyakarta. Sistem ini menjadi wadah terpadu bagi warga asrama, pengurus, dan calon warga dalam mengakses layanan administrasi, informasi, serta pendaftaran calon warga baru, pengelolaan data huni, hingga penyampaian informasi dan kegiatan asrama.
+                <span className="inline-flex items-center gap-2 align-middle"><img src="/images/3-amks-logo.webp" alt="AMKS" className="h-5 w-5 rounded object-contain inline" /><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi yang dikelola untuk mendukung pengelolaan Asrama Mahasiswa Kabupaten Sambas di Daerah Istimewa Yogyakarta. Sistem ini menjadi wadah terpadu bagi warga asrama, pengurus, dan calon warga dalam mengakses layanan administrasi, informasi, serta pendaftaran calon warga baru, pengelolaan data huni, hingga penyampaian informasi dan kegiatan asrama.
               </motion.p>
 
               {/* CTA Buttons */}

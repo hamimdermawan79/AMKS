@@ -283,16 +283,17 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
           {/* Right side: Pemda logo (desktop) + Hamburger (mobile) */}
           <div className="pointer-events-auto flex items-center gap-3">
-            {/* Pemda Sambas logo — hanya desktop */}
+            {/* AMKS logo — hanya desktop */}
             <div className="hidden lg:flex items-center gap-3 text-right">
               <div className="flex flex-col leading-none justify-center h-10">
-                <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Pemerintah Daerah Kabupaten Sambas</span>
-                <span className="text-[10px] font-medium text-slate-500 mt-0.5">Kalimantan Barat</span>
+                <span className="text-[13px] font-bold text-slate-800 tracking-tight leading-tight">Asrama Mahasiswa Kabupaten Sambas</span>
+                <span className="text-[10px] font-medium text-slate-500 mt-0.5">Yogyakarta</span>
               </div>
-              <div className="w-10 h-10 rounded-full bg-white/70 backdrop-blur-md flex items-center justify-center text-slate-400 text-xs font-medium border border-white overflow-hidden shadow-sm shrink-0">
-                {/* Ganti dengan <Image> logo Pemda Sambas sebelum deploy */}
-                <span className="text-[10px] font-bold text-slate-300">Logo</span>
-              </div>
+              <img
+                src="/images/3-amks-logo.webp"
+                alt="AMKS Yogyakarta"
+                className="w-10 h-10 rounded-full object-contain shadow-sm shrink-0"
+              />
             </div>
 
             {/* Hamburger button — hanya mobile */}
