@@ -520,7 +520,7 @@ export default function DaftarWargaPage() {
 
 // ── Reusable sub-components ───────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <h3 className="text-base font-bold text-slate-700 mb-4 pb-2 border-b border-slate-100">{title}</h3>
