@@ -2,7 +2,7 @@ import makeWASocket, {
   useMultiFileAuthState, 
   DisconnectReason, 
   WASocket,
-  AuthenticationState 
+  fetchLatestBaileysVersion
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import pino from 'pino';
@@ -61,11 +61,14 @@ export async function connectToWhatsApp(): Promise<WASocket> {
   globalForWhatsApp.currentQR = null;
   console.log('📡 Starting WhatsApp Bot service...');
 
-  // Setup auth state folder in the root directory
   const authFolder = path.join(process.cwd(), 'whatsapp-auth');
   const { state, saveCreds } = await useMultiFileAuthState(authFolder);
+  
+  const { version, isLatest } = await fetchLatestBaileysVersion();
+  console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`);
 
   const socket = makeWASocket({
+    version,
     auth: state,
     logger: pino({ level: 'silent' }) as any,
     printQRInTerminal: false,
@@ -86,12 +89,13 @@ export async function connectToWhatsApp(): Promise<WASocket> {
     if (connection === 'close') {
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
       
-      // Clear auth if logged out, bad session, or connection replaced
+      // Clear auth if logged out, bad session, connection replaced, or 405 (Not Allowed/Fatal)
       const shouldClearAuth = 
         statusCode === DisconnectReason.loggedOut || 
         statusCode === DisconnectReason.badSession || 
         statusCode === DisconnectReason.connectionReplaced ||
-        statusCode === DisconnectReason.multideviceMismatch;
+        statusCode === DisconnectReason.multideviceMismatch ||
+        statusCode === 405;
         
       const shouldReconnect = !shouldClearAuth;
 
