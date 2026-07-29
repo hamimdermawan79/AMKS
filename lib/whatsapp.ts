@@ -85,19 +85,28 @@ export async function connectToWhatsApp(): Promise<WASocket> {
 
     if (connection === 'close') {
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-      console.log('❌ WhatsApp connection closed. Reason:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
+      
+      // Clear auth if logged out, bad session, or connection replaced
+      const shouldClearAuth = 
+        statusCode === DisconnectReason.loggedOut || 
+        statusCode === DisconnectReason.badSession || 
+        statusCode === DisconnectReason.connectionReplaced ||
+        statusCode === DisconnectReason.multideviceMismatch;
+        
+      const shouldReconnect = !shouldClearAuth;
+
+      console.log('❌ WhatsApp connection closed. Status:', statusCode, 'Reason:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
       
       globalForWhatsApp.connectionStatus = 'disconnected';
       globalForWhatsApp.currentQR = null;
 
-      if (!shouldReconnect) {
+      if (shouldClearAuth) {
         // Clear auth credentials directory to force fresh QR next connection
         const authFolder = path.join(process.cwd(), 'whatsapp-auth');
         if (fs.existsSync(authFolder)) {
           try {
             fs.rmSync(authFolder, { recursive: true, force: true });
-            console.log('🧹 Cleared expired whatsapp-auth credentials.');
+            console.log('🧹 Cleared expired or corrupt whatsapp-auth credentials.');
           } catch (e) {
             console.error('Failed to clear whatsapp-auth credentials:', e);
           }
