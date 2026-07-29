@@ -1,19 +1,16 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, MapPin } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 interface Activity {
   id: string;
   title: string;
-  description: string | null;
   coverUrl: string | null;
-  images: string[] | null;
   startAt: Date | null;
-  location: string | null;
 }
 
 function ThumbImage({ src, alt }: { src: string; alt: string }) {
@@ -93,9 +90,9 @@ export default function GaleriGrid({ activities }: { activities: Activity[] }) {
             alt={activity.title} 
           />
 
-          <div className="p-3 sm:p-6 flex flex-col flex-grow relative z-20">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 mb-2 sm:mb-3">
-              <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+          <div className="p-3 sm:p-5 flex flex-col relative z-20">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 mb-2">
+              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
               <span className="truncate">
                 {activity.startAt ? new Date(activity.startAt).toLocaleDateString('id-ID', {
                   day: 'numeric',
@@ -104,21 +101,10 @@ export default function GaleriGrid({ activities }: { activities: Activity[] }) {
                 }) : 'Waktu tidak ditentukan'}
               </span>
             </div>
-            
-            <h3 className="text-sm sm:text-xl font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2 mb-1 sm:mb-2">
+
+            <h3 className="text-sm sm:text-lg font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">
               {activity.title}
             </h3>
-            
-            <p className="hidden sm:block text-sm text-slate-500 line-clamp-3 mb-4">
-              {activity.description}
-            </p>
-            
-            {activity.location && (
-              <div className="mt-auto hidden sm:flex items-start gap-2 text-sm text-slate-500 pt-4 border-t border-slate-100">
-                <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span className="line-clamp-1">{activity.location}</span>
-              </div>
-            )}
           </div>
         </motion.div>
       ))}

@@ -45,7 +45,8 @@ export async function GET(
     return new NextResponse(fileBuffer, {
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000, immutable',
+        // Filename is UUID — safe to cache long, but avoid immutable so replace-in-place still works
+        'Cache-Control': 'public, max-age=86400, must-revalidate',
       },
     });
   } catch (error) {

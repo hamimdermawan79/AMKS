@@ -226,6 +226,8 @@ export async function createUser(data: {
 
   revalidatePath('/admin/warga');
   revalidatePath('/arsip-dokumen/buku-alumni');
+  revalidatePath('/tentang-kami/struktur');
+  revalidatePath('/');
   return { success: true, userId: user.id };
 }
 
@@ -319,6 +321,8 @@ export async function updateUser(
 
   revalidatePath('/admin/warga');
   revalidatePath('/arsip-dokumen/buku-alumni');
+  revalidatePath('/tentang-kami/struktur');
+  revalidatePath('/');
   return { success: true };
 }
 
@@ -361,6 +365,8 @@ export async function deleteUser(userId: string) {
 
   revalidatePath('/admin/warga');
   revalidatePath('/arsip-dokumen/buku-alumni');
+  revalidatePath('/tentang-kami/struktur');
+  revalidatePath('/');
   return { success: true };
 }
 

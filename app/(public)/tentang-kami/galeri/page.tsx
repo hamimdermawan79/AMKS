@@ -11,6 +11,12 @@ export default async function GaleriPage() {
       { createdAt: 'desc' },
     ],
     take: 24,
+    select: {
+      id: true,
+      title: true,
+      coverUrl: true,
+      startAt: true,
+    },
   });
 
   return (
