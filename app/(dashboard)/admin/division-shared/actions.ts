@@ -6,7 +6,6 @@ import { canFromSession } from '@/lib/rbac/can';
 import { Division } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { createNotification } from '@/lib/notifications';
 
 async function authorizeDivisionManage(division: Division) {
   const session = await auth();
@@ -46,40 +45,10 @@ export async function addAnnouncementAction(division: Division, data: {
     },
   });
 
-  // Broadcast announcement to all active warga
-  try {
-    const activeUsers = await db.user.findMany({
-      where: { 
-        status: 'AKTIF',
-        roles: { none: { role: { name: 'SUPERADMIN' } } },
-      },
-      select: { id: true },
-    });
-
-    const divisionLabels: Record<Division, string> = {
-      KEBERSIHAN: 'Kebersihan',
-      KESENIAN: 'Kesenian',
-      KEOLAHRAGAAN: 'Keolahragaan',
-      ROHANI: 'Rohani',
-      KEAMANAN: 'Keamanan',
-    };
-    const divLabel = divisionLabels[division] || division;
-
-    for (const u of activeUsers) {
-      await createNotification({
-        userId: u.id,
-        title: `Pengumuman Baru: ${v.title}`,
-        message: `Terdapat pengumuman baru dari Divisi ${divLabel}:\n\n${v.body}`,
-        type: 'PENGUMUMAN',
-        referenceId: announcement.id,
-      });
-    }
-  } catch (err) {
-    console.error('Failed to broadcast announcement notification:', err);
-  }
-
   revalidatePath(`/admin/${division.toLowerCase()}`);
   revalidatePath('/');
+  revalidatePath('/user');
+  revalidatePath('/notifications');
   return { success: true, id: announcement.id };
 }
 

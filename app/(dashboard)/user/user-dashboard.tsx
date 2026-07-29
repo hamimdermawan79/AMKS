@@ -69,6 +69,7 @@ export default function UserDashboard({
   upcomingGeneralActivity,
   myUpcomingRohani,
   pendingBills,
+  announcements,
 }: {
   session: any;
   showAdminButton: boolean;
@@ -79,6 +80,7 @@ export default function UserDashboard({
   upcomingGeneralActivity?: { id: string; title: string; date: string | null; division: string | null } | null;
   myUpcomingRohani?: { date: string; message: string | null } | null;
   pendingBills?: { id: string; title: string; amount: number; type: string; dueDate: string | null }[];
+  announcements?: { id: string; title: string; message: string; createdAt: string }[];
 }) {
   const greeting = useMemo(() => getGreeting(), []);
   const name = session?.user?.fullName ?? "Pengguna";
@@ -195,11 +197,31 @@ export default function UserDashboard({
                   <Bell className="h-5 w-5" />
                 </div>
                 <h3 className="font-semibold text-foreground">Pengumuman</h3>
+                {announcements && announcements.length > 0 && (
+                  <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {announcements.length} baru
+                  </span>
+                )}
               </div>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                Saat ini tidak ada pengumuman baru. Pantau terus dashboard ini
-                untuk informasi terkini dari pengurus SIMAS-KS.
-              </p>
+
+              {announcements && announcements.length > 0 ? (
+                <div className="space-y-3">
+                  {announcements.map((a) => (
+                    <div key={a.id} className="border border-indigo-100 bg-white rounded-xl p-3">
+                      <p className="text-xs font-bold text-foreground mb-1">{a.title}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-line">{a.message}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-1">
+                        {new Date(a.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Saat ini tidak ada pengumuman baru. Pantau terus dashboard ini
+                  untuk informasi terkini dari pengurus SIMAS-KS.
+                </p>
+              )}
             </div>
           </motion.div>
 

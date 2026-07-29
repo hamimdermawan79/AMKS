@@ -5,6 +5,8 @@ import { isSuperAdmin } from '@/lib/rbac/can';
 import Link from 'next/link';
 import UserDashboard from './user-dashboard';
 
+export const dynamic = 'force-dynamic';
+
 const DIVISION_SLUGS: Record<string, string> = {
   KEBERSIHAN: 'kebersihan',
   KESENIAN: 'kesenian',
@@ -41,6 +43,16 @@ export default async function DashboardPage() {
   now.setHours(0, 0, 0, 0);
 
   // Fetch upcoming activities
+  // Fetch latest announcements (from notification table — broadcast by divisi)
+  const recentAnnouncements = await db.notification.findMany({
+    where: {
+      userId: session?.user.id,
+      type: 'PENGUMUMAN',
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+  });
+
   const [
     myUpcomingPiket,
     upcomingKerjaBakti,
@@ -107,9 +119,17 @@ export default async function DashboardPage() {
     return <AdminDashboard session={session} />;
   }
 
+  // Notification props for user dashboard
+  const announcementNotifs = recentAnnouncements.map(n => ({
+    id: n.id,
+    title: n.title,
+    message: n.message,
+    createdAt: n.createdAt.toISOString(),
+  }));
+
   // Ketua → user view + global admin access button (full access)
   if (isKetua) {
-    return <UserDashboard {...dashboardProps} showAdminButton={true} />;
+    return <UserDashboard {...dashboardProps} showAdminButton={true} announcements={announcementNotifs} />;
   }
 
   // Ketua Divisi → user view + a button linking to their own division admin panel
@@ -119,12 +139,13 @@ export default async function DashboardPage() {
         {...dashboardProps}
         showAdminButton={false}
         divisionManageHref={`/admin/${divisionSlug}/kelola`}
+        announcements={announcementNotifs}
       />
     );
   }
 
   // Everyone else — Warga, Sekretaris, Bendahara — plain user dashboard.
-  return <UserDashboard {...dashboardProps} showAdminButton={false} />;
+  return <UserDashboard {...dashboardProps} showAdminButton={false} announcements={announcementNotifs} />;
 }
 
 import { Users, Activity, GraduationCap, FileWarning, Settings, UsersRound, Wallet, ClipboardCheck, ArrowRight, ShieldCheck } from 'lucide-react';
