@@ -2,6 +2,8 @@ import { db } from '@/lib/db';
 import StrukturBagan from './StrukturBagan';
 import HeroSection from '@/components/HeroSection';
 
+export const dynamic = 'force-dynamic';
+
 export default async function StrukturPage() {
   const users = await db.user.findMany({
     where: { status: 'AKTIF' },
