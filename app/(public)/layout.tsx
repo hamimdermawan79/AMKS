@@ -271,6 +271,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   <Link href="/tentang-kami/struktur" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
                     Struktur Organisasi
                   </Link>
+                  <Link href="/fasilitas/inventaris" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
+                    Fasilitas Asrama
+                  </Link>
                 </div>
               </div>
             </div>
