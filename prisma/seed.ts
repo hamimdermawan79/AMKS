@@ -59,6 +59,21 @@ const PERMISSIONS = [
   { code: 'announcement:update', label: 'Update pengumuman', group: 'Announcement' },
   { code: 'announcement:delete', label: 'Hapus pengumuman', group: 'Announcement' },
 
+  // Inventory
+  { code: 'inventory:create', label: 'Buat inventaris', group: 'Inventory' },
+  { code: 'inventory:read', label: 'Lihat inventaris', group: 'Inventory' },
+  { code: 'inventory:update', label: 'Update inventaris', group: 'Inventory' },
+  { code: 'inventory:delete', label: 'Hapus inventaris', group: 'Inventory' },
+
+  // Letter Templates & Letters (Surat Menyurat)
+  { code: 'letter_template:create', label: 'Upload format surat', group: 'Letter' },
+  { code: 'letter_template:read', label: 'Lihat format surat', group: 'Letter' },
+  { code: 'letter_template:delete', label: 'Hapus format surat', group: 'Letter' },
+  { code: 'letter:create', label: 'Buat arsip surat', group: 'Letter' },
+  { code: 'letter:read', label: 'Lihat arsip surat', group: 'Letter' },
+  { code: 'letter:update', label: 'Update arsip surat', group: 'Letter' },
+  { code: 'letter:delete', label: 'Hapus arsip surat', group: 'Letter' },
+
   // Piket
   { code: 'piket:schedule', label: 'Generate jadwal piket', group: 'Piket' },
   { code: 'piket:attendance:mark', label: 'Tandai presensi piket', group: 'Piket' },
@@ -85,6 +100,7 @@ const PERMISSIONS = [
   { code: 'division:manage:keolahragaan', label: 'Kelola divisi Keolahragaan', group: 'Division' },
   { code: 'division:manage:rohani', label: 'Kelola divisi Rohani', group: 'Division' },
   { code: 'division:manage:keamanan', label: 'Kelola divisi Keamanan', group: 'Division' },
+  { code: 'division:manage:sekretaris', label: 'Kelola divisi Sekretaris', group: 'Division' },
 
   // CCTV
   { code: 'cctv:view', label: 'Lihat info akun CCTV asrama', group: 'CCTV' },
@@ -106,7 +122,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'fine:read', 'fine:generate', 'fine:settle',
     'finance:read', 'finance:transaction:create', 'finance:transaction:update', 'finance:transaction:delete',
     'bill:read', 'bill:update',
-    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan',
+    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan', 'division:manage:sekretaris',
+    'inventory:create', 'inventory:read', 'inventory:update', 'inventory:delete',
+    'letter_template:create', 'letter_template:read', 'letter_template:delete',
+    'letter:create', 'letter:read', 'letter:update', 'letter:delete',
     'cctv:view',
   ],
   KETUA: [
@@ -122,7 +141,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'fine:read', 'fine:generate', 'fine:settle',
     'finance:read', 'finance:transaction:create', 'finance:transaction:update', 'finance:transaction:delete',
     'bill:read', 'bill:update',
-    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan',
+    'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan', 'division:manage:sekretaris',
+    'inventory:create', 'inventory:read', 'inventory:update', 'inventory:delete',
+    'letter_template:create', 'letter_template:read', 'letter_template:delete',
+    'letter:create', 'letter:read', 'letter:update', 'letter:delete',
     'cctv:view',
   ],
   SEKRETARIS: [
@@ -134,6 +156,10 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'access_request:read', 'access_request:manage',
     'activity:read', 'announcement:read',
     'piket:read', 'fine:read', 'finance:read', 'bill:read',
+    'division:manage:sekretaris',
+    'inventory:create', 'inventory:read', 'inventory:update', 'inventory:delete',
+    'letter_template:create', 'letter_template:read', 'letter_template:delete',
+    'letter:create', 'letter:read', 'letter:update', 'letter:delete',
   ],
   BENDAHARA: [
     // Finance engine

@@ -62,6 +62,7 @@ export async function addAnnouncementAction(division: Division, data: {
       KEOLAHRAGAAN: 'Keolahragaan',
       ROHANI: 'Rohani',
       KEAMANAN: 'Keamanan',
+      SEKRETARIS: 'Sekretaris',
     };
     const divLabel = divisionLabels[division] || division;
 

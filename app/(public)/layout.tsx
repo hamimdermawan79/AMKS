@@ -50,6 +50,13 @@ const navItems: NavItem[] = [
       { label: 'Struktur Organisasi', href: '/tentang-kami/struktur' },
     ],
   },
+  {
+    label: 'Fasilitas',
+    children: [
+      { label: 'Inventaris Asrama', href: '/fasilitas/inventaris' },
+      { label: 'Format Surat', href: '/fasilitas/format-surat' },
+    ],
+  },
   { label: 'Hubungi Kami', href: '/hubungi-kami' },
 ];
 
