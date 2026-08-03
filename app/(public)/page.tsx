@@ -44,7 +44,7 @@ const orgSchema = {
 };
 
 export default async function HomePage() {
-  const [totalWarga, totalAlumni, distinctAngkatan, recentActivities, profile] =
+  const [totalWarga, totalAlumni, distinctAngkatan, recentActivities, profile, facilityItems] =
     await Promise.all([
       // Warga aktif
       db.user.count({ where: { status: 'AKTIF' } }),
@@ -76,6 +76,20 @@ export default async function HomePage() {
       db.asramaProfile.findFirst({
         select: { about: true },
       }),
+      // Fasilitas asrama (hanya yang punya foto)
+      db.inventory.findMany({
+        where: { photoUrl: { not: null } },
+        orderBy: { name: 'asc' },
+        take: 8,
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          photoUrl: true,
+          condition: true,
+          quantity: true,
+        },
+      }),
     ]);
 
   return (
@@ -91,6 +105,7 @@ export default async function HomePage() {
         totalAngkatan={distinctAngkatan}
         recentActivities={recentActivities}
         profileAbout={profile?.about ?? null}
+        facilityItems={facilityItems}
       />
     </>
   );

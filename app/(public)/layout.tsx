@@ -48,6 +48,7 @@ const navItems: NavItem[] = [
       { label: 'Profil Asrama', href: '/tentang-kami' },
       { label: 'Galeri Kegiatan', href: '/tentang-kami/galeri' },
       { label: 'Struktur Organisasi', href: '/tentang-kami/struktur' },
+      { label: 'Fasilitas Asrama', href: '/fasilitas/inventaris' },
     ],
   },
   {

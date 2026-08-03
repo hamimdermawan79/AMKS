@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   BookOpen, Palette, Heart, Users, ShieldCheck,
   GraduationCap, Calendar, MapPin, Images, ChevronDown, Quote,
-  Home, Zap, Building2,
+  Home, Zap, Building2, Package,
 } from 'lucide-react';
 import MapSection from '@/components/MapSection';
 import SyaratWargaSection from '@/components/SyaratWargaSection';
@@ -23,12 +23,22 @@ interface ActivityPreview {
   division: string | null;
 }
 
+interface FacilityItem {
+  id: string;
+  name: string;
+  category: string | null;
+  photoUrl: string | null;
+  condition: string | null;
+  quantity: number;
+}
+
 interface Props {
   totalWarga: number;
   totalAlumni: number;
   totalAngkatan: number;
   recentActivities: ActivityPreview[];
   profileAbout: string | null;
+  facilityItems?: FacilityItem[];
 }
 
 // ── Floating orbs ──────────────────────────────────────────────────────────
@@ -103,6 +113,7 @@ export default function HomeClient({
   totalAngkatan,
   recentActivities,
   profileAbout,
+  facilityItems = [],
 }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -390,6 +401,11 @@ export default function HomeClient({
       {/* ===== GALERI KEGIATAN PREVIEW: BARU ===== */}
       {recentActivities.length > 0 && (
         <GaleriPreviewSection activities={recentActivities} />
+      )}
+
+      {/* ===== FASILITAS ASRAMA ===== */}
+      {facilityItems.length > 0 && (
+        <FasilitasSection items={facilityItems} />
       )}
 
       {/* ===== SYARAT WARGA ===== */}
@@ -778,6 +794,147 @@ function GaleriPreviewSection({ activities }: { activities: ActivityPreview[] })
             );
           })}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Fasilitas Section ──────────────────────────────────────────────────────
+const categoryIcons: Record<string, string> = {
+  'Alat Olahraga': '🏀',
+  'Alat Musik': '🎸',
+  'Alat Masak': '🍳',
+  'Elektronik': '💡',
+  'Furnitur': '🪑',
+  'Kebersihan': '🧹',
+  'Lainnya': '📦',
+};
+
+function FasilitasSection({ items }: { items: FacilityItem[] }) {
+  return (
+    <section className="relative z-10 py-24 md:py-32 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 overflow-hidden">
+      {/* Background accents */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-blue-500/10 blur-[100px]" />
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-indigo-500/10 blur-[100px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-cyan-400/5 blur-[120px]" />
+      </div>
+
+      <div className="container relative mx-auto px-6">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-14"
+        >
+          <span className="mb-4 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400">
+            <span className="h-px w-10 bg-gradient-to-r from-transparent to-cyan-400" />
+            <Package className="h-4 w-4" />
+            Fasilitas Kami
+            <span className="h-px w-10 bg-gradient-to-l from-transparent to-cyan-400" />
+          </span>
+          <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl">
+            Fasilitas <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Asrama</span>
+          </h2>
+          <p className="mt-3 text-slate-400 max-w-xl mx-auto">
+            Berbagai perlengkapan dan fasilitas yang tersedia untuk menunjang kegiatan warga asrama
+          </p>
+        </motion.div>
+
+        {/* Bento Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+          {items.map((item, i) => {
+            const emoji = categoryIcons[item.category || 'Lainnya'] || '📦';
+            const isLarge = i < 2;
+
+            return (
+              <motion.div
+                key={item.id}
+                custom={i}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-30px' }}
+                variants={cardReveal}
+                whileHover={{ scale: 1.03, transition: { type: 'spring', stiffness: 280, damping: 20 } }}
+                className={`group relative rounded-2xl overflow-hidden cursor-pointer ${
+                  isLarge ? 'col-span-2 sm:col-span-1 lg:col-span-2 row-span-1' : ''
+                }`}
+              >
+                <div className={`relative overflow-hidden ${isLarge ? 'aspect-[16/9]' : 'aspect-square'}`}>
+                  {item.photoUrl ? (
+                    <img
+                      src={item.photoUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center">
+                      <span className="text-4xl">{emoji}</span>
+                    </div>
+                  )}
+
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
+
+                  {/* Category badge */}
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 text-[11px] font-semibold text-white">
+                      <span>{emoji}</span>
+                      {item.category || 'Lainnya'}
+                    </span>
+                  </div>
+
+                  {/* Quantity badge */}
+                  <div className="absolute top-3 right-3">
+                    <span className="inline-flex items-center rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-400/30 px-2.5 py-1 text-[11px] font-bold text-cyan-300">
+                      {item.quantity}x
+                    </span>
+                  </div>
+
+                  {/* Content overlay */}
+                  <div className="absolute bottom-0 inset-x-0 p-4">
+                    <h3 className="font-bold text-white text-sm md:text-base line-clamp-1 drop-shadow-lg">
+                      {item.name}
+                    </h3>
+                    {item.condition && (
+                      <span className={`mt-1 inline-block text-[10px] font-bold uppercase tracking-wider ${
+                        item.condition.toLowerCase() === 'baik' ? 'text-green-400' : 'text-amber-400'
+                      }`}>
+                        ● {item.condition}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Hover glow */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-t from-cyan-500/10 to-transparent" />
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="mt-10 text-center"
+        >
+          <Link
+            href="/fasilitas/inventaris"
+            className="group inline-flex items-center gap-2.5 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-8 py-3.5 text-sm font-bold text-cyan-300 backdrop-blur-sm transition-all duration-300 hover:bg-cyan-500/20 hover:border-cyan-400/50 hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] hover:scale-105"
+          >
+            <Package className="h-4 w-4" />
+            Lihat Semua Fasilitas & Pinjam Barang
+            <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
