@@ -173,6 +173,8 @@ export async function uploadDoc(formData: FormData) {
   const title = formData.get('title') as string;
   if (!title) throw new Error('Judul dokumen wajib diisi');
 
+  const category = (formData.get('category') as string) || 'Lainnya';
+
   const file = formData.get('file') as File | null;
   if (!file || file.size === 0) throw new Error('File wajib diunggah');
 
@@ -182,12 +184,14 @@ export async function uploadDoc(formData: FormData) {
     data: {
       title,
       fileUrl: fileUrl!,
+      category,
       isPublic: true,
       uploadedById: session.user.id,
     },
   });
 
   revalidatePath('/dokumentasi');
+  revalidatePath('/arsip-dokumen/ad-art');
   revalidatePath('/admin/tentang-kami');
 }
 
@@ -212,5 +216,68 @@ export async function deleteDoc(id: string) {
   await db.document.delete({ where: { id } });
 
   revalidatePath('/dokumentasi');
+  revalidatePath('/arsip-dokumen/ad-art');
   revalidatePath('/admin/tentang-kami');
+}
+
+export async function updateActivity(id: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error('Unauthorized');
+
+  const hasPermission = await canFromSession('post:update');
+  if (!hasPermission) throw new Error('Tidak memiliki izin');
+
+  const title = formData.get('title') as string;
+  if (!title) throw new Error('Nama kegiatan wajib diisi');
+
+  const existingActivity = await db.activity.findUnique({ where: { id } });
+  if (!existingActivity) throw new Error('Kegiatan tidak ditemukan');
+
+  // Check if there's a new cover
+  const coverFile = formData.get('cover') as File | null;
+  let coverUrl = existingActivity.coverUrl;
+  if (coverFile && coverFile.size > 0) {
+    const newCover = await saveFile(coverFile, 'kegiatan');
+    if (newCover) {
+      if (coverUrl) {
+        try {
+          await unlink(path.join(process.cwd(), 'public', coverUrl));
+        } catch {}
+      }
+      coverUrl = newCover;
+    }
+  }
+
+  // Handle multiple new images if any (append)
+  const imageCount = parseInt((formData.get('imageCount') as string) || '0', 10);
+  const newImages: string[] = [];
+  for (let i = 0; i < imageCount; i++) {
+    const file = formData.get(`image_${i}`) as File | null;
+    if (file && file.size > 0) {
+      const url = await saveFile(file, 'kegiatan');
+      if (url) newImages.push(url);
+    }
+  }
+
+  const startAtStr = formData.get('startAt') as string;
+  const startAt = startAtStr ? new Date(startAtStr) : null;
+  const youtubeUrl = formData.get('youtubeUrl') as string | null;
+
+  await db.activity.update({
+    where: { id },
+    data: {
+      title,
+      description: (formData.get('description') as string) || null,
+      location: (formData.get('location') as string) || null,
+      youtubeUrl: youtubeUrl || null,
+      coverUrl,
+      images: [...(existingActivity.images || []), ...newImages],
+      startAt,
+    },
+  });
+
+  revalidatePath('/tentang-kami');
+  revalidatePath('/tentang-kami/galeri');
+  revalidatePath('/admin/tentang-kami');
+  revalidatePath('/');
 }

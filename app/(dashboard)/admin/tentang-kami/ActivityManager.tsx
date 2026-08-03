@@ -1,18 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { createActivity, deleteActivity } from './actions';
+import { createActivity, deleteActivity, updateActivity } from './actions';
 import { useRouter } from 'next/navigation';
 
 interface Props {
   activities: any[];
   canCreate: boolean;
+  canUpdate?: boolean;
   canDelete: boolean;
 }
 
-export default function ActivityManager({ activities, canCreate, canDelete }: Props) {
+export default function ActivityManager({ activities, canCreate, canUpdate, canDelete }: Props) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -24,7 +26,7 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
   const [progress, setProgress] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -58,7 +60,11 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
 
       setProgress(`Mengunggah ${imageFiles.length} foto...`);
 
-      await createActivity(formData);
+      if (editingId) {
+        await updateActivity(editingId, formData);
+      } else {
+        await createActivity(formData);
+      }
       resetForm();
       setIsModalOpen(false);
       router.refresh();
@@ -80,7 +86,20 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
     }
   };
 
+  const handleEdit = (activity: any) => {
+    setEditingId(activity.id);
+    setTitle(activity.title);
+    setDescription(activity.description || '');
+    setLocation(activity.location || '');
+    setStartAt(activity.startAt ? new Date(activity.startAt).toISOString().split('T')[0] : '');
+    setYoutubeUrl(activity.youtubeUrl || '');
+    setCoverFile(null);
+    setImageFiles([]);
+    setIsModalOpen(true);
+  };
+
   const resetForm = () => {
+    setEditingId(null);
     setTitle('');
     setDescription('');
     setLocation('');
@@ -137,10 +156,18 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
                 {activity.images?.length > 0 && (
                   <span className="text-xs text-muted-foreground">{activity.images.length} foto</span>
                 )}
+                {canUpdate && (
+                  <button
+                    onClick={() => handleEdit(activity)}
+                    className="text-xs text-blue-600 hover:underline min-h-[44px] px-2 inline-flex items-center ml-auto"
+                  >
+                    Edit
+                  </button>
+                )}
                 {canDelete && (
                   <button
                     onClick={() => handleDelete(activity.id)}
-                    className="text-xs text-red-600 hover:underline ml-auto min-h-[44px] px-2 inline-flex items-center"
+                    className={`text-xs text-red-600 hover:underline min-h-[44px] px-2 inline-flex items-center ${!canUpdate ? 'ml-auto' : ''}`}
                   >
                     Hapus
                   </button>
@@ -155,8 +182,8 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white border border-border max-w-lg w-full p-6 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-semibold text-foreground text-lg mb-6">Tambah Kegiatan Baru</h3>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <h3 className="font-semibold text-foreground text-lg mb-6">{editingId ? 'Edit Kegiatan' : 'Tambah Kegiatan Baru'}</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm">{error}</div>
               )}
@@ -190,12 +217,13 @@ export default function ActivityManager({ activities, canCreate, canDelete }: Pr
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input min-h-[100px]" />
               </FormField>
 
-              <FormField label="Foto Thumbnail (Cover) *">
+              <FormField label={editingId ? "Ganti Foto Thumbnail (Cover) Opsional" : "Foto Thumbnail (Cover) *"}>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
                   className="input"
+                  required={!editingId}
                 />
                 {coverFile && (
                   <p className="text-xs text-green-600 mt-1">Cover terpilih: {coverFile.name}</p>

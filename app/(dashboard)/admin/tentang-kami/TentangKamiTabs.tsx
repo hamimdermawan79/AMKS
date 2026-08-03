@@ -85,6 +85,7 @@ export default function TentangKamiTabs({
             <ActivityManager
               activities={activities}
               canCreate={canCreate}
+              canUpdate={canUpdate}
               canDelete={canDelete}
             />
           </div>
