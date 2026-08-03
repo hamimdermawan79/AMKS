@@ -597,6 +597,7 @@ model CalonWarga {
 model Inventory {
   id          String   @id @default(cuid())
   name        String
+  category    String?
   quantity    Int      @default(0)
   condition   String?
   location    String?
@@ -606,10 +607,41 @@ model Inventory {
   createdById String?
   createdBy   User?    @relation("InventoryCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
+  loans       InventoryLoan[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@map("inventories")
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+model InventoryLoan {
+  id           String      @id @default(cuid())
+  inventoryId  String
+  inventory    Inventory   @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  
+  borrowerName String
+  quantity     Int         @default(1)
+  startDate    DateTime
+  endDate      DateTime
+  
+  letterUrl    String
+  letterName   String?
+  
+  status       LoanStatus  @default(PENDING)
+  adminNote    String?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("inventory_loans")
 }
 
 enum LetterDirection {

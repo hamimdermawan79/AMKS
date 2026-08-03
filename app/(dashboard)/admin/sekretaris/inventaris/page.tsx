@@ -37,20 +37,26 @@ export default async function SekretarisInventarisPage() {
     orderBy: { name: 'asc' },
   });
 
+  const loans = await db.inventoryLoan.findMany({
+    include: { inventory: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
   return (
     <div className="p-6 max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Manajemen Inventaris</h1>
         <p className="text-slate-600 mt-2">
-          Kelola data barang inventaris asrama. Data yang dimasukkan di sini akan tampil di halaman fasilitas publik.
+          Kelola data barang inventaris asrama dan setujui permintaan peminjaman.
         </p>
       </div>
 
-      <InventoryManager
-        items={items}
-        canCreate={canCreate}
-        canUpdate={canUpdate}
-        canDelete={canDelete}
+      <InventoryManager 
+        items={items} 
+        loans={loans}
+        canCreate={canCreate} 
+        canUpdate={canUpdate} 
+        canDelete={canDelete} 
       />
     </div>
   );

@@ -1,6 +1,7 @@
 'use server';
 
 import { db } from '@/lib/db';
+import { LoanStatus } from '@prisma/client';
 import { auth } from '@/lib/auth';
 import { canFromSession } from '@/lib/rbac/can';
 import { revalidatePath } from 'next/cache';
@@ -39,6 +40,7 @@ export async function createInventory(formData: FormData) {
 
   const name = formData.get('name') as string;
   const quantity = parseInt(formData.get('quantity') as string || '0', 10);
+  const category = formData.get('category') as string;
   const condition = formData.get('condition') as string;
   const location = formData.get('location') as string;
   const description = formData.get('description') as string;
@@ -53,6 +55,7 @@ export async function createInventory(formData: FormData) {
     data: {
       name,
       quantity,
+      category: formData.get('category') as string || null,
       condition: condition || null,
       location: location || null,
       description: description || null,
@@ -74,6 +77,7 @@ export async function updateInventory(id: string, formData: FormData) {
 
   const name = formData.get('name') as string;
   const quantity = parseInt(formData.get('quantity') as string || '0', 10);
+  const category = formData.get('category') as string;
   const condition = formData.get('condition') as string;
   const location = formData.get('location') as string;
   const description = formData.get('description') as string;
@@ -103,6 +107,7 @@ export async function updateInventory(id: string, formData: FormData) {
     data: {
       name,
       quantity,
+      category: category || null,
       condition: condition || null,
       location: location || null,
       description: description || null,
@@ -129,6 +134,68 @@ export async function deleteInventory(id: string) {
   }
 
   await db.inventory.delete({ where: { id } });
+
+  revalidatePath('/fasilitas/inventaris');
+  revalidatePath('/admin/sekretaris/inventaris');
+}
+
+export async function submitLoanRequest(formData: FormData) {
+  const inventoryId = formData.get('inventoryId') as string;
+  const borrowerName = formData.get('borrowerName') as string;
+  const quantityStr = formData.get('quantity') as string;
+  const startDateStr = formData.get('startDate') as string;
+  const endDateStr = formData.get('endDate') as string;
+  const file = formData.get('letterFile') as File | null;
+
+  if (!inventoryId || !borrowerName || !quantityStr || !startDateStr || !endDateStr || !file) {
+    throw new Error('Semua field wajib diisi');
+  }
+
+  const quantity = parseInt(quantityStr, 10);
+  if (isNaN(quantity) || quantity < 1) {
+    throw new Error('Jumlah tidak valid');
+  }
+
+  const fileUrl = await saveFile(file, 'loans');
+  if (!fileUrl) {
+    throw new Error('Gagal mengunggah file surat');
+  }
+
+  await db.inventoryLoan.create({
+    data: {
+      inventoryId,
+      borrowerName,
+      quantity,
+      startDate: new Date(startDateStr),
+      endDate: new Date(endDateStr),
+      letterUrl: fileUrl,
+      letterName: file.name,
+      status: LoanStatus.PENDING,
+    },
+  });
+
+  revalidatePath('/fasilitas/inventaris');
+  revalidatePath('/admin/sekretaris/inventaris');
+}
+
+export async function updateLoanStatus(
+  loanId: string,
+  status: LoanStatus,
+  adminNote?: string
+) {
+  const session = await auth();
+  if (!session?.user) throw new Error('Unauthorized');
+
+  const hasPermission = await canFromSession('inventory:update');
+  if (!hasPermission) throw new Error('Tidak memiliki izin');
+
+  await db.inventoryLoan.update({
+    where: { id: loanId },
+    data: { 
+      status,
+      adminNote: adminNote || null
+    },
+  });
 
   revalidatePath('/fasilitas/inventaris');
   revalidatePath('/admin/sekretaris/inventaris');
