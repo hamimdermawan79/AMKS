@@ -78,9 +78,10 @@ export async function addAnnouncementAction(division: Division, data: {
   } catch (err) {
     console.error('Failed to broadcast announcement notification:', err);
   }
-
   revalidatePath(`/admin/${division.toLowerCase()}`);
   revalidatePath('/');
+  revalidatePath('/user');
+  revalidatePath('/notifications');
   return { success: true, id: announcement.id };
 }
 

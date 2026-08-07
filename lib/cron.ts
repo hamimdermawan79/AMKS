@@ -318,6 +318,94 @@ export async function checkHourlyPiketReminders() {
   }
 }
 
+/**
+ * Broadcast pending announcements to all active users (excl. SUPERADMIN & ALUMNI).
+ * Runs every hour via cron. Idempotent — checks for existing notifications
+ * before creating new ones.
+ */
+export async function checkAnnouncementBroadcast() {
+  try {
+    const announcements = await db.announcement.findMany({
+      where: { broadcastComplete: false },
+    });
+
+    if (announcements.length === 0) {
+      console.log('📢 No pending announcements to broadcast.');
+      return;
+    }
+
+    const divisionLabels: Record<string, string> = {
+      KEBERSIHAN: 'Kebersihan',
+      KESENIAN: 'Kesenian',
+      KEOLAHRAGAAN: 'Keolahragaan',
+      ROHANI: 'Rohani',
+      KEAMANAN: 'Keamanan',
+    };
+
+    for (const announcement of announcements) {
+      // Idempotency check: notifications already exist for this announcement
+      const existingCount = await db.notification.count({
+        where: { type: 'PENGUMUMAN', referenceId: announcement.id },
+      });
+
+      if (existingCount > 0) {
+        // Partial/crash recovery: mark complete without re-creating
+        await db.announcement.update({
+          where: { id: announcement.id },
+          data: { broadcastComplete: true },
+        });
+        console.log(`📢 Announcement ${announcement.id} already broadcast (${existingCount} notifications). Marked complete.`);
+        continue;
+      }
+
+      // Fetch target users: AKTIF, exclude SUPERADMIN & ALUMNI roles
+      const targetUsers = await db.user.findMany({
+        where: {
+          status: 'AKTIF',
+          roles: {
+            none: {
+              role: { name: { in: ['SUPERADMIN', 'ALUMNI'] } },
+            },
+          },
+        },
+        select: { id: true },
+      });
+
+      if (targetUsers.length === 0) {
+        console.log(`📢 Announcement ${announcement.id} has no target users. Marking complete.`);
+        await db.announcement.update({
+          where: { id: announcement.id },
+          data: { broadcastComplete: true },
+        });
+        continue;
+      }
+
+      const divLabel = divisionLabels[announcement.division] || announcement.division;
+
+      // Batch insert notifications — single query
+      await db.notification.createMany({
+        data: targetUsers.map((u) => ({
+          userId: u.id,
+          title: `Pengumuman Baru: ${announcement.title}`,
+          message: `Terdapat pengumuman baru dari Divisi ${divLabel}:\n\n${announcement.body}`,
+          type: 'PENGUMUMAN',
+          referenceId: announcement.id,
+        })),
+      });
+
+      // Mark broadcast complete
+      await db.announcement.update({
+        where: { id: announcement.id },
+        data: { broadcastComplete: true },
+      });
+
+      console.log(`📢 Broadcast complete for announcement ${announcement.id} (${targetUsers.length} users).`);
+    }
+  } catch (error) {
+    console.error('Failed to run checkAnnouncementBroadcast:', error);
+  }
+}
+
 let cronInterval: NodeJS.Timeout | null = null;
 
 export function startCronJobs() {
@@ -330,6 +418,7 @@ export function startCronJobs() {
   checkUpcomingBills();
   checkMissedPikets();
   checkHourlyPiketReminders();
+  checkAnnouncementBroadcast();
 
   // Run checks every hour
   cronInterval = setInterval(() => {
@@ -337,6 +426,7 @@ export function startCronJobs() {
     checkUpcomingBills();
     checkMissedPikets();
     checkHourlyPiketReminders();
+    checkAnnouncementBroadcast();
   }, 1000 * 60 * 60); // 1 hour
 }
 
