@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import { submitLoanRequest } from '@/app/(dashboard)/admin/sekretaris/inventaris/actions';
 
 export default function InventarisPublicClient({ items, templates }: { items: any[], templates: any[] }) {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('Semua');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const categories = ['Semua', ...Array.from(new Set(items.map(item => item.category || 'Lainnya')))].sort();
 
@@ -23,8 +25,8 @@ export default function InventarisPublicClient({ items, templates }: { items: an
 
     try {
       await submitLoanRequest(formData);
-      alert('Permintaan peminjaman berhasil dikirim. Menunggu persetujuan sekretaris.');
       setSelectedItem(null);
+      setShowSuccessModal(true);
     } catch (error: any) {
       alert(error.message || 'Terjadi kesalahan saat meminjam barang.');
     } finally {
@@ -174,7 +176,7 @@ export default function InventarisPublicClient({ items, templates }: { items: an
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               {templates.length > 0 && (
                 <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm border border-blue-100">
                   <p className="font-semibold mb-2">Persyaratan Peminjaman:</p>
@@ -197,8 +199,24 @@ export default function InventarisPublicClient({ items, templates }: { items: an
                 <input required name="borrowerName" type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan nama Anda" />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">No. WhatsApp</label>
+                  <input required name="phone" type="tel" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="08xxxxxxxxxx" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Asal Instansi</label>
+                  <input name="institution" type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Nama sekolah/univ/umum" />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Jumlah</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Keperluan Peminjaman</label>
+                <textarea name="purpose" rows={2} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Kegiatan bakti sosial atau rapat warga" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Jumlah Barang</label>
                 <input required name="quantity" type="number" min="1" max={Math.max(0, selectedItem.quantity - (selectedItem.loans?.filter((l: any) => l.status === 'APPROVED').reduce((sum: number, l: any) => sum + l.quantity, 0) || 0))} defaultValue="1" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
               </div>
 
@@ -238,6 +256,40 @@ export default function InventarisPublicClient({ items, templates }: { items: an
           </div>
         </div>
       )}
+
+      {/* Modern Success Modal */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8 text-center border border-slate-100 flex flex-col items-center"
+            >
+              {/* Animated Icon Container */}
+              <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-6 animate-pulse shadow-inner shadow-emerald-500/10">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+
+              <h3 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">Pengajuan Terkirim!</h3>
+              <p className="text-slate-600 text-sm leading-relaxed mb-8">
+                Terima kasih sudah mengisi form peminjaman asrama. Untuk informasi selanjutnya akan diinformasikan melalui WhatsApp dengan nomor yang sudah diisi tadi.
+              </p>
+
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all active:scale-[0.98]"
+              >
+                Saya Mengerti
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

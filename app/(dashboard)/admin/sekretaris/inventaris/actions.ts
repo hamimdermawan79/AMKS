@@ -142,12 +142,15 @@ export async function deleteInventory(id: string) {
 export async function submitLoanRequest(formData: FormData) {
   const inventoryId = formData.get('inventoryId') as string;
   const borrowerName = formData.get('borrowerName') as string;
+  const phone = formData.get('phone') as string;
+  const institution = formData.get('institution') as string;
+  const purpose = formData.get('purpose') as string;
   const quantityStr = formData.get('quantity') as string;
   const startDateStr = formData.get('startDate') as string;
   const endDateStr = formData.get('endDate') as string;
   const file = formData.get('letterFile') as File | null;
 
-  if (!inventoryId || !borrowerName || !quantityStr || !startDateStr || !endDateStr || !file) {
+  if (!inventoryId || !borrowerName || !phone || !quantityStr || !startDateStr || !endDateStr || !file) {
     throw new Error('Semua field wajib diisi');
   }
 
@@ -165,6 +168,9 @@ export async function submitLoanRequest(formData: FormData) {
     data: {
       inventoryId,
       borrowerName,
+      phone,
+      institution: institution || null,
+      purpose: purpose || null,
       quantity,
       startDate: new Date(startDateStr),
       endDate: new Date(endDateStr),

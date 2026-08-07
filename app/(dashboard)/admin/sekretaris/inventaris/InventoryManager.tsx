@@ -269,7 +269,12 @@ export default function InventoryManager({ items, loans = [], canCreate, canUpda
                         <td className="px-4 py-3 whitespace-nowrap">
                           {new Date(loan.createdAt).toLocaleDateString('id-ID')}
                         </td>
-                        <td className="px-4 py-3 font-medium">{loan.borrowerName}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-foreground">{loan.borrowerName}</div>
+                          {loan.phone && <div className="text-xs text-muted-foreground mt-0.5">WA: {loan.phone}</div>}
+                          {loan.institution && <div className="text-xs text-muted-foreground">Instansi: {loan.institution}</div>}
+                          {loan.purpose && <div className="text-xs text-slate-500 italic mt-1">Keperluan: {loan.purpose}</div>}
+                        </td>
                         <td className="px-4 py-3">
                           <span className="font-bold">{loan.inventory?.name}</span>
                           <span className="text-xs text-muted-foreground ml-1">({loan.quantity} unit)</span>

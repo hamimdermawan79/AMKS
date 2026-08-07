@@ -628,6 +628,9 @@ model InventoryLoan {
   inventory    Inventory   @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
   
   borrowerName String
+  phone        String?
+  institution  String?
+  purpose      String?
   quantity     Int         @default(1)
   startDate    DateTime
   endDate      DateTime

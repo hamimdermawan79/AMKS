@@ -48,12 +48,6 @@ const navItems: NavItem[] = [
       { label: 'Profil Asrama', href: '/tentang-kami' },
       { label: 'Galeri Kegiatan', href: '/tentang-kami/galeri' },
       { label: 'Struktur Organisasi', href: '/tentang-kami/struktur' },
-      { label: 'Fasilitas Asrama', href: '/fasilitas/inventaris' },
-    ],
-  },
-  {
-    label: 'Fasilitas',
-    children: [
       { label: 'Inventaris Asrama', href: '/fasilitas/inventaris' },
       { label: 'Format Surat', href: '/fasilitas/format-surat' },
     ],
@@ -272,7 +266,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                     Struktur Organisasi
                   </Link>
                   <Link href="/fasilitas/inventaris" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
-                    Fasilitas Asrama
+                    Inventaris Asrama
+                  </Link>
+                  <Link href="/fasilitas/format-surat" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
+                    Format Surat
                   </Link>
                 </div>
               </div>
