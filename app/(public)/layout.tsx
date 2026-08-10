@@ -36,7 +36,7 @@ const navItems: NavItem[] = [
   {
     label: 'Arsip & Dokumen',
     children: [
-      { label: 'AD / ART', href: '/arsip-dokumen/ad-art' },
+      { label: 'Peraturan Asrama', href: '/arsip-dokumen/peraturan-asrama' },
       { label: 'Buku Alumni', href: '/arsip-dokumen/buku-alumni' },
       { label: 'Karya Ilmiah', href: '/karya-ilmiah' },
     ],
@@ -233,8 +233,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </span>
               <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible smooth-transition z-50">
                 <div className="bg-white/40 backdrop-blur-2xl border border-white/60 shadow-md shadow-blue-900/5 min-w-[140px] py-1 rounded-lg">
-                  <Link href="/arsip-dokumen/ad-art" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
-                    AD / ART
+                  <Link href="/arsip-dokumen/peraturan-asrama" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
+                    Peraturan Asrama
                   </Link>
                   <Link href="/arsip-dokumen/buku-alumni" className="block px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:text-primary hover:bg-white/40 smooth-transition">
                     Buku Alumni

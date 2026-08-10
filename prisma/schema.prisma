@@ -183,6 +183,7 @@ model Document {
   title       String
   description String?
   fileUrl     String
+  coverUrl    String?
   category    String?
   isPublic    Boolean  @default(false)
   uploadedById String

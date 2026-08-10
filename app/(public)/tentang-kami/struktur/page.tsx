@@ -6,7 +6,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function StrukturPage() {
   const users = await db.user.findMany({
-    where: { status: 'AKTIF' },
+    where: {
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+    },
     select: {
       id: true,
       fullName: true,

@@ -174,16 +174,22 @@ export async function uploadDoc(formData: FormData) {
   if (!title) throw new Error('Judul dokumen wajib diisi');
 
   const category = (formData.get('category') as string) || 'Lainnya';
+  const description = (formData.get('description') as string) || null;
 
   const file = formData.get('file') as File | null;
   if (!file || file.size === 0) throw new Error('File wajib diunggah');
+
+  const coverFile = formData.get('cover') as File | null;
+  const coverUrl = coverFile && coverFile.size > 0 ? await saveFile(coverFile, 'documents-cover') : null;
 
   const fileUrl = await saveFile(file, 'documents');
 
   await db.document.create({
     data: {
       title,
+      description,
       fileUrl: fileUrl!,
+      coverUrl,
       category,
       isPublic: true,
       uploadedById: session.user.id,
@@ -191,7 +197,7 @@ export async function uploadDoc(formData: FormData) {
   });
 
   revalidatePath('/dokumentasi');
-  revalidatePath('/arsip-dokumen/ad-art');
+  revalidatePath('/arsip-dokumen/peraturan-asrama');
   revalidatePath('/admin/tentang-kami');
 }
 
@@ -216,7 +222,7 @@ export async function deleteDoc(id: string) {
   await db.document.delete({ where: { id } });
 
   revalidatePath('/dokumentasi');
-  revalidatePath('/arsip-dokumen/ad-art');
+  revalidatePath('/arsip-dokumen/peraturan-asrama');
   revalidatePath('/admin/tentang-kami');
 }
 

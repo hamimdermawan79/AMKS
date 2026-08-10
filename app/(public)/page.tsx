@@ -46,14 +46,27 @@ const orgSchema = {
 export default async function HomePage() {
   const [totalWarga, totalAlumni, distinctAngkatan, recentActivities, profile, facilityItems] =
     await Promise.all([
-      // Warga aktif
-      db.user.count({ where: { status: 'AKTIF' } }),
+      // Warga aktif (exclude SUPERADMIN)
+      db.user.count({
+        where: {
+          status: 'AKTIF',
+          roles: { none: { role: { name: 'SUPERADMIN' } } }
+        }
+      }),
       // Alumni
-      db.user.count({ where: { status: 'ALUMNI' } }),
-      // Hitung angkatan unik dari tahunMasuk
+      db.user.count({
+        where: {
+          status: 'ALUMNI',
+          roles: { none: { role: { name: 'SUPERADMIN' } } }
+        }
+      }),
+      // Hitung angkatan unik dari tahunMasuk (exclude SUPERADMIN)
       db.user
         .findMany({
-          where: { tahunMasuk: { not: null } },
+          where: {
+            tahunMasuk: { not: null },
+            roles: { none: { role: { name: 'SUPERADMIN' } } }
+          },
           select: { tahunMasuk: true },
           distinct: ['tahunMasuk'],
         })

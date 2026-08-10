@@ -93,7 +93,7 @@ export default function GaleriGrid({ activities }: { activities: Activity[] }) {
           <div className="p-3 sm:p-5 flex flex-col relative z-20">
             <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 mb-2">
               <Calendar className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-              <span className="truncate">
+              <span className="truncate" suppressHydrationWarning>
                 {activity.startAt ? new Date(activity.startAt).toLocaleDateString('id-ID', {
                   day: 'numeric',
                   month: 'short',

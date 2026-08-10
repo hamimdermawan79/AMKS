@@ -4,12 +4,14 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { submitLoanRequest } from '@/app/(dashboard)/admin/sekretaris/inventaris/actions';
+import ImageLightbox from '@/components/ImageLightbox';
 
 export default function InventarisPublicClient({ items, templates }: { items: any[], templates: any[] }) {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('Semua');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   const categories = ['Semua', ...Array.from(new Set(items.map(item => item.category || 'Lainnya')))].sort();
 
@@ -67,14 +69,24 @@ export default function InventarisPublicClient({ items, templates }: { items: an
               className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-100 flex flex-col animate-in fade-in slide-in-from-bottom-4"
               style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}
             >
-              <div className="aspect-[4/3] bg-slate-100 relative group overflow-hidden">
+              <div 
+                className="aspect-[4/3] bg-slate-100 relative group overflow-hidden cursor-pointer"
+                onClick={() => { if (item.photoUrl) setLightboxImage(item.photoUrl); }}
+              >
                 {item.photoUrl ? (
-                  <Image
-                    src={item.photoUrl}
-                    alt={item.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+                  <>
+                    <Image
+                      src={item.photoUrl}
+                      alt={item.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center z-10 pointer-events-none">
+                      <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                      </svg>
+                    </div>
+                  </>
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-2">
                     <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -290,6 +302,13 @@ export default function InventarisPublicClient({ items, templates }: { items: an
           </div>
         )}
       </AnimatePresence>
+
+      <ImageLightbox
+        src={lightboxImage || ''}
+        alt="Preview Inventaris"
+        isOpen={!!lightboxImage}
+        onClose={() => setLightboxImage(null)}
+      />
     </>
   );
 }

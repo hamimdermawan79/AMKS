@@ -26,8 +26,11 @@ export default async function WargaManagementPage() {
     );
   }
 
-  // Fetch all users with their roles
+  // Fetch all users with their roles (exclude SUPERADMIN — system account, hidden from UI)
   const users = await db.user.findMany({
+    where: {
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+    },
     include: {
       roles: {
         include: {

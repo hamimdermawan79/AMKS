@@ -34,7 +34,7 @@ export default function TentangKamiTabs({
   return (
     <div className="space-y-8">
       {/* Tab Navigation */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <TabButton 
           active={activeTab === 'profil'} 
           onClick={() => setActiveTab('profil')}
@@ -53,21 +53,9 @@ export default function TentangKamiTabs({
           active={activeTab === 'dokumen'} 
           onClick={() => setActiveTab('dokumen')}
           icon={<FileText className="h-5 w-5" />}
-          title="Dokumentasi"
-          desc="Upload AD/ART dll"
+          title="Peraturan Asrama"
+          desc="Upload Peraturan Asrama"
         />
-        <button 
-          disabled
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed transition-all"
-        >
-          <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center">
-            <Users className="h-5 w-5" />
-          </div>
-          <div className="text-center">
-            <h3 className="font-bold text-sm">Buku Alumni</h3>
-            <p className="text-[10px] uppercase tracking-wider font-bold mt-1 text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full inline-block">Segera Hadir</p>
-          </div>
-        </button>
       </div>
 
       {/* Tab Content */}
@@ -93,7 +81,7 @@ export default function TentangKamiTabs({
 
         {activeTab === 'dokumen' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h2 className="text-xl font-bold text-slate-800 mb-6">Kelola Dokumentasi & AD/ART</h2>
+            <h2 className="text-xl font-bold text-slate-800 mb-6">Kelola Peraturan Asrama</h2>
             <DocumentManager
               documents={documents}
               canCreate={canCreate}

@@ -3,6 +3,8 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
+import ImageLightbox from '@/components/ImageLightbox';
 
 interface Person {
   id: string;
@@ -40,8 +42,10 @@ const cardItem = {
 };
 
 export default function StrukturBagan({ users }: { users: Person[] }) {
-  // Cari ketua terlebih dahulu, baru superadmin sebagai fallback
-  const ketua = users.find((u) => getRole(u) === 'KETUA') || users.find((u) => getRole(u) === 'SUPERADMIN');
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  // Cari ketua — SUPERADMIN tidak ditampilkan di struktur
+  const ketua = users.find((u) => getRole(u) === 'KETUA');
   const sekretaris = users.filter((u) => getRole(u) === 'SEKRETARIS');
   const bendahara = users.filter((u) => getRole(u) === 'BENDAHARA');
   const divHeads = users.filter((u) => getRole(u) === 'DIVISION_HEAD');
@@ -63,7 +67,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
       {ketua && (
         <div className="flex flex-col items-center">
           <motion.div custom={0} variants={cardItem} className="relative z-10">
-            <PersonCard user={ketua} label="Ketua Asrama" />
+            <PersonCard user={ketua} label="Ketua Asrama" onPhotoClick={(url) => setLightboxImage(url)} />
           </motion.div>
 
           {/* Vertical connector down */}
@@ -96,7 +100,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
                   </h3>
                   {sekretaris.map((u, i) => (
                     <motion.div key={u.id} custom={i + 1} variants={cardItem}>
-                      <PersonCard user={u} label="Sekretaris" />
+                      <PersonCard user={u} label="Sekretaris" onPhotoClick={(url) => setLightboxImage(url)} />
                     </motion.div>
                   ))}
                 </div>
@@ -113,7 +117,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
                   </h3>
                   {bendahara.map((u, i) => (
                     <motion.div key={u.id} custom={i + 1} variants={cardItem}>
-                      <PersonCard user={u} label="Bendahara" />
+                      <PersonCard user={u} label="Bendahara" onPhotoClick={(url) => setLightboxImage(url)} />
                     </motion.div>
                   ))}
                 </div>
@@ -171,7 +175,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
                     
                     {head && (
                       <motion.div custom={colIdx + 3} variants={cardItem} className="flex flex-col items-center w-full">
-                        <PersonCard user={head} label="Ketua Divisi" />
+                        <PersonCard user={head} label="Ketua Divisi" onPhotoClick={(url) => setLightboxImage(url)} />
                       </motion.div>
                     )}
 
@@ -185,7 +189,7 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
                         <div className="flex flex-col gap-4 w-full">
                           {anggota.map((u, i) => (
                             <motion.div key={u.id} custom={colIdx + 6 + i} variants={cardItem} className="flex flex-col items-center">
-                              <PersonCard user={u} label="Warga" small />
+                              <PersonCard user={u} label="Warga" small onPhotoClick={(url) => setLightboxImage(url)} />
                             </motion.div>
                           ))}
                         </div>
@@ -198,6 +202,13 @@ export default function StrukturBagan({ users }: { users: Person[] }) {
           </div>
         </div>
       )}
+
+      <ImageLightbox
+        src={lightboxImage || ''}
+        alt="Preview Struktur"
+        isOpen={!!lightboxImage}
+        onClose={() => setLightboxImage(null)}
+      />
     </motion.div>
   );
 }
@@ -206,26 +217,38 @@ function PersonCard({
   user,
   label,
   small = false,
+  onPhotoClick,
 }: {
   user: { fullName: string; jabatan: string | null; photoUrl: string | null };
   label: string;
   small?: boolean;
+  onPhotoClick?: (url: string) => void;
 }) {
   const sizeClass = small ? "h-12 w-12 sm:h-16 sm:w-16" : "h-16 w-16 sm:h-24 sm:w-24";
   const textSizeClass = small ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl";
   const nameClass = small ? "text-[10px] sm:text-xs" : "text-xs sm:text-sm";
 
   return (
-    <div className="text-center">
-      <div className={`relative mx-auto mb-3 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white shadow-sm ${sizeClass}`}>
+    <div className="text-center group/card">
+      <div 
+        className={`relative mx-auto mb-3 overflow-hidden rounded-full bg-slate-100 ring-2 ring-white shadow-sm transition-transform cursor-pointer ${sizeClass} ${user.photoUrl ? 'hover:scale-105 hover:shadow-md' : ''}`}
+        onClick={() => { if (user.photoUrl && onPhotoClick) onPhotoClick(user.photoUrl) }}
+      >
         {user.photoUrl ? (
-          <Image
-            src={user.photoUrl}
-            alt={user.fullName}
-            fill
-            sizes="(max-width: 768px) 64px, 96px"
-            className="h-full w-full object-cover"
-          />
+          <>
+            <Image
+              src={user.photoUrl}
+              alt={user.fullName}
+              fill
+              sizes="(max-width: 768px) 64px, 96px"
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover/card:bg-black/20 transition-colors flex items-center justify-center pointer-events-none">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-0 group-hover/card:opacity-100 transition-opacity drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </div>
+          </>
         ) : (
           <div className={`flex h-full w-full items-center justify-center font-bold text-muted-foreground ${textSizeClass}`}>
             {user.fullName.charAt(0).toUpperCase()}

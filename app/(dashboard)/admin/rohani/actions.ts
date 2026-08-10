@@ -22,9 +22,12 @@ async function authorizeRohani() {
 export async function generateNextRohaniSchedule() {
   await authorizeRohani();
 
-  // 1. Get all active users
+  // 1. Get all active users (excluding SUPERADMIN)
   const activeUsers = await db.user.findMany({
-    where: { status: 'AKTIF' },
+    where: {
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } }
+    },
     select: { id: true, fullName: true },
   });
 

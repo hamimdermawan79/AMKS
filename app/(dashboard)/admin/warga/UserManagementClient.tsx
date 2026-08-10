@@ -114,6 +114,11 @@ export default function UserManagementClient({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
 
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [angkatanFilter, setAngkatanFilter] = useState('ALL');
+
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
@@ -267,6 +272,36 @@ export default function UserManagementClient({
         )}
       </div>
 
+      {/* Search and Filters */}
+      <div className="flex flex-col md:flex-row gap-4 bg-white p-4 border border-border rounded-xl">
+        <input
+          type="text"
+          placeholder="Cari nama atau username..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="input flex-1"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="input md:w-48"
+        >
+          <option value="ALL">Semua Status</option>
+          <option value="AKTIF">Warga (Aktif)</option>
+          <option value="ALUMNI">Alumni</option>
+        </select>
+        <select
+          value={angkatanFilter}
+          onChange={(e) => setAngkatanFilter(e.target.value)}
+          className="input md:w-48"
+        >
+          <option value="ALL">Semua Angkatan</option>
+          {Array.from(new Set(users.map(u => u.tahunMasuk).filter(Boolean))).sort().reverse().map(year => (
+            <option key={year} value={String(year)}>Angkatan {year}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Users Table */}
       <div className="table-container">
         <table className="table">
@@ -283,7 +318,13 @@ export default function UserManagementClient({
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {users.filter(u => {
+              const matchSearch = u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                  u.username.toLowerCase().includes(searchQuery.toLowerCase());
+              const matchStatus = statusFilter === 'ALL' || u.status === statusFilter;
+              const matchAngkatan = angkatanFilter === 'ALL' || String(u.tahunMasuk) === angkatanFilter;
+              return matchSearch && matchStatus && matchAngkatan;
+            }).map((user) => (
               <tr key={user.id}>
                 <td className="font-medium">
                   <div className="flex items-center gap-3">
