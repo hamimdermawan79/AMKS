@@ -104,6 +104,7 @@ const billSchema = z.object({
   amount: z.number().int().min(1, 'Nominal harus lebih dari 0'),
   dueDate: z.string().optional().nullable(),
   note: z.string().optional(),
+  createdAt: z.string().optional().nullable(),
 });
 
 export async function addBill(data: {
@@ -113,6 +114,7 @@ export async function addBill(data: {
   amount: number;
   dueDate?: string | null;
   note?: string;
+  createdAt?: string | null;
 }) {
   const session = await authorizeFinance('bill:update');
   const v = billSchema.parse(data);
@@ -123,6 +125,7 @@ export async function addBill(data: {
   }
 
   const due = v.dueDate ? new Date(v.dueDate) : null;
+  const createdDate = v.createdAt ? new Date(v.createdAt) : new Date();
 
   const bill = await db.bill.create({
     data: {
@@ -133,6 +136,7 @@ export async function addBill(data: {
       status: 'BELUM_LUNAS',
       dueDate: due,
       note: v.note || '',
+      createdAt: createdDate,
     },
   });
 

@@ -81,16 +81,16 @@ export default async function KeuanganPage() {
     },
   });
 
-  // Fetch all active citizens for creating new bills (excluding SUPERADMIN)
+  // Fetch all active and alumni citizens for creating new bills (excluding SUPERADMIN)
   const users = await db.user.findMany({
     where: {
-      status: 'AKTIF',
       roles: { none: { role: { name: 'SUPERADMIN' } } },
     },
     select: {
       id: true,
       fullName: true,
       username: true,
+      status: true,
     },
     orderBy: {
       fullName: 'asc',

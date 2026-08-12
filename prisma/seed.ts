@@ -274,7 +274,7 @@ async function main() {
       username: 'superadmin',
       passwordHash,
       fullName: 'Super Admin',
-      phone: '6281234567890',
+      phone: '6289682656773',
       status: 'AKTIF',
       jabatan: 'Super Admin',
     },

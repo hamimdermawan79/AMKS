@@ -338,7 +338,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                   <IconInstagram className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://wa.me/6281234567890"
+                  href="https://wa.me/6289682656773"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="WhatsApp AMKS"
@@ -383,8 +383,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 <li className="flex items-start gap-3">
                   <Phone className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   {/* Ganti nomor ini dengan nomor resmi sebelum launch */}
-                  <a href="tel:+6281234567890" className="text-slate-400 transition hover:text-primary">
-                    +62 812‑3456‑7890
+                  <a href="tel:+6289682656773" className="text-slate-400 transition hover:text-primary">
+                    +62 896‑8265‑6773
                   </a>
                 </li>
                 <li className="flex items-start gap-3">

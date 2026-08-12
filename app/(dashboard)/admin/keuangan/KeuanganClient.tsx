@@ -71,6 +71,7 @@ interface UserSummary {
   id: string;
   fullName: string;
   username: string;
+  status: 'AKTIF' | 'ALUMNI';
 }
 
 interface IuranConfig {
@@ -215,6 +216,7 @@ export default function KeuanganClient({
   // Modals
   const [txModalOpen, setTxModalOpen] = useState(false);
   const [billModalOpen, setBillModalOpen] = useState(false);
+  const [individualBillModalOpen, setIndividualBillModalOpen] = useState(false);
   const [settleModalOpen, setSettleModalOpen] = useState(false);
 
   // Selected Bill for settlement
@@ -237,6 +239,16 @@ export default function KeuanganClient({
     title: '',
     amount: '',
     dueDate: '',
+    note: '',
+  });
+
+  const [newIndividualBill, setNewIndividualBill] = useState({
+    userId: '',
+    type: 'IURAN' as 'DENDA_PIKET' | 'IURAN' | 'LAINNYA' | 'IURAN_OLAHRAGA' | 'DENDA_OLAHRAGA',
+    title: '',
+    amount: '',
+    dueDate: '',
+    createdAt: new Date().toISOString().split('T')[0],
     note: '',
   });
 
@@ -842,6 +854,61 @@ export default function KeuanganClient({
     }
   };
 
+  const handleAddIndividualBill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amountNum = parseInt(newIndividualBill.amount);
+    if (isNaN(amountNum) || amountNum <= 0 || !newIndividualBill.userId || !newIndividualBill.title) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await addBill({
+        userId: newIndividualBill.userId,
+        type: newIndividualBill.type,
+        title: newIndividualBill.title,
+        amount: amountNum,
+        dueDate: newIndividualBill.dueDate || null,
+        note: newIndividualBill.note,
+        createdAt: newIndividualBill.createdAt || null,
+      });
+
+      if (res.success) {
+        const selectedUser = users.find((u) => u.id === newIndividualBill.userId);
+        const added: Bill = {
+          id: res.id!,
+          type: newIndividualBill.type,
+          title: newIndividualBill.title,
+          amount: amountNum,
+          status: 'BELUM_LUNAS',
+          dueDate: newIndividualBill.dueDate ? new Date(newIndividualBill.dueDate).toISOString() : null,
+          note: newIndividualBill.note || null,
+          createdAt: newIndividualBill.createdAt ? new Date(newIndividualBill.createdAt).toISOString() : new Date().toISOString(),
+          user: {
+            id: newIndividualBill.userId,
+            fullName: selectedUser?.fullName || 'Warga/Alumni',
+          },
+        };
+
+        setBills((prev) => [added, ...prev]);
+        setNewIndividualBill({
+          userId: '',
+          type: 'IURAN',
+          title: '',
+          amount: '',
+          dueDate: '',
+          createdAt: new Date().toISOString().split('T')[0],
+          note: '',
+        });
+        setIndividualBillModalOpen(false);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Gagal membuat tagihan');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleAddBulkBill = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -1085,33 +1152,55 @@ export default function KeuanganClient({
           )}
 
           {permissions.canUpdateBill && activeTab === 'bills' && (
-            <button
-              onClick={() => {
-                setError(null);
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  setError(null);
 
-                // Initialize bulk bill data
-                const initData: Record<string, { selected: boolean; withWifi: boolean }> = {};
-                users.forEach(u => {
-                  initData[u.id] = { selected: true, withWifi: true };
-                });
-                setBulkBillData(initData);
+                  // Initialize bulk bill data (active citizens only)
+                  const initData: Record<string, { selected: boolean; withWifi: boolean }> = {};
+                  users.filter(u => u.status === 'AKTIF').forEach(u => {
+                    initData[u.id] = { selected: true, withWifi: true };
+                  });
+                  setBulkBillData(initData);
 
-                // set default title
-                const now = new Date();
-                const monthName = now.toLocaleString('id-ID', { month: 'long' });
-                setBulkBillTitle(`Iuran Bulanan ${monthName} ${now.getFullYear()}`);
+                  // set default title
+                  const now = new Date();
+                  const monthName = now.toLocaleString('id-ID', { month: 'long' });
+                  setBulkBillTitle(`Iuran Bulanan ${monthName} ${now.getFullYear()}`);
 
-                // set default due date to the 20th of the current month
-                const due = new Date(now.getFullYear(), now.getMonth(), 20);
-                setBulkBillDueDate(due.toISOString().split('T')[0]);
+                  // set default due date to the 20th of the current month
+                  const due = new Date(now.getFullYear(), now.getMonth(), 20);
+                  setBulkBillDueDate(due.toISOString().split('T')[0]);
 
-                setBillModalOpen(true);
-              }}
-              className="btn btn-primary text-sm flex items-center gap-1.5 min-h-[44px]"
-            >
-              <Plus className="h-4 w-4 stroke-[2.5]" />
-              Buat Tagihan Bulanan
-            </button>
+                  setBillModalOpen(true);
+                }}
+                className="btn btn-primary text-sm flex items-center gap-1.5 min-h-[44px]"
+              >
+                <Plus className="h-4 w-4 stroke-[2.5]" />
+                Buat Tagihan Bulanan
+              </button>
+
+              <button
+                onClick={() => {
+                  setError(null);
+                  setNewIndividualBill({
+                    userId: '',
+                    type: 'IURAN',
+                    title: '',
+                    amount: '',
+                    dueDate: '',
+                    createdAt: new Date().toISOString().split('T')[0],
+                    note: '',
+                  });
+                  setIndividualBillModalOpen(true);
+                }}
+                className="btn btn-secondary text-sm flex items-center gap-1.5 min-h-[44px]"
+              >
+                <Plus className="h-4 w-4 stroke-[2.5]" />
+                Catat Hutang Perorangan
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -2810,7 +2899,7 @@ export default function KeuanganClient({
                   </div>
 
                   <div className="max-h-[220px] overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
-                    {users.map(u => {
+                    {users.filter(u => u.status === 'AKTIF').map(u => {
                       const isSelected = bulkBillData[u.id]?.selected || false;
                       const withWifi = bulkBillData[u.id]?.withWifi ?? true;
                       return (
@@ -2868,6 +2957,156 @@ export default function KeuanganClient({
                   >
                     {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                     Buat Tagihan Massal
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Catat Hutang/Piutang Perorangan */}
+      <AnimatePresence>
+        {individualBillModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+              onClick={() => setIndividualBillModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-5 sm:p-6 shadow-2xl border border-border max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-foreground">Catat Hutang Perorangan</h3>
+                <button
+                  onClick={() => setIndividualBillModalOpen(false)}
+                  className="p-1 text-muted-foreground hover:bg-secondary rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleAddIndividualBill} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Pilih Warga / Alumni</label>
+                  <select
+                    required
+                    value={newIndividualBill.userId}
+                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, userId: e.target.value })}
+                    className="input text-sm"
+                  >
+                    <option value="">-- Pilih Warga / Alumni --</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.fullName} ({u.status === 'AKTIF' ? 'Warga Aktif' : 'Alumni'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Jenis Tagihan</label>
+                  <select
+                    required
+                    value={newIndividualBill.type}
+                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, type: e.target.value as any })}
+                    className="input text-sm"
+                  >
+                    <option value="IURAN">Iuran Warga</option>
+                    <option value="DENDA_PIKET">Denda Piket</option>
+                    <option value="IURAN_OLAHRAGA">Iuran Olahraga</option>
+                    <option value="DENDA_OLAHRAGA">Denda Olahraga</option>
+                    <option value="LAINNYA">Lainnya</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Judul Hutang / Tagihan</label>
+                  <input
+                    type="text"
+                    required
+                    value={newIndividualBill.title}
+                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, title: e.target.value })}
+                    placeholder="Contoh: Hutang Iuran Semester Ganjil 2024"
+                    className="input text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Nominal (Rupiah)</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={newIndividualBill.amount}
+                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, amount: e.target.value })}
+                    placeholder="Masukkan nominal hutang..."
+                    className="input text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Tanggal Mulai Hutang</label>
+                  <input
+                    type="date"
+                    required
+                    value={newIndividualBill.createdAt}
+                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, createdAt: e.target.value })}
+                    className="input text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Tanggal pencatatan asli (misalnya tanggal di masa lampau).
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Tenggat Waktu / Due Date (Opsional)</label>
+                  <input
+                    type="date"
+                    value={newIndividualBill.dueDate}
+                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, dueDate: e.target.value })}
+                    className="input text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Catatan / Keterangan (Opsional)</label>
+                  <textarea
+                    value={newIndividualBill.note}
+                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, note: e.target.value })}
+                    placeholder="Tulis keterangan tambahan..."
+                    className="input text-sm min-h-[80px] py-2"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => setIndividualBillModalOpen(false)}
+                    className="btn btn-secondary text-sm"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn btn-primary text-sm flex items-center gap-1.5"
+                  >
+                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Catat Hutang
                   </button>
                 </div>
               </form>

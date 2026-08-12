@@ -24,7 +24,7 @@ const orgSchema = {
   logo: 'https://amks-yogyakarta.vercel.app/images/2-simas-logo.webp',
   sameAs: [
     'https://www.instagram.com/amks.yogyakarta',
-    'https://wa.me/6281234567890',
+    'https://wa.me/6289682656773',
   ],
   address: {
     '@type': 'PostalAddress',
@@ -35,7 +35,7 @@ const orgSchema = {
   },
   contactPoint: {
     '@type': 'ContactPoint',
-    telephone: '+62-812-3456-7890',
+    telephone: '+62-896-8265-6773',
     contactType: 'General',
     email: 'asramasambas20006@gmail.com',
     areaServed: 'ID',

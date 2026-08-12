@@ -117,7 +117,7 @@ export default function HubungiKamiPage() {
                   </div>
                   <h3 className="text-slate-800 font-bold mb-1">Telepon / WhatsApp</h3>
                   <p className="text-slate-500 text-sm mb-3">Hubungi kami secara langsung.</p>
-                  <p className="text-blue-700 font-semibold text-lg mt-auto">+62 812 3456 7890</p>
+                  <p className="text-blue-700 font-semibold text-lg mt-auto">+62 896-8265-6773</p>
                 </div>
 
                 <div className="bg-indigo-50/50 rounded-[2rem] border border-indigo-100/50 p-8 flex flex-col items-start transition-transform hover:-translate-y-1 duration-300">
