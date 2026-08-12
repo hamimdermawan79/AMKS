@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: [
-    '@whiskeysockets/baileys',
+    'whatsapp-web.js',
     'jimp',
     'sharp',
     'pino',

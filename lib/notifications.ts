@@ -54,6 +54,7 @@ export async function processNotificationQueue() {
           select: {
             fullName: true,
             phone: true,
+            status: true,
           }
         }
       },
@@ -81,9 +82,24 @@ export async function processNotificationQueue() {
         continue;
       }
 
+      // If user is alumni, skip sending WA
+      if (notif.user?.status === 'ALUMNI') {
+        console.log(`🧹 Skipping WA message for ${notif.user?.fullName} (User is ALUMNI)`);
+        await db.notification.update({
+          where: { id: notif.id },
+          data: { sentWa: true, waMessageId: 'SKIPPED_ALUMNI' },
+        });
+        continue;
+      }
+
       // Format message with premium look (bold, emojis)
       const formattedMessage = formatWaMessage(notif.title, notif.message, notif.type);
       
+      // Add a randomized delay between 10 to 20 seconds to prevent spamming
+      const delayMs = Math.floor(Math.random() * 10000) + 10000;
+      console.log(`⏳ Waiting for ${(delayMs / 1000).toFixed(1)}s before sending to avoid spam detection...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+
       console.log(`📤 Sending WA to ${notif.user?.fullName} (${targetPhone})...`);
       const result = await sendWhatsAppMessage(targetPhone, formattedMessage);
 

@@ -1,35 +1,19 @@
-import makeWASocket, { 
-  useMultiFileAuthState, 
-  DisconnectReason, 
-  WASocket,
-  fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys';
-import { Boom } from '@hapi/boom';
-import pino from 'pino';
-// @ts-ignore
-import qrcodeTerminal from 'qrcode-terminal';
+import { Client, LocalAuth } from 'whatsapp-web.js';
 import path from 'path';
 import fs from 'fs';
 
-// Global state for WhatsApp connection to prevent duplicate instances during development HMR
+// Global state to prevent duplicate instances during Next.js hot-reloads (HMR)
 const globalForWhatsApp = globalThis as unknown as {
-  sock: WASocket | null;
+  client: Client | null;
   connectionStatus: 'connecting' | 'connected' | 'disconnected';
   currentQR: string | null;
 };
 
-if (globalForWhatsApp.sock === undefined) {
-  globalForWhatsApp.sock = null;
-}
 if (globalForWhatsApp.connectionStatus === undefined) {
   globalForWhatsApp.connectionStatus = 'disconnected';
 }
 if (globalForWhatsApp.currentQR === undefined) {
   globalForWhatsApp.currentQR = null;
-}
-
-export function getWhatsAppSocket(): WASocket | null {
-  return globalForWhatsApp.sock;
 }
 
 export function getConnectionStatus(): 'connecting' | 'connected' | 'disconnected' {
@@ -40,126 +24,127 @@ export function getLatestQR(): string | null {
   return globalForWhatsApp.currentQR;
 }
 
-export async function connectToWhatsApp(): Promise<WASocket> {
-  if (globalForWhatsApp.sock && (globalForWhatsApp.connectionStatus === 'connected' || globalForWhatsApp.connectionStatus === 'connecting')) {
-    return globalForWhatsApp.sock;
+export async function connectToWhatsApp(): Promise<Client> {
+  if (globalForWhatsApp.client && (globalForWhatsApp.connectionStatus === 'connected' || globalForWhatsApp.connectionStatus === 'connecting')) {
+    return globalForWhatsApp.client;
   }
 
-  // Clean up any existing socket and its listeners to avoid leaks
-  if (globalForWhatsApp.sock) {
+  // Clean up any existing client
+  if (globalForWhatsApp.client) {
     try {
-      globalForWhatsApp.sock.ev.removeAllListeners('connection.update');
-      globalForWhatsApp.sock.ev.removeAllListeners('creds.update');
-      globalForWhatsApp.sock.end(undefined);
+      await globalForWhatsApp.client.destroy();
     } catch (e) {
-      console.error('Error cleaning up old socket:', e);
+      console.error('Error destroying old WhatsApp client:', e);
     }
-    globalForWhatsApp.sock = null;
+    globalForWhatsApp.client = null;
   }
 
   globalForWhatsApp.connectionStatus = 'connecting';
   globalForWhatsApp.currentQR = null;
-  console.log('📡 Starting WhatsApp Bot service...');
+  console.log('📡 Starting WhatsApp Bot service (whatsapp-web.js)...');
 
-  const authFolder = path.join(process.cwd(), 'whatsapp-auth');
-  const { state, saveCreds } = await useMultiFileAuthState(authFolder);
-  
-  const { version, isLatest } = await fetchLatestBaileysVersion();
-  console.log(`using WA v${version.join('.')}, isLatest: ${isLatest}`);
+  const authFolder = path.join(process.cwd(), '.wwebjs_auth');
 
-  const socket = makeWASocket({
-    version,
-    auth: state,
-    logger: pino({ level: 'silent' }) as any,
-    printQRInTerminal: false,
+  const client = new Client({
+    authStrategy: new LocalAuth({
+      dataPath: authFolder,
+    }),
+    puppeteer: {
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
+      ],
+    },
   });
 
-  globalForWhatsApp.sock = socket;
+  globalForWhatsApp.client = client;
 
-  socket.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update;
+  client.on('qr', (qr) => {
+    globalForWhatsApp.currentQR = qr;
+    globalForWhatsApp.connectionStatus = 'connecting';
+    console.log('⚠️ WhatsApp QR Code received! Please scan in dashboard.');
+  });
 
-    if (qr) {
-      globalForWhatsApp.currentQR = qr;
-      globalForWhatsApp.connectionStatus = 'connecting';
-      console.log('⚠️ WhatsApp QR Code received! Please scan to connect:');
-      qrcodeTerminal.generate(qr, { small: true });
-    }
+  client.on('ready', () => {
+    console.log('✅ WhatsApp client is ready and connected!');
+    globalForWhatsApp.connectionStatus = 'connected';
+    globalForWhatsApp.currentQR = null;
+  });
 
-    if (connection === 'close') {
-      const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
-      
-      // Clear auth if logged out, bad session, connection replaced, or 405 (Not Allowed/Fatal)
-      const shouldClearAuth = 
-        statusCode === DisconnectReason.loggedOut || 
-        statusCode === DisconnectReason.badSession || 
-        statusCode === DisconnectReason.connectionReplaced ||
-        statusCode === DisconnectReason.multideviceMismatch ||
-        statusCode === 405;
-        
-      const shouldReconnect = !shouldClearAuth;
+  client.on('auth_failure', (msg) => {
+    console.error('❌ WhatsApp authentication failure:', msg);
+    globalForWhatsApp.connectionStatus = 'disconnected';
+    globalForWhatsApp.currentQR = null;
+  });
 
-      console.log('❌ WhatsApp connection closed. Status:', statusCode, 'Reason:', lastDisconnect?.error, 'Reconnecting:', shouldReconnect);
-      
-      globalForWhatsApp.connectionStatus = 'disconnected';
-      globalForWhatsApp.currentQR = null;
+  client.on('disconnected', (reason) => {
+    console.log('❌ WhatsApp client was disconnected:', reason);
+    globalForWhatsApp.connectionStatus = 'disconnected';
+    globalForWhatsApp.currentQR = null;
 
-      if (shouldClearAuth) {
-        // Clear auth credentials directory to force fresh QR next connection
-        const authFolder = path.join(process.cwd(), 'whatsapp-auth');
-        if (fs.existsSync(authFolder)) {
-          try {
-            fs.rmSync(authFolder, { recursive: true, force: true });
-            console.log('🧹 Cleared expired or corrupt whatsapp-auth credentials.');
-          } catch (e) {
-            console.error('Failed to clear whatsapp-auth credentials:', e);
-          }
-        }
+    // Clean up session files to force fresh login next time
+    if (fs.existsSync(authFolder)) {
+      try {
+        fs.rmSync(authFolder, { recursive: true, force: true });
+        console.log('🧹 Cleared expired whatsapp-auth credentials folder.');
+      } catch (e) {
+        console.error('Failed to clear credentials folder:', e);
       }
-
-      if (shouldReconnect) {
-        setTimeout(() => connectToWhatsApp(), 5000);
-      }
-    } else if (connection === 'open') {
-      console.log('✅ WhatsApp connection opened successfully!');
-      globalForWhatsApp.connectionStatus = 'connected';
-      globalForWhatsApp.currentQR = null; // Clear QR once connected
     }
   });
 
-  socket.ev.on('creds.update', saveCreds);
+  // Start initialization (non-blocking)
+  client.initialize().catch((err) => {
+    console.error('Failed to initialize whatsapp-web.js client:', err);
+    globalForWhatsApp.connectionStatus = 'disconnected';
+  });
 
-  return socket;
+  return client;
 }
 
 export async function disconnectWhatsApp(): Promise<void> {
-  if (globalForWhatsApp.sock) {
+  if (globalForWhatsApp.client) {
     try {
-      await globalForWhatsApp.sock.logout();
+      await globalForWhatsApp.client.logout();
+      await globalForWhatsApp.client.destroy();
     } catch (e) {
-      console.error('Error during WhatsApp logout:', e);
+      console.error('Error during WhatsApp disconnect:', e);
     }
-    globalForWhatsApp.sock = null;
+    globalForWhatsApp.client = null;
     globalForWhatsApp.connectionStatus = 'disconnected';
     globalForWhatsApp.currentQR = null;
-    // Remove auth folder to force fresh QR on next connect
-    const authFolder = path.join(process.cwd(), 'whatsapp-auth');
+
+    const authFolder = path.join(process.cwd(), '.wwebjs_auth');
     if (fs.existsSync(authFolder)) {
-      fs.rmSync(authFolder, { recursive: true, force: true });
+      try {
+        fs.rmSync(authFolder, { recursive: true, force: true });
+      } catch (e) {
+        console.error('Failed to clean auth folder:', e);
+      }
     }
     console.log('🔌 WhatsApp disconnected and auth cleared.');
   }
 }
 
-export async function sendWhatsAppMessage(toPhone: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendWhatsAppMessage(
+  toPhone: string,
+  message: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    if (!globalForWhatsApp.sock || globalForWhatsApp.connectionStatus !== 'connected') {
+    if (!globalForWhatsApp.client || globalForWhatsApp.connectionStatus !== 'connected') {
       return { success: false, error: 'WhatsApp bot is not connected' };
     }
 
-    // Clean phone number (replace + or spaces if any)
+    // Clean phone number
     let cleanedPhone = toPhone.replace(/\D/g, '');
-    
+
     // Ensure it starts with 62 (Indonesia)
     if (cleanedPhone.startsWith('0')) {
       cleanedPhone = '62' + cleanedPhone.slice(1);
@@ -167,11 +152,11 @@ export async function sendWhatsAppMessage(toPhone: string, message: string): Pro
       cleanedPhone = '62' + cleanedPhone;
     }
 
-    const jid = `${cleanedPhone}@s.whatsapp.net`;
-    const sentMsg = await globalForWhatsApp.sock.sendMessage(jid, { text: message });
+    const jid = `${cleanedPhone}@c.us`; // whatsapp-web.js uses @c.us for user JIDs
+    const response = await globalForWhatsApp.client.sendMessage(jid, message);
 
-    if (sentMsg?.key?.id) {
-      return { success: true, messageId: sentMsg.key.id };
+    if (response && response.id && response.id.id) {
+      return { success: true, messageId: response.id.id };
     }
 
     return { success: true };
