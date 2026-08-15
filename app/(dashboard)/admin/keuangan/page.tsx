@@ -25,7 +25,10 @@ export default async function KeuanganPage() {
 
     const totalUtang = myBills
       .filter((b) => b.status === 'BELUM_LUNAS')
-      .reduce((sum, b) => sum + b.amount, 0);
+      .reduce((sum, b) => {
+        const isLate = b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+        return sum + (isLate ? Math.floor(b.amount * 1.2) : b.amount);
+      }, 0);
 
     const totalLunas = myBills
       .filter((b) => b.status === 'LUNAS')

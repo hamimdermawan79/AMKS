@@ -91,7 +91,6 @@ export default async function DashboardPage() {
     db.bill.findMany({
       where: { userId: session?.user.id, status: 'BELUM_LUNAS' },
       orderBy: { createdAt: 'desc' },
-      take: 3,
     }),
   ]);
 

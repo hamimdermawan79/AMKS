@@ -86,7 +86,11 @@ export default function UserDashboard({
   const name = session?.user?.fullName ?? "Pengguna";
   const jabatan = (session?.user?.jabatan && session.user.jabatan !== 'WARGA') ? session.user.jabatan : 'Warga';
 
-  const totalTagihan = pendingBills?.reduce((sum, b) => sum + b.amount, 0) || 0;
+  const totalTagihan = pendingBills?.reduce((sum, b) => {
+    const isLate = b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+    const amt = isLate ? Math.floor(b.amount * 1.2) : b.amount;
+    return sum + amt;
+  }, 0) || 0;
   
   const hasKegiatan = upcomingKerjaBakti || upcomingSports || upcomingGeneralActivity || myUpcomingRohani;
 
