@@ -87,13 +87,16 @@ export async function connectToWhatsApp(): Promise<Client> {
     globalForWhatsApp.connectionStatus = 'disconnected';
     globalForWhatsApp.currentQR = null;
 
-    // Clean up session files to force fresh login next time
-    if (fs.existsSync(authFolder)) {
-      try {
-        fs.rmSync(authFolder, { recursive: true, force: true });
-        console.log('🧹 Cleared expired whatsapp-auth credentials folder.');
-      } catch (e) {
-        console.error('Failed to clear credentials folder:', e);
+    // Only clear auth folder if explicitly logged out from phone or auth failed
+    const reasonStr = String(reason || '').toUpperCase();
+    if (reasonStr.includes('LOGOUT') || reasonStr.includes('UNPAIRED')) {
+      if (fs.existsSync(authFolder)) {
+        try {
+          fs.rmSync(authFolder, { recursive: true, force: true });
+          console.log('🧹 Cleared expired whatsapp-auth credentials folder.');
+        } catch (e) {
+          console.error('Failed to clear credentials folder:', e);
+        }
       }
     }
   });
