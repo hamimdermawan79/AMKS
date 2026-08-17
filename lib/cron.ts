@@ -2,29 +2,41 @@ import { db } from '@/lib/db';
 import { createNotification } from './notifications';
 import { isUserSuperAdminById } from '@/lib/rbac/can';
 
-/**
- * Check for piket assignments scheduled for tomorrow (H-1)
- * and create notifications if they don't already exist.
- */
-export async function checkUpcomingPiketAssignments() {
-  try {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    // Set range for tomorrow from 00:00:00 to 23:59:59
-    const startOfTomorrow = new Date(tomorrow);
-    startOfTomorrow.setHours(0, 0, 0, 0);
-    const endOfTomorrow = new Date(tomorrow);
-    endOfTomorrow.setHours(23, 59, 59, 999);
+const SECTOR_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 
-    console.log(`⏰ Checking piket assignments for date: ${startOfTomorrow.toLocaleDateString()}`);
+function getSectorName(sectorIndex: number): string {
+  const letter = SECTOR_LABELS[sectorIndex] ?? String.fromCharCode(65 + sectorIndex);
+  return `Sektor ${letter}`;
+}
+
+/**
+ * Check for piket assignments scheduled for TODAY (Hari H ONLY).
+ * Reminders are sent on the day of piket between 05:00 WIB and 11:00 WIB,
+ * accurately displaying sector names (Sektor A, Sektor B, Sektor C, etc.).
+ * Sent exactly once per assigned piket day to prevent spam and WA bans.
+ */
+export async function checkTodayPiketReminders() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const currentHour = nowWib.getHours();
+
+    // Reminders are sent only on the piket day between 05:00 WIB and 11:00 WIB (when presensi closes)
+    if (currentHour < 5 || currentHour >= 11) {
+      return;
+    }
+
+    const startOfToday = new Date(nowWib);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(nowWib);
+    endOfToday.setHours(23, 59, 59, 999);
 
     const assignments = await db.piketAssignment.findMany({
       where: {
         date: {
-          gte: startOfTomorrow,
-          lte: endOfTomorrow,
+          gte: startOfToday,
+          lte: endOfToday,
         },
+        attendance: null, // Hasn't completed presensi yet
       },
       include: {
         user: {
@@ -36,29 +48,47 @@ export async function checkUpcomingPiketAssignments() {
       },
     });
 
+    if (assignments.length === 0) return;
+
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+
     for (const assign of assignments) {
-      // Check if notification already sent for this assignment
-      const existing = await db.notification.findFirst({
+      // Check if a reminder was sent in the last 3 hours for this specific piket assignment
+      const recentReminder = await db.notification.findFirst({
         where: {
+          userId: assign.userId,
           type: 'PIKET_REMINDER',
-          referenceId: assign.id,
+          referenceId: {
+            startsWith: `REMINDER:${assign.id}`,
+          },
+          createdAt: {
+            gte: threeHoursAgo,
+          },
         },
       });
 
-      if (existing) continue;
+      if (recentReminder) {
+        console.log(`🧹 Skipping reminder for ${assign.user.fullName} - sent recently in the last 3 hours.`);
+        continue;
+      }
 
-      // Create notification
-      const sectorName = assign.sector === 0 ? 'Sektor A' : assign.sector === 1 ? 'Sektor B' : `Sektor ${assign.sector + 1}`;
+      const sectorName = getSectorName(assign.sector);
+      const timeRemaining = Math.max(1, 11 - currentHour);
+      const refId = `REMINDER:${assign.id}:${Date.now()}`;
+
+      // Create single Hari H notification with exact sector label
       await createNotification({
         userId: assign.userId,
-        title: 'Pengingat Piket Besok (H-1)',
-        message: `Halo ${assign.user.fullName}, mengingatkan bahwa besok Anda terjadwal piket di ${sectorName}. Harap melakukan presensi piket di dashboard pada hari tersebut. Terima kasih!`,
+        title: `PENGINGAT PIKET HARI INI: ${sectorName}`,
+        message: `Halo ${assign.user.fullName}, mengingatkan bahwa HARI INI Anda memiliki jadwal piket di ${sectorName}. Harap segera melakukan presensi piket di dashboard sebelum pukul 11:00 WIB (tersisa kurang lebih ${timeRemaining} jam lagi). Terima kasih!`,
         type: 'PIKET_REMINDER',
-        referenceId: assign.id,
+        referenceId: refId,
       });
+
+      console.log(`✉️ Single Hari H piket reminder queued for ${assign.user.fullName} (${sectorName})`);
     }
   } catch (error) {
-    console.error('Failed to run checkUpcomingPiketAssignments:', error);
+    console.error('Failed to run checkTodayPiketReminders:', error);
   }
 }
 
@@ -247,75 +277,10 @@ export async function checkMissedPikets() {
 }
 
 /**
- * Check piket assignments for today (H-0).
- * If the assignment date is today and they haven't marked attendance yet,
- * and we haven't sent a reminder in the last 3 hours, send a WhatsApp reminder.
+ * Deprecated alias maintained for backward compatibility. Delegates to checkTodayPiketReminders.
  */
 export async function checkHourlyPiketReminders() {
-  try {
-    const nowWib = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
-    const currentHour = nowWib.getHours();
-    
-    // Reminders are only relevant on the piket day between 05:00 WIB and 11:00 WIB (when presensi closes)
-    if (currentHour < 5 || currentHour >= 11) {
-      return;
-    }
-
-    const today = new Date(nowWib);
-    today.setHours(0, 0, 0, 0);
-    const endOfToday = new Date(nowWib);
-    endOfToday.setHours(23, 59, 59, 999);
-
-    const assignments = await db.piketAssignment.findMany({
-      where: {
-        date: {
-          gte: today,
-          lte: endOfToday,
-        },
-        attendance: null, // Hasn't checked in yet
-      },
-      include: {
-        user: true,
-      },
-    });
-
-    console.log(`⏰ Checking hourly reminders for ${assignments.length} people assigned today...`);
-
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-
-    for (const assign of assignments) {
-      // Check if we sent a reminder in the last 3 hours for this specific assignment
-      const recentReminder = await db.notification.findFirst({
-        where: {
-          userId: assign.userId,
-          type: 'PIKET_REMINDER',
-          referenceId: `SPAM:${assign.id}`,
-          createdAt: {
-            gte: threeHoursAgo,
-          },
-        },
-      });
-
-      if (recentReminder) {
-        console.log(`🧹 Skipping reminder for ${assign.user.fullName} - sent recently.`);
-        continue;
-      }
-
-      // Send/enqueue reminder notification
-      const timeRemaining = 11 - currentHour;
-      await createNotification({
-        userId: assign.userId,
-        title: 'PENGINGAT PIKET: Segera Presensi!',
-        message: `PENTING! Halo ${assign.user.fullName}, Anda terjadwal piket HARI INI. Harap segera lakukan presensi piket di dashboard sebelum pukul 11:00 WIB (tersisa kurang lebih ${timeRemaining} jam lagi). Jika terlambat, Anda akan dikenakan denda otomatis sebesar Rp10.000. Terima kasih!`,
-        type: 'PIKET_REMINDER',
-        referenceId: `SPAM:${assign.id}`,
-      });
-      
-      console.log(`✉️ Queued hourly reminder for ${assign.user.fullName}`);
-    }
-  } catch (error) {
-    console.error('Failed to run checkHourlyPiketReminders:', error);
-  }
+  await checkTodayPiketReminders();
 }
 
 /**
@@ -414,18 +379,16 @@ export function startCronJobs() {
   console.log('⏰ Starting Cron jobs worker (every 1 hour)...');
   
   // Run checks immediately on startup
-  checkUpcomingPiketAssignments();
+  checkTodayPiketReminders();
   checkUpcomingBills();
   checkMissedPikets();
-  checkHourlyPiketReminders();
   checkAnnouncementBroadcast();
 
   // Run checks every hour
   cronInterval = setInterval(() => {
-    checkUpcomingPiketAssignments();
+    checkTodayPiketReminders();
     checkUpcomingBills();
     checkMissedPikets();
-    checkHourlyPiketReminders();
     checkAnnouncementBroadcast();
   }, 1000 * 60 * 60); // 1 hour
 }
