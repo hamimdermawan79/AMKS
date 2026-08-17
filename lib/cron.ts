@@ -20,8 +20,8 @@ export async function checkTodayPiketReminders() {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
 
-    // Reminders are sent only on the piket day between 05:00 WIB and 11:00 WIB (when presensi closes)
-    if (currentHour < 5 || currentHour >= 11) {
+    // Reminders are sent on the piket day between 01:00 WIB (1 AM) and 11:00 WIB (when presensi closes)
+    if (currentHour < 1 || currentHour >= 11) {
       return;
     }
 
