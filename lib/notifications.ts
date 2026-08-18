@@ -65,7 +65,23 @@ export async function processNotificationQueue() {
 
     console.log(`✉️ Processing WA notification queue... Found ${pendingNotifications.length} pending.`);
 
+    const processedUserTypes = new Set<string>();
+
     for (const notif of pendingNotifications) {
+      // Deduplicate multiple pending PIKET_REMINDER notifications for the same user in batch
+      if (notif.userId && notif.type === 'PIKET_REMINDER') {
+        const dupKey = `${notif.userId}:${notif.type}`;
+        if (processedUserTypes.has(dupKey)) {
+          console.log(`🧹 Skipping duplicate WA message for ${notif.user?.fullName || notif.userId}`);
+          await db.notification.update({
+            where: { id: notif.id },
+            data: { sentWa: true, waMessageId: 'SKIPPED_DUPLICATE' },
+          });
+          continue;
+        }
+        processedUserTypes.add(dupKey);
+      }
+
       let targetPhone = '';
       
       // If it has a specific user, send to their phone

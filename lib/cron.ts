@@ -50,31 +50,23 @@ export async function checkTodayPiketReminders() {
 
     if (assignments.length === 0) return;
 
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-
     for (const assign of assignments) {
-      // Check if a reminder was sent in the last 3 hours for this specific piket assignment
-      const recentReminder = await db.notification.findFirst({
+      const refId = `PIKET_REMINDER:${assign.id}`;
+
+      // Strict Idempotency Check: guarantee only ONE notification row is ever created for this piket assignment
+      const existing = await db.notification.findFirst({
         where: {
-          userId: assign.userId,
-          type: 'PIKET_REMINDER',
-          referenceId: {
-            startsWith: `REMINDER:${assign.id}`,
-          },
-          createdAt: {
-            gte: threeHoursAgo,
-          },
+          referenceId: refId,
         },
       });
 
-      if (recentReminder) {
-        console.log(`🧹 Skipping reminder for ${assign.user.fullName} - sent recently in the last 3 hours.`);
+      if (existing) {
+        console.log(`🧹 Skipping piket reminder for ${assign.user.fullName} - notification ${refId} already exists in DB.`);
         continue;
       }
 
       const sectorName = getSectorName(assign.sector);
       const timeRemaining = Math.max(1, 11 - currentHour);
-      const refId = `REMINDER:${assign.id}:${Date.now()}`;
 
       // Create single Hari H notification with exact sector label
       await createNotification({
