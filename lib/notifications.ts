@@ -68,11 +68,11 @@ export async function processNotificationQueue() {
     const processedUserTypes = new Set<string>();
 
     for (const notif of pendingNotifications) {
-      // Deduplicate multiple pending PIKET_REMINDER notifications for the same user in batch
-      if (notif.userId && notif.type === 'PIKET_REMINDER') {
+      // Deduplicate multiple pending notifications of the same type for the same user in batch
+      if (notif.userId && (notif.type === 'PIKET_REMINDER' || notif.type === 'TAGIHAN_REMINDER')) {
         const dupKey = `${notif.userId}:${notif.type}`;
         if (processedUserTypes.has(dupKey)) {
-          console.log(`🧹 Skipping duplicate WA message for ${notif.user?.fullName || notif.userId}`);
+          console.log(`🧹 Skipping duplicate WA message for ${notif.user?.fullName || notif.userId} (type: ${notif.type})`);
           await db.notification.update({
             where: { id: notif.id },
             data: { sentWa: true, waMessageId: 'SKIPPED_DUPLICATE' },

@@ -37,6 +37,7 @@ export async function checkTodayPiketReminders() {
           lte: endOfToday,
         },
         attendance: null, // Hasn't completed presensi yet
+        period: { isActive: true }, // Only from the currently active period
       },
       include: {
         user: {
@@ -195,7 +196,7 @@ export async function checkMissedPikets() {
       where: {
         periodId: activePeriod.id,
         date: {
-          lte: today,
+          lt: today, // Only dates BEFORE today (that have definitively passed 11:00 WIB)
         },
         attendance: null,
       },
@@ -209,6 +210,25 @@ export async function checkMissedPikets() {
     for (const assign of unpaidAssignments) {
       // Super Admin tidak dikenai denda piket otomatis
       if (await isUserSuperAdminById(assign.userId)) {
+        continue;
+      }
+
+      // Idempotency: skip if attendance already exists for this assignment
+      const existingAttendance = await db.piketAttendance.findUnique({
+        where: { assignmentId: assign.id },
+      });
+      if (existingAttendance) {
+        console.log(`🧹 Skipping missed piket for ${assign.user.fullName} - attendance already exists.`);
+        continue;
+      }
+
+      // Idempotency: skip if denda notification already exists for this assignment
+      const dendaRefId = `DENDA_PIKET:${assign.id}`;
+      const existingDendaNotif = await db.notification.findFirst({
+        where: { referenceId: dendaRefId },
+      });
+      if (existingDendaNotif) {
+        console.log(`🧹 Skipping denda for ${assign.user.fullName} - notification ${dendaRefId} already exists.`);
         continue;
       }
 
@@ -252,13 +272,13 @@ export async function checkMissedPikets() {
         data: { billId: bill.id },
       });
 
-      // Create Notification
+      // Create Notification with unique referenceId to prevent duplicates
       await createNotification({
         userId: assign.userId,
         title: 'Denda Piket Otomatis Terbit',
         message: `Anda dikenakan denda piket sebesar Rp${fineAmount.toLocaleString('id-ID')} karena terlambat / tidak melakukan presensi piket pada tanggal ${new Date(assign.date).toLocaleDateString('id-ID')} sebelum 11:00 WIB. Harap segera melunasi ke Bendahara.`,
         type: 'TAGIHAN_REMINDER',
-        referenceId: bill.id,
+        referenceId: dendaRefId,
       });
       
       console.log(`✅ Automated denda issued for ${assign.user.fullName} on date ${assign.date.toLocaleDateString()}`);
