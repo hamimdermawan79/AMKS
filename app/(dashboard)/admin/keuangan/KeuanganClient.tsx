@@ -72,7 +72,11 @@ interface UserSummary {
   fullName: string;
   username: string;
   status: 'AKTIF' | 'ALUMNI';
+  roles?: string[];
+  roleLabels?: string[];
 }
+
+export type BulkBillTier = 'FULL' | 'BASE_ONLY' | 'WIFI_ONLY';
 
 interface IuranConfig {
   id: string;
@@ -254,9 +258,10 @@ export default function KeuanganClient({
 
   const [customTxCategory, setCustomTxCategory] = useState('');
 
-  const [bulkBillData, setBulkBillData] = useState<Record<string, { selected: boolean; withWifi: boolean }>>({});
+  const [bulkBillData, setBulkBillData] = useState<Record<string, { selected: boolean; tier: BulkBillTier }>>({});
   const [bulkBillTitle, setBulkBillTitle] = useState('');
   const [bulkBillDueDate, setBulkBillDueDate] = useState('');
+  const [bulkBillRoleFilter, setBulkBillRoleFilter] = useState<'ALL' | 'WARGA' | 'CALON_WARGA'>('ALL');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -916,10 +921,21 @@ export default function KeuanganClient({
 
     const usersToBill = Object.entries(bulkBillData)
       .filter(([_, data]) => data.selected)
-      .map(([userId, data]) => ({
-        userId,
-        amount: data.withWifi ? iuranConfig.baseAmount + iuranConfig.wifiAddon : iuranConfig.baseAmount,
-      }));
+      .map(([userId, data]) => {
+        let amount = 0;
+        if (data.tier === 'WIFI_ONLY') {
+          amount = iuranConfig.wifiAddon;
+        } else if (data.tier === 'BASE_ONLY') {
+          amount = iuranConfig.baseAmount;
+        } else {
+          // Default 'FULL'
+          amount = iuranConfig.baseAmount + iuranConfig.wifiAddon;
+        }
+        return {
+          userId,
+          amount,
+        };
+      });
 
     if (usersToBill.length === 0) {
       setError('Pilih minimal satu warga untuk ditagih.');
@@ -1157,12 +1173,17 @@ export default function KeuanganClient({
                 onClick={() => {
                   setError(null);
 
-                  // Initialize bulk bill data (active citizens only)
-                  const initData: Record<string, { selected: boolean; withWifi: boolean }> = {};
+                  // Initialize bulk bill data (active citizens only with role-based default tier)
+                  const initData: Record<string, { selected: boolean; tier: BulkBillTier }> = {};
                   users.filter(u => u.status === 'AKTIF').forEach(u => {
-                    initData[u.id] = { selected: true, withWifi: true };
+                    const isCalonWarga = u.roles?.includes('CALON_WARGA');
+                    initData[u.id] = {
+                      selected: true,
+                      tier: isCalonWarga ? 'WIFI_ONLY' : 'FULL',
+                    };
                   });
                   setBulkBillData(initData);
+                  setBulkBillRoleFilter('ALL');
 
                   // set default title
                   const now = new Date();
@@ -2870,77 +2891,268 @@ export default function KeuanganClient({
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-muted-foreground">Pilih Warga & Status WiFi</label>
-                    <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground">Pilih Warga & Opsi Tagihan</label>
+                      <p className="text-[11px] text-slate-500">
+                        Calon Warga otomatis diset <span className="font-semibold text-amber-700">Hanya WiFi (Rp {iuranConfig.wifiAddon.toLocaleString('id-ID')})</span>.
+                      </p>
+                    </div>
+
+                    {/* Filter Tab */}
+                    <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold">
                       <button
                         type="button"
-                        onClick={() => {
-                          const updated = { ...bulkBillData };
-                          Object.keys(updated).forEach(k => updated[k].selected = true);
-                          setBulkBillData(updated);
-                        }}
-                        className="text-[10px] bg-slate-100 px-2 py-1 rounded font-semibold hover:bg-slate-200"
+                        onClick={() => setBulkBillRoleFilter('ALL')}
+                        className={`px-2 py-1 rounded-md transition-all ${bulkBillRoleFilter === 'ALL' ? 'bg-white shadow-xs text-primary' : 'text-muted-foreground'}`}
                       >
-                        Pilih Semua
+                        Semua ({users.filter(u => u.status === 'AKTIF').length})
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          const updated = { ...bulkBillData };
-                          Object.keys(updated).forEach(k => updated[k].selected = false);
-                          setBulkBillData(updated);
-                        }}
-                        className="text-[10px] bg-slate-100 px-2 py-1 rounded font-semibold hover:bg-slate-200"
+                        onClick={() => setBulkBillRoleFilter('WARGA')}
+                        className={`px-2 py-1 rounded-md transition-all ${bulkBillRoleFilter === 'WARGA' ? 'bg-white shadow-xs text-primary' : 'text-muted-foreground'}`}
                       >
-                        Batal Semua
+                        Warga ({users.filter(u => u.status === 'AKTIF' && !u.roles?.includes('CALON_WARGA')).length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBulkBillRoleFilter('CALON_WARGA')}
+                        className={`px-2 py-1 rounded-md transition-all ${bulkBillRoleFilter === 'CALON_WARGA' ? 'bg-white shadow-xs text-amber-700 font-bold' : 'text-muted-foreground'}`}
+                      >
+                        Calon Warga ({users.filter(u => u.status === 'AKTIF' && u.roles?.includes('CALON_WARGA')).length})
                       </button>
                     </div>
                   </div>
 
-                  <div className="max-h-[220px] overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
-                    {users.filter(u => u.status === 'AKTIF').map(u => {
-                      const isSelected = bulkBillData[u.id]?.selected || false;
-                      const withWifi = bulkBillData[u.id]?.withWifi ?? true;
-                      return (
-                        <div key={u.id} className={`flex items-center justify-between p-2 rounded-md transition-colors ${isSelected ? 'bg-primary/5' : 'hover:bg-slate-100'}`}>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                setBulkBillData(prev => ({
-                                  ...prev,
-                                  [u.id]: { ...prev[u.id], selected: e.target.checked }
-                                }));
-                              }}
-                              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-                            />
-                            <span className="text-sm font-medium">{u.fullName}</span>
-                          </div>
+                  {/* Quick Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...bulkBillData };
+                        Object.keys(updated).forEach(k => updated[k].selected = true);
+                        setBulkBillData(updated);
+                      }}
+                      className="text-[10px] bg-slate-100 px-2 py-1 rounded font-semibold hover:bg-slate-200"
+                    >
+                      Pilih Semua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...bulkBillData };
+                        Object.keys(updated).forEach(k => updated[k].selected = false);
+                        setBulkBillData(updated);
+                      }}
+                      className="text-[10px] bg-slate-100 px-2 py-1 rounded font-semibold hover:bg-slate-200"
+                    >
+                      Batal Semua
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...bulkBillData };
+                        users.filter(u => u.status === 'AKTIF' && u.roles?.includes('CALON_WARGA')).forEach(u => {
+                          if (updated[u.id]) {
+                            updated[u.id].tier = 'WIFI_ONLY';
+                            updated[u.id].selected = true;
+                          }
+                        });
+                        setBulkBillData(updated);
+                      }}
+                      className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded font-semibold hover:bg-amber-100"
+                    >
+                      Reset Calon Warga (WiFi Saja)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = { ...bulkBillData };
+                        users.filter(u => u.status === 'AKTIF' && !u.roles?.includes('CALON_WARGA')).forEach(u => {
+                          if (updated[u.id]) {
+                            updated[u.id].tier = 'FULL';
+                            updated[u.id].selected = true;
+                          }
+                        });
+                        setBulkBillData(updated);
+                      }}
+                      className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded font-semibold hover:bg-emerald-100"
+                    >
+                      Set Warga Di Asrama (Full)
+                    </button>
+                  </div>
 
-                          {isSelected && (
-                            <div className="flex items-center gap-2 text-xs">
-                              <span className="text-muted-foreground font-semibold">Rp {(withWifi ? iuranConfig.baseAmount + iuranConfig.wifiAddon : iuranConfig.baseAmount).toLocaleString('id-ID')}</span>
-                              <button
-                                type="button"
-                                onClick={() => {
+                  <div className="max-h-[260px] overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-1.5 bg-slate-50">
+                    {users
+                      .filter(u => u.status === 'AKTIF')
+                      .filter(u => {
+                        if (bulkBillRoleFilter === 'WARGA') return !u.roles?.includes('CALON_WARGA');
+                        if (bulkBillRoleFilter === 'CALON_WARGA') return u.roles?.includes('CALON_WARGA');
+                        return true;
+                      })
+                      .map(u => {
+                        const isCalonWarga = u.roles?.includes('CALON_WARGA');
+                        const isSelected = bulkBillData[u.id]?.selected || false;
+                        const currentTier = bulkBillData[u.id]?.tier || (isCalonWarga ? 'WIFI_ONLY' : 'FULL');
+
+                        // Hitung harga per tier
+                        let userPrice = iuranConfig.baseAmount + iuranConfig.wifiAddon;
+                        if (currentTier === 'WIFI_ONLY') userPrice = iuranConfig.wifiAddon;
+                        else if (currentTier === 'BASE_ONLY') userPrice = iuranConfig.baseAmount;
+
+                        return (
+                          <div
+                            key={u.id}
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg border transition-all ${
+                              isSelected
+                                ? isCalonWarga
+                                  ? 'bg-amber-50/70 border-amber-200'
+                                  : 'bg-white border-blue-100 shadow-2xs'
+                                : 'bg-slate-100/60 border-transparent opacity-60'
+                            }`}
+                          >
+                            {/* Checkbox & User Info */}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
                                   setBulkBillData(prev => ({
                                     ...prev,
-                                    [u.id]: { ...prev[u.id], withWifi: !withWifi }
+                                    [u.id]: {
+                                      selected: e.target.checked,
+                                      tier: prev[u.id]?.tier || (isCalonWarga ? 'WIFI_ONLY' : 'FULL'),
+                                    }
                                   }));
                                 }}
-                                className={`px-2 py-1 rounded-full font-bold text-[10px] transition-colors ${withWifi ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
-                              >
-                                {withWifi ? 'Di Asrama (+WiFi)' : 'Tidak di Asrama (-WiFi)'}
-                              </button>
+                                className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                              />
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-sm font-semibold text-slate-800 truncate">{u.fullName}</span>
+                                {isCalonWarga ? (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                    Calon Warga
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                    Warga
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
+
+                            {/* Tier Selector & Price Badge */}
+                            {isSelected && (
+                              <div className="flex items-center justify-between sm:justify-end gap-2 pl-6 sm:pl-0">
+                                <span className="text-xs font-bold text-slate-700">
+                                  Rp {userPrice.toLocaleString('id-ID')}
+                                </span>
+
+                                {/* Tier Buttons */}
+                                <div className="flex items-center bg-slate-200/70 p-0.5 rounded-lg text-[10px] font-bold">
+                                  {isCalonWarga ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setBulkBillData(prev => ({
+                                            ...prev,
+                                            [u.id]: { ...prev[u.id], tier: 'WIFI_ONLY' }
+                                          }));
+                                        }}
+                                        className={`px-2 py-1 rounded-md transition-all ${currentTier === 'WIFI_ONLY' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                      >
+                                        WiFi Saja
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setBulkBillData(prev => ({
+                                            ...prev,
+                                            [u.id]: { ...prev[u.id], tier: 'FULL' }
+                                          }));
+                                        }}
+                                        className={`px-2 py-1 rounded-md transition-all ${currentTier === 'FULL' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                      >
+                                        +Iuran Asrama
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setBulkBillData(prev => ({
+                                            ...prev,
+                                            [u.id]: { ...prev[u.id], tier: 'FULL' }
+                                          }));
+                                        }}
+                                        className={`px-2 py-1 rounded-md transition-all ${currentTier === 'FULL' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                      >
+                                        Di Asrama (+WiFi)
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setBulkBillData(prev => ({
+                                            ...prev,
+                                            [u.id]: { ...prev[u.id], tier: 'BASE_ONLY' }
+                                          }));
+                                        }}
+                                        className={`px-2 py-1 rounded-md transition-all ${currentTier === 'BASE_ONLY' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                      >
+                                        Luar Asrama (-WiFi)
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setBulkBillData(prev => ({
+                                            ...prev,
+                                            [u.id]: { ...prev[u.id], tier: 'WIFI_ONLY' }
+                                          }));
+                                        }}
+                                        className={`px-2 py-1 rounded-md transition-all ${currentTier === 'WIFI_ONLY' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                                      >
+                                        WiFi Saja
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 </div>
+
+                {/* Summary Info */}
+                {(() => {
+                  const selectedList = Object.entries(bulkBillData).filter(([_, d]) => d.selected);
+                  const countCalon = selectedList.filter(([id]) => users.find(u => u.id === id)?.roles?.includes('CALON_WARGA')).length;
+                  const countWarga = selectedList.length - countCalon;
+                  const totalEst = selectedList.reduce((sum, [id, d]) => {
+                    if (d.tier === 'WIFI_ONLY') return sum + iuranConfig.wifiAddon;
+                    if (d.tier === 'BASE_ONLY') return sum + iuranConfig.baseAmount;
+                    return sum + iuranConfig.baseAmount + iuranConfig.wifiAddon;
+                  }, 0);
+
+                  return (
+                    <div className="p-3 bg-slate-100 rounded-xl flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-semibold text-slate-700">Total Ditagih: </span>
+                        <span className="font-bold text-primary">{selectedList.length} Orang</span>
+                        <span className="text-[11px] text-slate-500 ml-1.5">
+                          ({countWarga} Warga, {countCalon} Calon Warga)
+                        </span>
+                      </div>
+                      <div className="font-bold text-sm text-foreground">
+                        Rp {totalEst.toLocaleString('id-ID')}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
                   <button
@@ -3337,9 +3549,9 @@ function IuranConfigCard({
         </div>
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <PriceTag label="Iuran Dasar" value={config.baseAmount} tone="slate" />
-          <PriceTag label="Tambahan WiFi" value={config.wifiAddon} tone="blue" />
-          <PriceTag label="Iuran + WiFi" value={baseWifi} tone="emerald" />
+          <PriceTag label="Iuran Pokok Warga" value={config.baseAmount} tone="slate" />
+          <PriceTag label="WiFi / Calon Warga" value={config.wifiAddon} tone="blue" />
+          <PriceTag label="Iuran + WiFi (Full)" value={baseWifi} tone="emerald" />
         </div>
       )}
 

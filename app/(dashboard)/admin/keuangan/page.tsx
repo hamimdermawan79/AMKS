@@ -94,6 +94,16 @@ export default async function KeuanganPage() {
       fullName: true,
       username: true,
       status: true,
+      roles: {
+        select: {
+          role: {
+            select: {
+              name: true,
+              label: true,
+            },
+          },
+        },
+      },
     },
     orderBy: {
       fullName: 'asc',
@@ -275,7 +285,14 @@ return (
           createdAt: b.createdAt.toISOString(),
           user: b.user,
         }))}
-        users={users}
+        users={users.map((u) => ({
+          id: u.id,
+          fullName: u.fullName,
+          username: u.username,
+          status: u.status,
+          roles: u.roles.map((r) => r.role.name),
+          roleLabels: u.roles.map((r) => r.role.label),
+        }))}
         permissions={{
           canCreateTx,
           canDeleteTx,
