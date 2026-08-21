@@ -210,6 +210,9 @@ export default function KeuanganClient({
   const [billStatusFilter, setBillStatusFilter] = useState<'ALL' | 'BELUM_LUNAS' | 'LUNAS' | 'DIBATALKAN'>('ALL');
   const [billTypeFilter, setBillTypeFilter] = useState<'ALL' | 'IURAN' | 'DENDA_PIKET' | 'LAINNYA' | 'IURAN_OLAHRAGA' | 'DENDA_OLAHRAGA'>('ALL');
 
+  // State for Top 10 Debtor status filter
+  const [debtorStatusFilter, setDebtorStatusFilter] = useState<'ALL' | 'AKTIF' | 'ALUMNI'>('ALL');
+
   // State for expanded ledger rows (Tugas 4B)
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
@@ -575,10 +578,17 @@ export default function KeuanganClient({
 
   // Top 10 Debtor calculation (Tugas 3C)
   const getTopDebtors = () => {
+    // Build a set of user IDs matching the current status filter
+    const allowedUserIds = debtorStatusFilter === 'ALL'
+      ? null
+      : new Set(users.filter((u) => u.status === debtorStatusFilter).map((u) => u.id));
+
     const debtorsMap: Record<string, { id: string; name: string; amount: number }> = {};
 
     bills.forEach((b) => {
       if (b.status !== 'BELUM_LUNAS') return;
+      // Filter by user status if not ALL
+      if (allowedUserIds && !allowedUserIds.has(b.user.id)) return;
       const uId = b.user.id;
       if (!debtorsMap[uId]) {
         debtorsMap[uId] = {
@@ -1883,9 +1893,30 @@ export default function KeuanganClient({
 
             {/* Top 10 Debtor Chart (Tugas 3C) */}
             <div className="glass p-6 rounded-2xl border border-border/40 shadow-sm space-y-4">
-              <div>
-                <h3 className="font-bold text-foreground text-md">Top 10 Warga Penunggak Terbesar</h3>
-                <p className="text-xs text-muted-foreground">Warga dengan akumulasi tagihan belum lunas terbesar.</p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="font-bold text-foreground text-md">Top 10 Warga Penunggak Terbesar</h3>
+                  <p className="text-xs text-muted-foreground">Warga dengan akumulasi tagihan belum lunas terbesar.</p>
+                </div>
+                <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+                  {[
+                    { value: 'ALL' as const, label: 'Semua' },
+                    { value: 'AKTIF' as const, label: 'Warga Aktif' },
+                    { value: 'ALUMNI' as const, label: 'Alumni' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setDebtorStatusFilter(opt.value)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 ${
+                        debtorStatusFilter === opt.value
+                          ? 'bg-white text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {topDebtors.length === 0 ? (
