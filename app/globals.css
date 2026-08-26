@@ -77,6 +77,91 @@ body {
   @apply transition-all duration-300 ease-in-out;
 }
 
+/* ── Seamless horizontal marquee ────────────────────────────────────────── */
+.marquee-mask {
+  mask-image: linear-gradient(to right, transparent 0%, black 16%, black 84%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 16%, black 84%, transparent 100%);
+}
+.marquee-track {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  will-change: transform;
+  animation-name: marquee-scroll;
+  animation-duration: 40s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.marquee-track:hover,
+.marquee-track:focus-within {
+  animation-play-state: paused;
+}
+@keyframes marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* ── Seamless vertical marquee ────────────────────────────────────────── */
+.marquee-vertical-mask {
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.2) 6%, black 20%, black 80%, rgba(0,0,0,0.2) 94%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.2) 6%, black 20%, black 80%, rgba(0,0,0,0.2) 94%, transparent 100%);
+}
+.marquee-track-vertical {
+  display: flex;
+  flex-direction: column;
+  height: max-content;
+  will-change: transform;
+  animation: marquee-scroll-vertical 30s linear infinite;
+}
+.marquee-track-vertical-reverse {
+  display: flex;
+  flex-direction: column;
+  height: max-content;
+  will-change: transform;
+  animation: marquee-scroll-vertical-reverse 30s linear infinite;
+}
+.marquee-track-vertical:hover,
+.marquee-track-vertical-reverse:hover,
+.marquee-track-vertical:focus-within,
+.marquee-track-vertical-reverse:focus-within {
+  animation-play-state: paused;
+}
+@keyframes marquee-scroll-vertical {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+@keyframes marquee-scroll-vertical-reverse {
+  from {
+    transform: translate3d(0, -50%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-mask,
+  .marquee-vertical-mask {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+  .marquee-track {
+    animation-duration: 90s;
+  }
+  .marquee-track-vertical,
+  .marquee-track-vertical-reverse {
+    animation-duration: 90s;
+  }
+}
+
 /* Input styles */
 .input {
   @apply w-full px-4 py-2.5 rounded-lg border border-input;
@@ -236,26 +321,12 @@ body {
    ponytail: if Safari fixes compositor in iOS 19+, revisit these rules.
 ─────────────────────────────────────────────────────────────────────────── */
 
-/* Disable backdrop-filter on mobile to avoid Safari compositor thrashing */
+/* ── Mobile/Touch Optimizations ──────────────────────────────────────────
+   Lightweight performance tweaks for mobile/touch devices.
+─────────────────────────────────────────────────────────────────────────── */
+
 @media (hover: none) and (pointer: coarse) {
-  .glass,
-  .glass-dark,
-  .glass-card {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    background: rgba(255, 255, 255, 0.92) !important;
-  }
-
-  /* Navbar mobile: solid instead of blur */
-  header.glass,
-  aside.glass,
-  nav[class*="backdrop-blur"] {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    background: rgba(255, 255, 255, 0.95) !important;
-  }
-
-  /* Reduce heavy blur radii on decorative blobs */
+  /* Reduce heavy blur radii on decorative background blobs only */
   .blur-\[120px\],
   .blur-3xl {
     filter: blur(40px) !important;
@@ -266,7 +337,7 @@ body {
     mix-blend-mode: normal !important;
   }
 
-  /* Hide SVG noise overlays entirely on mobile */
+  /* Hide SVG noise overlays on mobile */
   div[style*="feTurbulence"],
   div[style*="noiseFilter"] {
     display: none !important;
@@ -275,21 +346,6 @@ body {
   /* Disable infinite blob animations on mobile */
   .animate-blob {
     animation: none !important;
-  }
-}
-
-/* iOS Safari specific: suppress -webkit-backdrop-filter where possible */
-@supports (-webkit-touch-callout: none) {
-  @media (hover: none) and (pointer: coarse) {
-    .backdrop-blur-sm,
-    .backdrop-blur-md,
-    .backdrop-blur-lg,
-    .backdrop-blur-xl,
-    .backdrop-blur-2xl,
-    .backdrop-blur-3xl {
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-    }
   }
 }
 

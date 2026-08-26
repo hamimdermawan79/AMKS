@@ -41,7 +41,7 @@ function ZoomAnimator() {
 
 export default function MapLeaflet() {
   return (
-    <div className="h-[240px] w-full rounded-2xl overflow-hidden border border-border shadow-lg relative z-0 sm:h-[400px] md:h-[600px]">
+    <div className="h-[240px] sm:h-[320px] md:h-[380px] w-full rounded-2xl md:rounded-3xl overflow-hidden border border-slate-200 shadow-md relative z-0">
       <MapContainer 
         center={POSITION} 
         zoom={11} // Start zoomed out 

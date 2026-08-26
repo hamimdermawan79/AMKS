@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { motion, useScroll, useTransform, useInView, animate } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import {
-  BookOpen, Palette, Heart, Users, ShieldCheck,
-  GraduationCap, Calendar, MapPin, Images, ChevronDown, Quote,
-  Home, Zap, Building2, Package,
+  Calendar, Images, ChevronDown, Quote, Home,
 } from 'lucide-react';
 import MapSection from '@/components/MapSection';
 import SyaratWargaSection from '@/components/SyaratWargaSection';
+import Marquee from '@/components/Marquee';
+import StickyScrollGallery from '@/components/ui/sticky-scroll';
+import AnimatedMarqueeHero from '@/components/ui/hero-3';
 import { useIsLowEndDevice } from '@/lib/animation-utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -39,30 +40,10 @@ interface Props {
   recentActivities: ActivityPreview[];
   profileAbout: string | null;
   facilityItems?: FacilityItem[];
+  divisionImages?: string[];
 }
 
-// ── Floating orbs ──────────────────────────────────────────────────────────
-function FloatingOrbs() {
-  const orbs = [
-    { size: 280, x: '20%', y: '15%', color: 'bg-blue-200/25', dur: 20, delay: 0 },
-    { size: 200, x: '70%', y: '30%', color: 'bg-indigo-200/20', dur: 24, delay: 3 },
-    { size: 160, x: '50%', y: '65%', color: 'bg-sky-200/20', dur: 22, delay: 1 },
-  ];
-  const isLowEnd = useIsLowEndDevice();
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {orbs.map((o, i) => (
-        <motion.div
-          key={i}
-          className={`absolute rounded-full blur-3xl ${o.color}`}
-          style={{ width: o.size, height: o.size, left: o.x, top: o.y }}
-          animate={isLowEnd ? {} : { x: [0, 20, -15, 0], y: [0, -20, 10, 0], scale: [1, 1.05, 0.97, 1] }}
-          transition={isLowEnd ? {} : { duration: o.dur, delay: o.delay, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
-        />
-      ))}
-    </div>
-  );
-}
+
 
 // ── Animated counter ───────────────────────────────────────────────────────
 function AnimatedCounter({ to, suffix = '' }: { to: number; suffix?: string }) {
@@ -90,14 +71,6 @@ const cardReveal = {
   visible: (i: number) => ({ opacity: 1, y: 0, transition: { duration: 0.4, delay: i * 0.1 } }),
 };
 
-const divisi = [
-  { icon: BookOpen, name: 'Kebersihan', desc: 'Jadwal piket, kerja bakti, dan kebersihan lingkungan', color: 'bg-emerald-100 text-emerald-600' },
-  { icon: Palette, name: 'Kesenian', desc: 'Kegiatan seni, budaya, dan kreativitas warga', color: 'bg-purple-100 text-purple-600' },
-  { icon: Heart, name: 'Keolahragaan', desc: 'Olahraga, turnamen, dan kesehatan fisik', color: 'bg-rose-100 text-rose-600' },
-  { icon: Users, name: 'Rohani', desc: 'Kegiatan keagamaan dan pengembangan spiritual', color: 'bg-amber-100 text-amber-600' },
-  { icon: ShieldCheck, name: 'Keamanan', desc: 'Maintenance CCTV, pengamanan lingkungan, dan inventaris', color: 'bg-blue-100 text-blue-600' },
-];
-
 const divisionColorMap: Record<string, string> = {
   KEBERSIHAN: 'from-emerald-500 to-teal-500',
   KESENIAN: 'from-purple-500 to-violet-500',
@@ -114,6 +87,7 @@ export default function HomeClient({
   recentActivities,
   profileAbout,
   facilityItems = [],
+  divisionImages = [],
 }: Props) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -126,282 +100,180 @@ export default function HomeClient({
   const heroOpacity = isLowEnd ? 1 : heroOpacityRaw;
 
   const stats = [
-    { label: 'Warga Aktif', value: totalWarga, suffix: '+', icon: <Users className="h-5 w-5" /> },
-    { label: 'Alumni', value: totalAlumni, suffix: '+', icon: <GraduationCap className="h-5 w-5" /> },
-    { label: 'Angkatan', value: totalAngkatan, suffix: '', icon: <Calendar className="h-5 w-5" /> },
-    { label: 'Divisi Aktif', value: 5, suffix: '', icon: <Zap className="h-5 w-5" /> },
+    { label: 'Warga Aktif', value: totalWarga, suffix: '+', href: '/daftar-warga' },
+    { label: 'Alumni', value: totalAlumni, suffix: '+', href: '/arsip-dokumen/buku-alumni' },
+    { label: 'Angkatan', value: totalAngkatan, suffix: '', href: '/arsip-dokumen/buku-alumni' },
+    { label: 'Divisi', value: 5, suffix: '', href: '/tentang-kami/struktur' },
   ];
+
+  const activityImages = recentActivities
+    .map((a) => a.coverUrl)
+    .filter((url): url is string => Boolean(url));
+
+  const fallbackHeroImages = [
+    'https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=1200&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=1200&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&auto=format&fit=crop&q=80',
+  ];
+
+  const [heroImage, setHeroImage] = useState<string>(
+    activityImages[0] || fallbackHeroImages[0]
+  );
+
+  useEffect(() => {
+    const pool = activityImages.length > 0 ? activityImages : fallbackHeroImages;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    setHeroImage(pool[randomIndex]);
+  }, []);
 
   return (
     <div className="relative isolate min-h-screen bg-white">
 
-      {/* ===== HERO ===== */}
+      {/* ===== HERO (Background hero-bg.png + Loaded Random Gambar Kegiatan di Kanan + Typography Rata Kiri) ===== */}
       <motion.section
+        id="home-hero"
         style={{ scale: heroScale, opacity: heroOpacity }}
-        className="relative z-10 flex min-h-screen items-center justify-center overflow-hidden"
+        className="relative z-10 flex min-h-[85vh] lg:min-h-[92vh] flex-col justify-between bg-white pt-24 pb-6 sm:pt-32 sm:pb-8 lg:pt-28 lg:pb-8 overflow-hidden"
       >
-        {/* Blobs */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-50 via-white to-blue-50/50" />
-        <div className="pointer-events-none absolute -left-[10%] top-0 h-[700px] w-[700px] rounded-[40%_60%_70%_30%] bg-primary/20 mix-blend-multiply blur-[120px] animate-blob" />
-        <div className="pointer-events-none absolute left-[15%] -top-[10%] h-[600px] w-[600px] rounded-[60%_40%_30%_70%] bg-blue-200/40 mix-blend-multiply blur-[120px] animate-blob animation-delay-2000" />
-        <div className="pointer-events-none absolute -left-[5%] bottom-[-10%] h-[600px] w-[600px] rounded-[50%_50%_60%_40%] bg-blue-300/30 mix-blend-multiply blur-[120px] animate-blob animation-delay-4000" />
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
-        {mounted && <FloatingOrbs />}
+        {/* Layer 1: Background Hero (hero-bg.png) */}
+        <div className="absolute inset-0 w-full h-full pointer-events-none select-none z-0 overflow-hidden">
+          <img
+            src="/images/hero-bg.png"
+            alt="AMKS Hero Background"
+            className="w-full h-full object-cover object-center select-none pointer-events-none"
+            draggable={false}
+            loading="eager"
+          />
+        </div>
 
-        <div className="container relative mx-auto px-6">
-          <div className="flex flex-col lg:grid lg:grid-cols-12 lg:items-center lg:gap-14">
+        {/* Layer 2: Loaded Random Gambar Kegiatan (Rata Kanan Penuh dengan Gradient Mask Memudar ke Kiri) */}
+        <div className="absolute right-0 top-0 bottom-0 w-full sm:w-[85vw] lg:w-[58vw] xl:w-[52vw] h-full pointer-events-none select-none z-[1] overflow-hidden [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.04)_10%,rgba(0,0,0,0.4)_35%,rgba(0,0,0,0.85)_65%,black_90%,black_100%)]">
+          <img
+            src={heroImage}
+            alt="Kegiatan AMKS"
+            className="w-full h-full object-cover object-right select-none pointer-events-none opacity-40 sm:opacity-55 lg:opacity-100"
+            draggable={false}
+            loading="eager"
+          />
+        </div>
 
-            {/* ── Mobile hero ── */}
-            <div className="lg:hidden">
-              {/* Typography left + Mascot right (overlapping, clipped right) */}
-              <div className="relative overflow-x-clip">
-                {/* Mascot — bright, shifted right so part is clipped */}
-                <motion.img
-                  src="/images/1-mascott.webp"
-                  alt="Mascot SIMAS-KS"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.6, delay: 0.3 }}
-                  className="pointer-events-none absolute right-[-8%] top-0 h-[130%] w-auto object-contain drop-shadow-xl select-none"
-                />
+        {/* Main Content Area */}
+        <div className="container relative mx-auto px-5 sm:px-6 lg:px-8 z-10 my-auto">
+          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-10 relative">
 
-                {/* Typography — left aligned, z above mascot */}
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  className="relative z-10 max-w-[65%] text-3xl font-black leading-[1.08] tracking-tight text-foreground sm:text-4xl"
-                >
-                  Tempat<br />
-                  Berkumpul<br />
-                  Biak Sambas<br />
-                  di{' '}<span className="italic text-primary">Yogyakarta</span>
-                </motion.h1>
-              </div>
-
-              {/* Narasi — full width */}
-              <motion.p
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.35 }}
-                className="mt-8 text-justify text-sm leading-relaxed text-muted-foreground"
-              >
-                <span className="inline-flex items-center gap-2 align-middle"><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi Asrama Mahasiswa Kabupaten Sambas di Yogyakarta - wadah terpadu untuk administrasi, pendaftaran calon warga, dan informasi kegiatan asrama.
-              </motion.p>
-
-              {/* CTA Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="mt-8 flex flex-col w-full gap-4"
-              >
-                <Link
-                  href="/login"
-                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-6 py-3.5 text-sm font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
-                >
-                  <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
-                  <span className="relative z-10">Akses Warga Asrama</span>
-                </Link>
-                <Link
-                  href="/daftar-warga"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-6 py-3.5 text-sm font-semibold text-slate-700 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
-                >
-                  <Home className="h-4 w-4" /> Daftar Calon Warga
-                </Link>
-              </motion.div>
-
-              {/* KPI single line */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.6 }}
-                className="mt-8 flex items-center justify-center gap-5"
-              >
-                {stats.map((s) => (
-                  <div key={s.label} className="flex items-center gap-1">
-                    <span className="text-primary [&>svg]:h-3 [&>svg]:w-3">{s.icon}</span>
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-extrabold leading-none tabular-nums text-foreground">
-                        <AnimatedCounter to={s.value} suffix={s.suffix} />
-                      </span>
-                      <span className="text-[8px] font-medium leading-none text-muted-foreground">{s.label}</span>
-                    </div>
-                  </div>
-                ))}
-              </motion.div>
-            </div>
-
-            {/* ── Desktop layout (unchanged) ── */}
-            <div className="hidden w-full lg:col-span-7 lg:block">
+            {/* Kolom Kiri: Classy Editorial Typography (Clean Tanpa Tombol) */}
+            <div className="flex flex-col text-left lg:col-span-7 xl:col-span-7 z-10 pt-2 pb-2 sm:py-4 relative">
               <motion.h1
-                initial={{ opacity: 0, y: 28 }}
+                initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.3 }}
-                className="text-5xl font-black leading-[1.05] tracking-tight text-foreground xl:text-6xl 2xl:text-7xl"
+                transition={{ duration: 0.6, delay: 0.15 }}
+                className="font-serif text-4xl sm:text-6xl md:text-7xl xl:text-8xl font-normal leading-[1.15] tracking-tight text-slate-900"
               >
-                Tempat Berkumpul<br />
+                Tempat Bekumpol<br />
                 Biak Sambas<br />
                 di{' '}
-                <span className="italic text-primary">Yogyakarta</span>
+                <span className="font-script text-5xl sm:text-7xl md:text-8xl xl:text-9xl text-primary font-normal tracking-normal inline-block ml-1">
+                  Yogyakarta
+                </span>
               </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.45 }}
-                className="mt-6 max-w-2xl text-justify text-sm leading-relaxed text-muted-foreground"
-              >
-                <span className="inline-flex items-center gap-2 align-middle"><span className="font-semibold text-foreground">SIMAS-KS</span></span> merupakan platform digital resmi yang dikelola untuk mendukung pengelolaan Asrama Mahasiswa Kabupaten Sambas di Daerah Istimewa Yogyakarta. Sistem ini menjadi wadah terpadu bagi warga asrama, pengurus, dan calon warga dalam mengakses layanan administrasi, informasi, serta pendaftaran calon warga baru, pengelolaan data huni, hingga penyampaian informasi dan kegiatan asrama.
-              </motion.p>
-
-              {/* CTA Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                className="mt-8 flex flex-row items-center gap-4"
-              >
-                <Link
-                  href="/login"
-                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-2xl border border-blue-200/50 bg-blue-500/10 px-5 xl:px-8 py-3 xl:py-4 text-sm xl:text-base font-bold text-primary shadow-[0_8px_32px_rgba(37,99,235,0.15)] backdrop-blur-xl transition-all duration-300 hover:scale-105 hover:bg-blue-500/20 hover:shadow-[0_8px_32px_rgba(37,99,235,0.25)] hover:border-blue-300/60"
-                >
-                  <div className="absolute inset-0 -z-10 bg-gradient-to-br from-blue-400/20 via-transparent to-primary/20 blur-md transition-opacity duration-300 group-hover:opacity-100" />
-                  <span className="relative z-10">Akses Warga Asrama</span>
-                </Link>
-
-                <Link
-                  href="/daftar-warga"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/40 backdrop-blur-2xl px-5 xl:px-7 py-3 xl:py-4 text-sm xl:text-base font-semibold text-slate-700 transition-all duration-300 hover:scale-105 hover:border-primary/30 hover:text-primary hover:shadow-md"
-                >
-                  <Home className="h-4 w-4" /> Daftar Calon Warga
-                </Link>
-              </motion.div>
             </div>
 
-            {/* Right — mascot (desktop only) */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.35 }}
-              className="relative hidden justify-end lg:col-span-5 lg:flex"
-            >
-              <svg className="absolute inset-0 h-full w-full overflow-visible opacity-[0.15]" viewBox="0 0 500 500" fill="none">
-                <line x1="50" y1="100" x2="150" y2="80" stroke="currentColor" strokeWidth="0.5" />
-                <line x1="180" y1="60" x2="250" y2="120" stroke="currentColor" strokeWidth="0.5" />
-                <line x1="280" y1="150" x2="380" y2="100" stroke="currentColor" strokeWidth="0.5" />
-                <line x1="120" y1="250" x2="80" y2="320" stroke="currentColor" strokeWidth="0.5" />
-                <line x1="320" y1="280" x2="400" y2="250" stroke="currentColor" strokeWidth="0.5" />
-                <line x1="200" y1="350" x2="300" y2="380" stroke="currentColor" strokeWidth="0.5" />
-                <path d="M60 180 L100 150 L140 190 L110 230 Z" stroke="currentColor" strokeWidth="0.4" />
-                <path d="M360 160 L410 130 L440 180 L390 210 Z" stroke="currentColor" strokeWidth="0.4" />
-                <path d="M250 400 L290 360 L330 390 L290 430 Z" stroke="currentColor" strokeWidth="0.4" />
-                <path d="M80 400 L120 370 L150 410 L100 440 Z" stroke="currentColor" strokeWidth="0.4" />
-                <path d="M380 320 L430 290 L460 340 L410 370 Z" stroke="currentColor" strokeWidth="0.4" />
-                <circle cx="180" cy="80" r="15" stroke="currentColor" strokeWidth="0.3" />
-                <circle cx="420" cy="220" r="20" stroke="currentColor" strokeWidth="0.3" />
-                <circle cx="150" cy="380" r="12" stroke="currentColor" strokeWidth="0.3" />
-                <circle cx="380" cy="420" r="18" stroke="currentColor" strokeWidth="0.3" />
-              </svg>
-              <motion.img
-                src="/images/1-mascott.webp"
-                alt="Mascot SIMAS-KS"
-                className="relative z-10 h-auto w-full max-w-lg xl:max-w-xl translate-x-14 drop-shadow-2xl"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4, ease: 'easeOut' }}
-              />
-            </motion.div>
           </div>
+        </div>
 
-          {/* Stat counters — desktop only, centered */}
+        {/* Minimalist Compact KPI Stats — Paling Bawah & Centered */}
+        <div className="container relative mx-auto px-4 z-10 pt-6 pb-2 sm:pb-4">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.9 }}
-            className="mx-auto mt-10 hidden items-center justify-center gap-6 lg:flex lg:flex-wrap md:gap-8"
+            transition={{ duration: 0.5, delay: 0.45 }}
+            className="mx-auto flex flex-wrap items-center justify-center gap-6 sm:gap-10 md:gap-14"
           >
             {stats.map((s) => (
-              <div key={s.label} className="flex items-center gap-2.5">
-                <span className="text-primary">{s.icon}</span>
-                <div className="flex flex-col">
-                  <span className="text-sm xl:text-base font-extrabold leading-tight tabular-nums text-foreground">
+              <div key={s.label} className="flex items-center justify-center">
+                <Link
+                  href={s.href}
+                  className="group flex flex-col items-center text-center transition-opacity hover:opacity-80"
+                >
+                  <span className="text-base sm:text-lg font-bold text-slate-900 tabular-nums tracking-tight transition-colors group-hover:text-primary font-montserrat">
                     <AnimatedCounter to={s.value} suffix={s.suffix} />
                   </span>
-                  <span className="text-[10px] xl:text-xs font-medium leading-tight text-muted-foreground">{s.label}</span>
-                </div>
+                  <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.16em] text-slate-500 font-medium font-montserrat transition-colors group-hover:text-slate-900 mt-0.5">
+                    {s.label}
+                  </span>
+                </Link>
               </div>
             ))}
           </motion.div>
         </div>
-
       </motion.section>
 
-      {/* ── Page-wide continuous ambient blobs ── */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-0 h-full overflow-hidden">
-        <div className="absolute left-[5%] top-[70vh] h-[800px] w-[800px] rounded-full bg-blue-200/25 blur-[150px]" />
-        <div className="absolute right-[10%] top-[180vh] h-[600px] w-[600px] rounded-full bg-indigo-200/20 blur-[140px]" />
-        <div className="absolute left-[40%] top-[300vh] h-[500px] w-[500px] rounded-full bg-sky-200/15 blur-[120px]" />
-      </div>
-
       {/* ===== DIVISI ===== */}
-      <section className="relative z-10 overflow-hidden py-24 md:py-32">
-        {/* Gradient blending from Hero */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-blue-50/50 to-transparent" />
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-[radial-gradient(ellipse_at_top_right,_rgba(37,99,235,0.05),_transparent_70%)]" />
+      <section className="relative z-10 overflow-hidden py-24 md:py-32 bg-white">
         <div className="container relative mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="mx-auto mb-16 max-w-2xl text-center"
+            className="mx-auto mb-14 max-w-2xl text-center"
           >
-            <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-              <span className="h-px w-8 bg-blue-400/70" />
-              Organisasi
-              <span className="h-px w-8 bg-blue-400/70" />
-            </span>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              Divisi Asrama
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal tracking-tight text-slate-900 leading-[1.1]">
+              Divisi <span className="text-primary italic font-serif">Asrama</span>
             </h2>
-            <p className="mt-3 text-muted-foreground">
-              Lima pilar kegiatan yang mewadahi minat, bakat, dan pengembangan diri warga
-            </p>
           </motion.div>
+        </div>
 
-          <div className="mx-auto grid max-w-3xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
-            {divisi.map((item, i) => {
-              const Icon = item.icon;
-              return (
-                <motion.div
-                  key={i}
-                  custom={i}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, margin: '-40px' }}
-                  variants={cardReveal}
-                  whileHover={{ y: -6, transition: { type: 'spring', stiffness: 200, damping: 18 } }}
-                  className="group flex flex-col items-center justify-center rounded-2xl border border-border bg-white p-3 sm:p-4 text-center shadow-sm transition-shadow hover:shadow-md lg:aspect-[3/4]"
+        {/* Division artwork running marquee — constrained container with pure seamless alpha mask */}
+        <div className="container mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="relative mx-auto max-w-5xl lg:max-w-6xl py-3"
+          >
+            <Marquee duration={30}>
+              {(divisionImages.length > 0
+                ? [...divisionImages, ...divisionImages]
+                : [
+                  '/images/divisi/keolahragaan.webp',
+                  '/images/divisi/kesenian.webp',
+                  '/images/divisi/kebersihan.webp',
+                  '/images/divisi/rohani.webp',
+                  '/images/divisi/keamanan.webp',
+                  '/images/divisi/keolahragaan.webp',
+                  '/images/divisi/kesenian.webp',
+                  '/images/divisi/kebersihan.webp',
+                  '/images/divisi/rohani.webp',
+                  '/images/divisi/keamanan.webp',
+                ]
+              ).map((src, idx) => (
+                <div
+                  key={`${src}-${idx}`}
+                  className="group relative mx-2.5 sm:mx-3 md:mx-3.5 shrink-0 select-none py-2"
                 >
-                  <div className={`mx-auto mb-2 sm:mb-3 flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl ${item.color} transition-all group-hover:scale-110`}>
-                    <Icon className="h-5 w-5" />
+                  <div className="relative h-[210px] w-[160px] sm:h-[250px] sm:w-[190px] md:h-[280px] md:w-[215px] overflow-hidden rounded-2xl md:rounded-[22px] transition-transform duration-500 group-hover:scale-[1.04]">
+                    <img
+                      src={src}
+                      alt="Artwork Divisi Asrama"
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-108"
+                      loading="lazy"
+                      draggable={false}
+                    />
                   </div>
-                  <h3 className="text-xs sm:text-sm font-semibold text-foreground leading-tight">{item.name}</h3>
-                </motion.div>
-              );
-            })}
-          </div>
+                </div>
+              ))}
+            </Marquee>
+          </motion.div>
         </div>
       </section>
 
       {/* ===== SEKILAS PROFIL: BARU ===== */}
       <AboutSection about={profileAbout} />
 
-      {/* ===== GALERI KEGIATAN PREVIEW: BARU ===== */}
-      {recentActivities.length > 0 && (
-        <GaleriPreviewSection activities={recentActivities} />
-      )}
+      {/* ===== KEGIATAN TERKINI (STICKY SCROLL GALLERY) ===== */}
+      <StickyScrollGallery activities={recentActivities} />
 
       {/* ===== FASILITAS ASRAMA ===== */}
       {facilityItems.length > 0 && (
@@ -417,43 +289,36 @@ export default function HomeClient({
       {/* ===== TESTIMONIAL ===== */}
       <TestimonialSection />
 
-      {/* ===== CTA ===== */}
-      <section className="relative z-10 py-24 md:py-32">
-        <div className="container mx-auto px-6">
+      {/* ===== CTA (Clean Minimalist Redesign) ===== */}
+      <section className="relative z-10 py-16 md:py-24 bg-white">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="mx-auto max-w-2xl"
+            className="mx-auto max-w-3xl"
           >
-            <div className="rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 p-10 md:p-14 text-center text-white shadow-2xl shadow-blue-500/30 relative overflow-hidden">
-              {/* BG blobs */}
-              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-400/20 blur-2xl" />
-
-              <div className="relative z-10">
-                <span className="mb-4 inline-block rounded-full bg-white/20 px-4 py-1.5 text-sm font-semibold backdrop-blur-sm">
-                  Bergabung Sekarang
-                </span>
-                <h2 className="text-3xl font-bold md:text-4xl">Siap Bergabung?</h2>
-                <p className="mt-4 text-white/75 max-w-md mx-auto">
-                  Sudah memenuhi syarat? Daftar sebagai calon warga, atau login untuk mengakses dashboard warga asrama.
-                </p>
-                <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Link
-                    href="/daftar-warga"
-                    className="group inline-flex items-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-bold text-blue-700 shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-                  >
-                    <Home className="h-4 w-4" /> Daftar Calon Warga
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="inline-flex items-center gap-2 rounded-2xl border-2 border-white/40 px-7 py-4 text-base font-semibold text-white transition-all hover:border-white/70 hover:bg-white/10"
-                  >
-                    Login Warga
-                  </Link>
-                </div>
+            <div className="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-600 p-8 sm:p-12 md:p-14 text-center text-white border border-blue-400/30 shadow-xl shadow-blue-500/20 relative overflow-hidden">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-normal tracking-tight text-white leading-[1.15]">
+                Siap Menjadi Bagian dari <span className="italic font-serif">AMKS?</span>
+              </h2>
+              <p className="mt-3.5 text-sm sm:text-base text-blue-100/90 max-w-lg mx-auto leading-relaxed">
+                Daftarkan diri Anda sebagai calon warga asrama, atau masuk untuk mengakses dashboard layanan digital warga.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+                <Link
+                  href="/daftar-warga"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm sm:text-base font-bold text-primary shadow-md transition-all hover:bg-blue-50 active:scale-95"
+                >
+                  Daftar Calon Warga
+                </Link>
+                <Link
+                  href="/login"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/30 px-7 py-3.5 text-sm sm:text-base font-semibold text-white transition-all backdrop-blur-sm active:scale-95"
+                >
+                  Login Warga
+                </Link>
               </div>
             </div>
           </motion.div>
@@ -463,478 +328,483 @@ export default function HomeClient({
   );
 }
 
-// ── Testimonial Section ────────────────────────────────────────────────────
-const testimonials = [
+// ── Testimonial Section (3D Isometric Smooth Running Vertical Marquee - Clean Light) ──
+const testimonialsCol1 = [
   {
-    quote:
-      'Tinggal di AMKS bukan sekadar kost; ini adalah rumah kedua. Saya belajar berorganisasi, berteman lintas angkatan, dan tumbuh sebagai manusia yang lebih mandiri.',
     name: 'Arif Zefrizen',
-    year: 'Angkatan 2023',
-    role: 'Alumni',
-    avatar: 'MR',
-    color: 'bg-blue-500',
+    username: '@arifzefrizen',
+    origin: 'Sambas',
+    originCode: 'SB',
+    quote: 'Tinggal di AMKS bukan sekadar tempat tinggal; ini rumah kedua yang membentuk kedisiplinan dan rasa kekeluargaan yang erat.',
+    avatar: 'AZ',
+    avatarBg: 'bg-blue-600',
   },
   {
-    quote:
-      'Dari AMKS saya dapat jaringan yang luar biasa. Teman-teman lintas jurusan dan angkatan membantu saya dalam kuliah maupun mencari kerja setelah lulus.',
     name: 'Dwi Aldi',
-    year: 'Angkatan 2021',
-    role: 'Alumni',
-    avatar: 'MR',
-    color: 'bg-indigo-500',
-  },
-  {
-    quote:
-      'Program kegiatan divisinya variatif banget. Mulai dari olahraga, seni, sampai kajian rohani; semua ada. Tidak pernah bosan tinggal di sini.',
-    name: 'Al Hajj',
-    year: 'Angkatan 2024',
-    role: 'Alumni',
-    avatar: 'DP',
-    color: 'bg-emerald-500',
+    username: '@dwialdi',
+    origin: 'Tebas',
+    originCode: 'TB',
+    quote: 'Dari AMKS saya mendapatkan relasi dan persaudaraan lintas angkatan yang luar biasa membantu perkuliahan di Jogja.',
+    avatar: 'DA',
+    avatarBg: 'bg-indigo-600',
   },
 ];
 
+const testimonialsCol2 = [
+  {
+    name: 'Al Hajj',
+    username: '@alhajj',
+    origin: 'Pemangkat',
+    originCode: 'PM',
+    quote: 'Program divisi aktif dari olahraga hingga kajian rohani membuat masa studi di perantauan selalu seimbang dan produktif.',
+    avatar: 'AH',
+    avatarBg: 'bg-emerald-600',
+  },
+  {
+    name: 'Farhan Maulana',
+    username: '@farhan_m',
+    origin: 'Jawai',
+    originCode: 'JW',
+    quote: 'Lingkungan asrama yang aman, tenang, dan fasilitasnya sangat mendukung kenyamanan saat mengerjakan tugas akhir.',
+    avatar: 'FM',
+    avatarBg: 'bg-purple-600',
+  },
+];
+
+const testimonialsCol3 = [
+  {
+    name: 'Rian Pratama',
+    username: '@rianpratama',
+    origin: 'Teluk Keramat',
+    originCode: 'TK',
+    quote: 'Solidaritas Biak Sambas di Yogyakarta begitu terasa di sini. Banyak kenangan dan pembelajaran organisasi yang berharga.',
+    avatar: 'RP',
+    avatarBg: 'bg-amber-600',
+  },
+  {
+    name: 'Dimas Wahyudi',
+    username: '@dimasw',
+    origin: 'Paloh',
+    originCode: 'PL',
+    quote: 'Mental kepemimpinan dan rasa saling tolong-menolong antar warga terasah sangat baik lewat kepengurusan asrama.',
+    avatar: 'DW',
+    avatarBg: 'bg-rose-600',
+  },
+];
+
+function ReviewCard({ t }: { t: (typeof testimonialsCol1)[0] }) {
+  return (
+    <div className="w-64 sm:w-72 md:w-80 rounded-[20px] bg-white border border-slate-200/90 p-4 sm:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.06)] backdrop-blur-md transition-all duration-300 hover:border-primary/40 hover:shadow-xl select-none mb-6 sm:mb-8">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full ${t.avatarBg} text-xs sm:text-sm font-bold text-white shadow-sm ring-1 ring-white/10`}
+          >
+            {t.avatar}
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs sm:text-sm font-semibold text-slate-900 font-montserrat">
+              {t.name}
+            </span>
+            <span className="text-[11px] text-slate-500 font-sans">
+              {t.username}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end">
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest font-montserrat">
+            {t.originCode}
+          </span>
+          <span className="text-[9px] text-slate-400 font-medium">
+            {t.origin}
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-3 text-xs sm:text-sm text-slate-600 font-normal leading-relaxed font-sans">
+        {t.quote}
+      </p>
+    </div>
+  );
+}
+
 function TestimonialSection() {
   return (
-    <section className="relative overflow-hidden py-24 md:py-32">
-      {/* Decorative blobs */}
-      <div className="pointer-events-none absolute left-0 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-200/30 blur-3xl" />
-      <div className="pointer-events-none absolute right-0 bottom-0 h-64 w-64 translate-x-1/3 translate-y-1/3 rounded-full bg-indigo-200/30 blur-3xl" />
-
-      <div className="container relative mx-auto px-6">
+    <section className="relative overflow-hidden bg-white text-slate-900 py-20 md:py-28">
+      {/* Header — z-30 agar berada di atas gradien */}
+      <div className="container relative mx-auto px-6 mb-10 sm:mb-14 z-30">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mx-auto mb-14 max-w-2xl text-center"
+          className="mx-auto max-w-2xl text-center"
         >
-          <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-            <span className="h-px w-8 bg-blue-400/70" />
-            Suara Warga
-            <span className="h-px w-8 bg-blue-400/70" />
-          </span>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Apa Kata Mereka?
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal tracking-tight text-slate-900 leading-[1.1]">
+            Suara Warga<span className="text-primary font-sans font-bold">.</span>
           </h2>
-          <p className="mt-3 text-muted-foreground">
-            Pengalaman nyata dari  alumni Asrama Mahasiswa Kabupaten Sambas Yogyakarta
+          <p className="mt-3 text-xs sm:text-sm md:text-base text-slate-600 font-sans">
+            Pengalaman dan kesan berharga dari warga serta alumni Asrama Mahasiswa Kabupaten Sambas di Yogyakarta
           </p>
         </motion.div>
-
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3">
-          {testimonials.map((t, i) => (
-            <motion.div
-              key={i}
-              custom={i}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-40px' }}
-              variants={cardReveal}
-              className="relative flex flex-col rounded-3xl border border-border bg-white p-7 shadow-sm transition-shadow hover:shadow-md"
-            >
-              {/* Quote icon */}
-              <Quote className="mb-4 h-7 w-7 shrink-0 text-primary/30" />
-
-              <p className="flex-1 text-sm leading-relaxed text-slate-600 italic">
-                &ldquo;{t.quote}&rdquo;
-              </p>
-
-              <div className="mt-6 flex items-center gap-3 border-t border-slate-100 pt-5">
-                <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${t.color} text-sm font-bold text-white`}
-                >
-                  {t.avatar}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.role} · {t.year}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
       </div>
-    </section>
-  );
-}
 
-// ── About Section ──────────────────────────────────────────────────────────
-function AboutSection({ about }: { about: string | null }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-80px' });
-
-  const highlights = [
-    { icon: <Home className="h-5 w-5" />, label: 'Hunian Nyaman', desc: 'Fasilitas lengkap untuk mahasiswa Sambas di Yogyakarta' },
-    { icon: <Users className="h-5 w-5" />, label: 'Komunitas Solid', desc: 'Kebersamaan dan rasa kekeluargaan yang erat antar sesama' },
-    { icon: <BookOpen className="h-5 w-5" />, label: 'Pengembangan Diri', desc: 'Ruang tumbuh akademik, seni, rohani, dan olahraga' },
-  ];
-
-  return (
-    <section ref={ref} className="relative overflow-hidden py-24 md:py-32">
-      <div className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-blue-50/80 blur-3xl" />
-
-      <div className="container relative mx-auto px-6">
-        <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-
-          {/* Left: text */}
-          <motion.div
-            initial={{ opacity: 0, x: -32 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6 }}
-          >
-            <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-              <span className="h-px w-8 bg-blue-400/70" />
-              Tentang Kami
-              <span className="h-px w-8 bg-blue-400/70" />
-            </span>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl leading-snug">
-              Rumah Kedua{' '}
-              <span className="text-primary">Rang Bujang Sambas</span>
-              {' '}di Yogyakarta
-            </h2>
-            <p className="mt-5 text-muted-foreground leading-relaxed">
-              {about
-                ? about
-                : 'Asrama Mahasiswa Kabupaten Sambas Yogyakarta (AMKS) adalah tempat tinggal sekaligus komunitas bagi mahasiswa asal Kabupaten Sambas, Kalimantan Barat yang sedang menempuh pendidikan di Daerah Istimewa Yogyakarta. Di sini, kami membangun karakter, kebersamaan, dan prestasi bersama.'}
-            </p>
-
-            <div className="mt-8 space-y-4">
-              {highlights.map((h, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={inView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ delay: 0.15 + i * 0.12, duration: 0.5 }}
-                  className="flex items-start gap-4"
-                >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-xl">
-                    {h.icon}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-800">{h.label}</p>
-                    <p className="text-sm text-muted-foreground">{h.desc}</p>
-                  </div>
-                </motion.div>
+      {/* 3D Isometric Tilted Vertical Marquee Arena */}
+      <div className="relative z-10 flex h-[480px] sm:h-[540px] md:h-[600px] w-full flex-row items-center justify-center overflow-hidden [perspective:1000px] select-none">
+        {/* Tilted Marquee Stage */}
+        <div className="flex flex-row gap-5 sm:gap-7 md:gap-8 [transform:rotateX(22deg)_rotateZ(-20deg)_skewX(12deg)_scale(1.05)] sm:[transform:rotateX(22deg)_rotateZ(-20deg)_skewX(12deg)_scale(1.12)] [transform-style:preserve-3d]">
+          {/* Column 1 (Scrolls Up) */}
+          <div className="marquee-vertical-mask h-[580px] sm:h-[660px] md:h-[740px] overflow-hidden">
+            <div className="marquee-track-vertical flex flex-col">
+              {testimonialsCol1.concat(testimonialsCol1).map((t, idx) => (
+                <ReviewCard key={`col1-${idx}`} t={t} />
               ))}
             </div>
+          </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={inView ? { opacity: 1 } : {}}
-              transition={{ delay: 0.6 }}
-              className="mt-8"
-            >
-              <Link
-                href="/tentang-kami"
-                className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all"
-              >
-                Selengkapnya tentang asrama
-              </Link>
-            </motion.div>
+          {/* Column 2 (Scrolls Down) */}
+          <div className="marquee-vertical-mask h-[580px] sm:h-[660px] md:h-[740px] overflow-hidden">
+            <div className="marquee-track-vertical-reverse flex flex-col">
+              {testimonialsCol2.concat(testimonialsCol2).map((t, idx) => (
+                <ReviewCard key={`col2-${idx}`} t={t} />
+              ))}
+            </div>
+          </div>
+
+          {/* Column 3 (Scrolls Up - Desktop) */}
+          <div className="marquee-vertical-mask h-[580px] sm:h-[660px] md:h-[740px] overflow-hidden hidden sm:block">
+            <div className="marquee-track-vertical flex flex-col">
+              {testimonialsCol3.concat(testimonialsCol3).map((t, idx) => (
+                <ReviewCard key={`col3-${idx}`} t={t} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Full-Bleed Section Gradient Overlays (Solid White Menutup Ujung Atas & Bawah Section Sepenuhnya) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-44 sm:h-60 md:h-72 bg-gradient-to-b from-white from-35% via-white/95 via-70% to-transparent z-20" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 sm:h-60 md:h-72 bg-gradient-to-t from-white from-35% via-white/95 via-70% to-transparent z-20" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-24 sm:w-48 bg-gradient-to-r from-white from-30% via-white/90 to-transparent z-20" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-24 sm:w-48 bg-gradient-to-l from-white from-30% via-white/90 to-transparent z-20" />
+
+      {/* Google Maps 4.9 Star Rating Summary (Clean Plain Text Tanpa Card — z-30) */}
+      <div className="relative z-30 mt-6 sm:mt-8 flex items-center justify-center px-4">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5 text-xs sm:text-sm font-medium text-slate-700 font-sans">
+          <div className="flex items-center gap-1">
+            <span className="font-bold text-slate-900 font-montserrat mr-0.5">
+              4.9
+            </span>
+            <div className="flex items-center text-amber-400">
+              {[...Array(5)].map((_, idx) => (
+                <svg
+                  key={idx}
+                  className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-amber-400 text-amber-400"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+              ))}
+            </div>
+          </div>
+          <span>on</span>
+          <div className="inline-flex items-center gap-1 font-semibold text-slate-900">
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+                fill="#EA4335"
+              />
+              <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
+            </svg>
+            <span>Google Maps</span>
+          </div>
+          <span className="text-slate-300">·</span>
+          <span className="text-slate-600">99+ Penilaian</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── About Section (Tentang Kami — Clean Editorial Split Layout) ─────────────
+function AboutSection({ about }: { about: string | null }) {
+  const ref = useRef<HTMLElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+
+  return (
+    <section
+      id="tentang-kami"
+      ref={ref}
+      className="relative z-10 overflow-hidden bg-white py-16 sm:py-24 lg:py-28"
+    >
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16">
+          
+          {/* Sisi Kiri: Gambar Besar, Clean, Tanpa Border, Tanpa Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+            className="flex items-center justify-center lg:col-span-6 xl:col-span-6"
+          >
+            <div className="relative w-full max-w-[520px] lg:max-w-none flex items-center justify-center">
+              <img
+                src="/images/about-us-char.png"
+                alt="Warga Asrama Mahasiswa Kabupaten Sambas"
+                className="w-full h-auto max-h-[580px] lg:max-h-[660px] object-contain object-center select-none pointer-events-none"
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
           </motion.div>
 
-          {/* Right: visual card stack */}
+          {/* Sisi Kanan: Editorial Layout Sesuai Referensi */}
           <motion.div
-            initial={{ opacity: 0, x: 32 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
+            initial={{ opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="relative"
+            className="flex flex-col justify-center lg:col-span-6 xl:col-span-6"
           >
-            {/* Decorative card behind */}
-            <div className="absolute -right-4 -top-4 w-full h-full rounded-3xl bg-gradient-to-br from-blue-200/50 to-indigo-200/50 border border-blue-100" />
-            <div className="absolute -right-2 -top-2 w-full h-full rounded-3xl bg-gradient-to-br from-blue-100/50 to-sky-100/50 border border-blue-100/50" />
+            {/* Giant Title: Tentang Kami. */}
+            <h2 className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-serif font-normal tracking-tight text-slate-900 leading-[1.05]">
+              Tentang Kami<span className="text-primary font-sans font-bold">.</span>
+            </h2>
 
-            {/* Main card */}
-            <div className="relative rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-8 text-white shadow-2xl shadow-blue-500/30">
-              <div className="text-5xl mb-4"><Building2 className="h-12 w-12" /></div>
-              <h3 className="text-2xl font-bold mb-2">AMKS Yogyakarta</h3>
-              <p className="text-white/75 text-sm leading-relaxed mb-6">
-                Asrama Mahasiswa Kabupaten Sambas: rumah, sekolah, dan komunitas bagi generasi Sambas.
-              </p>
-
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Kab. Sambas', sub: 'Kalimantan Barat' },
-                  { label: 'Yogyakarta', sub: 'D.I. Yogyakarta' },
-                ].map((loc) => (
-                  <div key={loc.label} className="rounded-2xl bg-white/15 backdrop-blur-sm p-4">
-                    <MapPin className="h-4 w-4 mb-1.5 text-white/70" />
-                    <p className="font-semibold text-sm">{loc.label}</p>
-                    <p className="text-white/60 text-xs">{loc.sub}</p>
-                  </div>
-                ))}
+            {/* 2-Column Content Grid Below Heading */}
+            <div className="mt-8 sm:mt-10 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8">
+              {/* Kolom Sub Kiri: Lead / Statement Besar */}
+              <div className="md:col-span-5">
+                <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed font-montserrat text-justify">
+                  Rumah kedua bagi mahasiswa Sambas di{' '}
+                  <span className="text-primary font-semibold">Yogyakarta</span>, berfokus pada
+                  pembentukan karakter, solidaritas kekeluargaan, dan prestasi akademik.
+                </p>
               </div>
 
-              {/* Link to profil */}
+              {/* Kolom Sub Kanan: Paragraf Narasi Detail */}
+              <div className="md:col-span-7 space-y-4">
+                <p className="text-sm sm:text-base leading-relaxed text-slate-600 text-justify">
+                  {about
+                    ? about
+                    : 'Asrama Mahasiswa Kabupaten Sambas merupakan tempat tinggal mahasiswa yang berasal dari kabupaten sambas kalimantan barat, yang sedang menempuh masa studi lanjut di Kota Yogyakarta.'}
+                </p>
+                <p className="text-sm sm:text-base leading-relaxed text-slate-600 text-justify">
+                  Melalui berbagai program divisi aktif, dari keolahragaan, kesenian, kebersihan, kerohanian hingga keamanan, kami berkomitmen menciptakan lingkungan asrama yang produktif, aman, dan berdaya saing.
+                </p>
+              </div>
+            </div>
+
+            {/* Navigasi Profil, Struktur, Galeri di atas garis, rata kanan, tanpa pemisah "/" */}
+            <div className="mt-8 sm:mt-10 flex items-center justify-end gap-5 sm:gap-6 text-sm font-medium text-slate-600">
               <Link
                 href="/tentang-kami"
-                className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-white/20 backdrop-blur-sm py-3 text-sm font-semibold transition-colors hover:bg-white/30"
+                className="transition-colors hover:text-primary"
               >
-                Lihat Profil Lengkap
+                Profil
+              </Link>
+              <Link
+                href="/tentang-kami/struktur"
+                className="transition-colors hover:text-primary"
+              >
+                Struktur
+              </Link>
+              <Link
+                href="/tentang-kami/galeri"
+                className="transition-colors hover:text-primary"
+              >
+                Galeri
+              </Link>
+            </div>
+
+            {/* Garis Pembatas & CTA di bawah garis, rata kanan, tanpa bold, link dengan garis putus-putus */}
+            <div className="mt-4 pt-4 border-t border-slate-200 flex justify-end">
+              <Link
+                href="/tentang-kami"
+                className="inline-block text-sm font-medium text-slate-900 border-b border-dashed border-slate-900 pb-0.5 hover:text-primary hover:border-primary transition-colors font-montserrat text-right"
+              >
+                Pelajari selengkapnya tentang profil asrama
               </Link>
             </div>
           </motion.div>
+
         </div>
       </div>
     </section>
   );
 }
 
-// ── Galeri Preview Section ─────────────────────────────────────────────────
-function GaleriPreviewSection({ activities }: { activities: ActivityPreview[] }) {
-  return (
-    <section className="relative overflow-hidden py-24 md:py-32">
-      <div className="pointer-events-none absolute right-0 bottom-0 h-80 w-80 translate-x-1/3 translate-y-1/3 rounded-full bg-blue-100/50 blur-3xl" />
-
-      <div className="container relative mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12"
-        >
-          <div>
-            <span className="mb-3 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
-              <span className="h-px w-8 bg-blue-400/70" />
-              Galeri Kegiatan
-              <span className="h-px w-8 bg-blue-400/70" />
-            </span>
-            <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              Kegiatan Terkini
-            </h2>
-            <p className="mt-2 text-muted-foreground">
-              Dokumentasi momen kebersamaan dan kegiatan warga asrama
-            </p>
-          </div>
-          <Link
-            href="/tentang-kami/galeri"
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:border-primary/30 hover:text-primary hover:shadow-md shrink-0"
-          >
-            <Images className="h-4 w-4" />
-            Lihat Semua
-          </Link>
-        </motion.div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activities.slice(0, 3).map((act, i) => {
-            const gradientClass = act.division
-              ? divisionColorMap[act.division] ?? 'from-slate-400 to-slate-600'
-              : 'from-blue-500 to-indigo-600';
-
-            return (
-              <motion.div
-                key={act.id}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-40px' }}
-                variants={cardReveal}
-                whileHover={{ y: -6, transition: { type: 'spring', stiffness: 220, damping: 20 } }}
-                className="group relative rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300"
-              >
-                <Link href={`/tentang-kami/${act.id}`} className="absolute inset-0 z-10">
-                  <span className="sr-only">Lihat {act.title}</span>
-                </Link>
-
-                {/* Image / Gradient fallback */}
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  {act.coverUrl ? (
-                    <img
-                      src={act.coverUrl}
-                      alt={act.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${gradientClass} flex items-center justify-center`}>
-                      <span className="text-5xl opacity-50">📸</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent" />
-
-                  {/* Division badge */}
-                  {act.division && (
-                    <span className="absolute top-4 left-4 rounded-full bg-white/90 backdrop-blur-sm px-3 py-1 text-xs font-bold text-slate-700">
-                      {act.division.charAt(0) + act.division.slice(1).toLowerCase()}
-                    </span>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-5">
-                  {act.startAt && (
-                    <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium mb-2">
-                      <Calendar className="h-3.5 w-3.5" />
-                      {new Date(act.startAt).toLocaleDateString('id-ID', {
-                        day: 'numeric', month: 'long', year: 'numeric',
-                      })}
-                    </div>
-                  )}
-                  <h3 className="font-bold text-slate-800 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                    {act.title}
-                  </h3>
-                  {act.description && (
-                    <p className="mt-1.5 text-sm text-slate-500 line-clamp-2">{act.description}</p>
-                  )}
-                  {act.location && (
-                    <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-400">
-                      <MapPin className="h-3.5 w-3.5" />
-                      <span className="line-clamp-1">{act.location}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Hover accent */}
-                <div className={`absolute top-0 inset-x-0 h-1 bg-gradient-to-r ${gradientClass} opacity-0 group-hover:opacity-100 transition-opacity`} />
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── Fasilitas Section ──────────────────────────────────────────────────────
-const categoryIcons: Record<string, string> = {
-  'Alat Olahraga': '🏀',
-  'Alat Musik': '🎸',
-  'Alat Masak': '🍳',
-  'Elektronik': '💡',
-  'Furnitur': '🪑',
-  'Kebersihan': '🧹',
-  'Lainnya': '📦',
-};
-
+// ── Fasilitas Section (Compact Collage Photography Layout with Dynamic Hover) ──
 function FasilitasSection({ items }: { items: FacilityItem[] }) {
+  // Susun 8 barang fasilitas ke dalam 3 kolom persis seperti layout referensi
+  const col1 = items.slice(0, 2);
+  const col2 = items.slice(2, 5);
+  const col3 = items.slice(5, 8);
+
   return (
-    <section className="relative z-10 py-24 md:py-32 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 overflow-hidden">
-      {/* Background accents */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-blue-500/10 blur-[100px]" />
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-indigo-500/10 blur-[100px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-cyan-400/5 blur-[120px]" />
-      </div>
-
-      <div className="container relative mx-auto px-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-14"
-        >
-          <span className="mb-4 inline-flex items-center gap-2.5 text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400">
-            <span className="h-px w-10 bg-gradient-to-r from-transparent to-cyan-400" />
-            <Package className="h-4 w-4" />
-            Fasilitas Kami
-            <span className="h-px w-10 bg-gradient-to-l from-transparent to-cyan-400" />
-          </span>
-          <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl lg:text-5xl">
-            Fasilitas <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Asrama</span>
+    <section className="relative z-10 py-14 md:py-20 bg-white text-slate-900">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        {/* Header Bersih */}
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal tracking-tight text-slate-900 leading-[1.1]">
+            Fasilitas <span className="text-primary italic font-serif">Asrama</span>
           </h2>
-          <p className="mt-3 text-slate-400 max-w-xl mx-auto">
-            Berbagai perlengkapan dan fasilitas yang tersedia untuk menunjang kegiatan warga asrama
-          </p>
-        </motion.div>
+        </div>
 
-        {/* Bento Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-          {items.map((item, i) => {
-            const emoji = categoryIcons[item.category || 'Lainnya'] || '📦';
-            const isLarge = i < 2;
+        {/* 3-Column Photography Collage Grid — Konsisten 3 Kolom di Mobile & Desktop */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:gap-3.5 items-start">
+          {/* Kolom 1 (Kiri - 2 Foto Vertikal) */}
+          <div className="flex flex-col gap-1.5 sm:gap-2.5 md:gap-3.5 col-span-1">
+            {col1.map((item, idx) => {
+              const isTop = idx === 0; // Item 0 di atas, Item 1 di bawah
 
-            return (
-              <motion.div
-                key={item.id}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-30px' }}
-                variants={cardReveal}
-                whileHover={{ scale: 1.03, transition: { type: 'spring', stiffness: 280, damping: 20 } }}
-                className={`group relative rounded-2xl overflow-hidden cursor-pointer ${
-                  isLarge ? 'col-span-2 sm:col-span-1 lg:col-span-2 row-span-1' : ''
-                }`}
-              >
-                <div className={`relative overflow-hidden ${isLarge ? 'aspect-[16/9]' : 'aspect-square'}`}>
-                  {item.photoUrl ? (
+              return (
+                <div
+                  key={item.id || `col1-${idx}`}
+                  className="group relative w-full aspect-[3/4] overflow-hidden rounded-xl sm:rounded-2xl md:rounded-[22px] bg-slate-100 shadow-sm cursor-pointer"
+                >
+                  {item.photoUrl && (
                     <img
                       src={item.photoUrl}
                       alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                     />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-600 flex items-center justify-center">
-                      <span className="text-4xl">{emoji}</span>
-                    </div>
                   )}
-
-                  {/* Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
-
-                  {/* Category badge */}
-                  <div className="absolute top-3 left-3">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 text-[11px] font-semibold text-white">
-                      <span>{emoji}</span>
-                      {item.category || 'Lainnya'}
-                    </span>
-                  </div>
-
-                  {/* Quantity badge */}
-                  <div className="absolute top-3 right-3">
-                    <span className="inline-flex items-center rounded-full bg-cyan-500/20 backdrop-blur-md border border-cyan-400/30 px-2.5 py-1 text-[11px] font-bold text-cyan-300">
-                      {item.quantity}x
-                    </span>
-                  </div>
-
-                  {/* Content overlay */}
-                  <div className="absolute bottom-0 inset-x-0 p-4">
-                    <h3 className="font-bold text-white text-sm md:text-base line-clamp-1 drop-shadow-lg">
-                      {item.name}
-                    </h3>
-                    {item.condition && (
-                      <span className={`mt-1 inline-block text-[10px] font-bold uppercase tracking-wider ${
-                        item.condition.toLowerCase() === 'baik' ? 'text-green-400' : 'text-amber-400'
-                      }`}>
-                        ● {item.condition}
+                  {/* Hover Overlay: Tersembunyi di desktop saat tidak di-hover, muncul saat kursor diarahkan */}
+                  <div
+                    className={`absolute inset-0 transition-all duration-300 pointer-events-none opacity-100 md:opacity-0 md:group-hover:opacity-100 ${isTop
+                        ? 'bg-gradient-to-b from-black/85 via-black/25 to-transparent'
+                        : 'bg-gradient-to-t from-black/85 via-black/25 to-transparent'
+                      }`}
+                  >
+                    <div
+                      className={`absolute inset-x-0 ${isTop
+                          ? 'top-0 pt-2.5 px-2.5 sm:pt-3.5 sm:px-3.5 md:pt-4 md:px-4'
+                          : 'bottom-0 pb-2.5 px-2.5 sm:pb-3.5 sm:px-3.5 md:pb-4 md:px-4'
+                        } flex items-start justify-between gap-1.5`}
+                    >
+                      {/* Nama Barang (Kiri) */}
+                      <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm drop-shadow-md line-clamp-2 max-w-[65%]">
+                        {item.name}
+                      </h3>
+                      {/* Status / Kondisi Barang (Kanan) — Plain Text Bersih Tanpa Card & Tanpa Warna Alay */}
+                      <span className="shrink-0 text-[9px] sm:text-[10px] md:text-xs font-medium text-white/80 drop-shadow-sm">
+                        {item.condition || 'Baik'}
                       </span>
-                    )}
+                    </div>
                   </div>
-
-                  {/* Hover glow */}
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-t from-cyan-500/10 to-transparent" />
                 </div>
-              </motion.div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* Kolom 2 (Tengah - 3 Foto: Sedang, Landscape, Panjang) */}
+          <div className="flex flex-col gap-1.5 sm:gap-2.5 md:gap-3.5 col-span-1">
+            {col2.map((item, idx) => {
+              const aspectClass =
+                idx === 0 ? 'aspect-[4/5]' : idx === 1 ? 'aspect-[16/10]' : 'aspect-[3/4]';
+              const isTop = idx === 1; // Item 2 di bawah, Item 3 di atas, Item 4 di bawah (variatif)
+
+              return (
+                <div
+                  key={item.id || `col2-${idx}`}
+                  className={`group relative w-full ${aspectClass} overflow-hidden rounded-xl sm:rounded-2xl md:rounded-[22px] bg-slate-100 shadow-sm cursor-pointer`}
+                >
+                  {item.photoUrl && (
+                    <img
+                      src={item.photoUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  )}
+                  {/* Hover Overlay: Tersembunyi di desktop saat tidak di-hover, muncul saat kursor diarahkan */}
+                  <div
+                    className={`absolute inset-0 transition-all duration-300 pointer-events-none opacity-100 md:opacity-0 md:group-hover:opacity-100 ${isTop
+                        ? 'bg-gradient-to-b from-black/85 via-black/25 to-transparent'
+                        : 'bg-gradient-to-t from-black/85 via-black/25 to-transparent'
+                      }`}
+                  >
+                    <div
+                      className={`absolute inset-x-0 ${isTop
+                          ? 'top-0 pt-2.5 px-2.5 sm:pt-3.5 sm:px-3.5 md:pt-4 md:px-4'
+                          : 'bottom-0 pb-2.5 px-2.5 sm:pb-3.5 sm:px-3.5 md:pb-4 md:px-4'
+                        } flex items-start justify-between gap-1.5`}
+                    >
+                      {/* Nama Barang (Kiri) */}
+                      <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm drop-shadow-md line-clamp-2 max-w-[65%]">
+                        {item.name}
+                      </h3>
+                      {/* Status / Kondisi Barang (Kanan) — Plain Text Bersih Tanpa Card & Tanpa Warna Alay */}
+                      <span className="shrink-0 text-[9px] sm:text-[10px] md:text-xs font-medium text-white/80 drop-shadow-sm">
+                        {item.condition || 'Baik'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Kolom 3 (Kanan - 3 Foto: Sangat Panjang, Landscape, Sedang) */}
+          <div className="flex flex-col gap-1.5 sm:gap-2.5 md:gap-3.5 col-span-1">
+            {col3.map((item, idx) => {
+              const aspectClass =
+                idx === 0 ? 'aspect-[3/4] sm:aspect-[2/3]' : idx === 1 ? 'aspect-[16/10]' : 'aspect-[4/5]';
+              const isTop = idx === 0 || idx === 2; // Item 5 di atas, Item 6 di bawah, Item 7 di atas (variatif)
+
+              return (
+                <div
+                  key={item.id || `col3-${idx}`}
+                  className={`group relative w-full ${aspectClass} overflow-hidden rounded-xl sm:rounded-2xl md:rounded-[22px] bg-slate-100 shadow-sm cursor-pointer`}
+                >
+                  {item.photoUrl && (
+                    <img
+                      src={item.photoUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  )}
+                  {/* Hover Overlay: Tersembunyi di desktop saat tidak di-hover, muncul saat kursor diarahkan */}
+                  <div
+                    className={`absolute inset-0 transition-all duration-300 pointer-events-none opacity-100 md:opacity-0 md:group-hover:opacity-100 ${isTop
+                        ? 'bg-gradient-to-b from-black/85 via-black/25 to-transparent'
+                        : 'bg-gradient-to-t from-black/85 via-black/25 to-transparent'
+                      }`}
+                  >
+                    <div
+                      className={`absolute inset-x-0 ${isTop
+                          ? 'top-0 pt-2.5 px-2.5 sm:pt-3.5 sm:px-3.5 md:pt-4 md:px-4'
+                          : 'bottom-0 pb-2.5 px-2.5 sm:pb-3.5 sm:px-3.5 md:pb-4 md:px-4'
+                        } flex items-start justify-between gap-1.5`}
+                    >
+                      {/* Nama Barang (Kiri) */}
+                      <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm drop-shadow-md line-clamp-2 max-w-[65%]">
+                        {item.name}
+                      </h3>
+                      {/* Status / Kondisi Barang (Kanan) — Plain Text Bersih Tanpa Card & Tanpa Warna Alay */}
+                      <span className="shrink-0 text-[9px] sm:text-[10px] md:text-xs font-medium text-white/80 drop-shadow-sm">
+                        {item.condition || 'Baik'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className="mt-10 text-center"
-        >
+        {/* Tautan Bawah dengan Garis Putus-putus */}
+        <div className="mt-10 md:mt-14 text-center">
           <Link
             href="/fasilitas/inventaris"
-            className="group inline-flex items-center gap-2.5 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-8 py-3.5 text-sm font-bold text-cyan-300 backdrop-blur-sm transition-all duration-300 hover:bg-cyan-500/20 hover:border-cyan-400/50 hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] hover:scale-105"
+            className="inline-block text-sm md:text-base font-medium text-slate-900 border-b border-dashed border-slate-900 pb-0.5 hover:text-primary hover:border-primary transition-colors font-montserrat"
           >
-            <Package className="h-4 w-4" />
-            Lihat Semua Fasilitas & Pinjam Barang
-            <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
+            Lihat semua fasilitas dan inventaris
           </Link>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

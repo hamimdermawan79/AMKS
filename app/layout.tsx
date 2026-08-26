@@ -1,8 +1,24 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Montserrat, Playfair_Display, Great_Vibes } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+});
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  weight: ['400', '500', '600', '700', '800', '900'],
+  style: ['normal', 'italic'],
+});
+const scriptFont = Great_Vibes({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-script',
+});
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -91,7 +107,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
+    <html lang="id" className={`${inter.variable} ${montserrat.variable} ${playfair.variable} ${scriptFont.variable}`}>
       <body className={inter.className}>{children}</body>
     </html>
   );

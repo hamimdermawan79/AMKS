@@ -47,6 +47,12 @@ const config: Config = {
       backdropBlur: {
         xs: '2px',
       },
+      fontFamily: {
+        sans: ['var(--font-inter)', 'sans-serif'],
+        montserrat: ['var(--font-montserrat)', 'sans-serif'],
+        serif: ['var(--font-playfair)', 'Georgia', 'serif'],
+        script: ['var(--font-script)', 'cursive'],
+      },
     },
   },
   plugins: [],

@@ -6,8 +6,8 @@ import { motion } from 'framer-motion';
 const MapLeaflet = dynamic(() => import('./MapLeaflet'), {
   ssr: false,
   loading: () => (
-    <div className="h-64 sm:h-80 md:h-[600px] w-full rounded-2xl bg-slate-100 animate-pulse flex items-center justify-center border border-border shadow-lg">
-      <span className="text-slate-400 font-medium">Memuat Peta...</span>
+    <div className="h-[240px] sm:h-[320px] md:h-[380px] w-full rounded-2xl md:rounded-3xl bg-slate-100 animate-pulse flex items-center justify-center border border-slate-200 shadow-md">
+      <span className="text-slate-400 font-medium text-sm">Memuat Peta...</span>
     </div>
   )
 });
@@ -21,13 +21,13 @@ export default function MapSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="mx-auto max-w-4xl text-center mb-10 md:mb-12"
+          className="mx-auto max-w-2xl text-center mb-8 md:mb-10"
         >
-          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-            Temukan Kami
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal tracking-tight text-slate-900 leading-[1.1]">
+            Lokasi <span className="text-primary italic font-serif">Asrama</span>
           </h2>
-          <p className="mt-3 text-sm md:text-base lg:text-lg text-muted-foreground">
-            Peta lokasi asrama di Yogyakarta
+          <p className="mt-3 text-sm md:text-base text-muted-foreground">
+            Peta lokasi Asrama Mahasiswa Kabupaten Sambas di Yogyakarta
           </p>
         </motion.div>
         
@@ -36,7 +36,7 @@ export default function MapSection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="mx-auto max-w-7xl"
+          className="mx-auto max-w-3xl lg:max-w-4xl"
         >
           <MapLeaflet />
           

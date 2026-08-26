@@ -2,6 +2,8 @@ import { db } from '@/lib/db';
 import HomeClient from '@/components/HomeClient';
 import { Metadata } from 'next';
 import Script from 'next/script';
+import { readdir } from 'node:fs/promises';
+import path from 'node:path';
 
 export const metadata: Metadata = {
   title: 'Beranda',
@@ -71,10 +73,10 @@ export default async function HomePage() {
           distinct: ['tahunMasuk'],
         })
         .then((rows) => rows.length),
-      // 3 kegiatan terbaru untuk preview galeri/kegiatan
+      // Kegiatan terbaru untuk sticky scroll galeri/kegiatan
       db.activity.findMany({
         orderBy: { startAt: 'desc' },
-        take: 3,
+        take: 15,
         select: {
           id: true,
           title: true,
@@ -105,6 +107,16 @@ export default async function HomePage() {
       }),
     ]);
 
+  // Discover division artwork (WebP) from public/images/divisi — no hardcoded list
+  const divisionImages = await readdir(path.join(process.cwd(), 'public', 'images', 'divisi'))
+    .then((files) =>
+      files
+        .filter((f) => f.toLowerCase().endsWith('.webp'))
+        .sort()
+        .map((f) => `/images/divisi/${f}`),
+    )
+    .catch(() => [] as string[]);
+
   return (
     <>
       <Script
@@ -119,6 +131,7 @@ export default async function HomePage() {
         recentActivities={recentActivities}
         profileAbout={profile?.about ?? null}
         facilityItems={facilityItems}
+        divisionImages={divisionImages}
       />
     </>
   );
