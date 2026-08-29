@@ -50,12 +50,16 @@ export default function ProfileEditor({ profile, canEdit, userId }: Props) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Tentang Asrama (Singkat)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Tentang Asrama / Profil Asrama</label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Dapat terdiri dari beberapa paragraf (gunakan Enter untuk baris/paragraf baru). Paragraf pertama akan ditampilkan di Beranda, dan narasi lengkap akan ditampilkan di halaman Profil Asrama.
+            </p>
             <textarea
               value={about}
               onChange={(e) => setAbout(e.target.value)}
-              className="input min-h-[80px]"
-              placeholder="Deskripsi singkat tentang asrama..."
+              className="input min-h-[120px]"
+              placeholder="Tulis narasi tentang asrama..."
+              rows={4}
             />
           </div>
 

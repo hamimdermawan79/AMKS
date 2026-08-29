@@ -1,127 +1,160 @@
 'use client';
 
 import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { CreditCard, GraduationCap, FileText } from 'lucide-react';
 
-const syarat = [
-  {
-    step: '01',
-    icon: CreditCard,
-    title: 'KTP Asli Kabupaten Sambas',
-    desc: 'Calon warga wajib memiliki KTP asli yang terdaftar di wilayah Kabupaten Sambas, Kalimantan Barat, sebagai bukti identitas daerah asal.',
-  },
-  {
-    step: '02',
-    icon: GraduationCap,
-    title: 'Mahasiswa Aktif di Yogyakarta',
-    desc: 'Calon warga harus berstatus mahasiswa aktif yang sedang menempuh pendidikan di salah satu perguruan tinggi di wilayah Daerah Istimewa Yogyakarta.',
-  },
-  {
-    step: '03',
-    icon: FileText,
-    title: 'Menaati Tata Tertib dan AD/ART Asrama',
-    desc: 'Setiap warga wajib membaca, memahami, dan bersedia mengikuti seluruh peraturan tata tertib serta Anggaran Dasar / Anggaran Rumah Tangga (AD/ART) yang berlaku di asrama.',
-  },
-];
+const REQUIREMENTS_TEXT = `Persyaratan yang diperlukan;
 
-function TimelineItem({
-  item,
-  index,
-  isLast,
-}: {
-  item: (typeof syarat)[0];
-  index: number;
-  isLast: boolean;
-}) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-40px' });
-  const Icon = item.icon;
-
-  return (
-    <div ref={ref} className="relative flex gap-4 sm:gap-6">
-      {/* Left: Clean Monochrome SVG Icon Box + Connector Line */}
-      <div className="flex flex-col items-center">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={inView ? { scale: 1, opacity: 1 } : {}}
-          transition={{ duration: 0.4, delay: index * 0.12 }}
-          className="relative z-10 flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-[10px] border border-slate-200 bg-white shadow-sm"
-        >
-          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-slate-800 stroke-[1.6]" />
-        </motion.div>
-
-        {!isLast && (
-          <motion.div
-            initial={{ scaleY: 0 }}
-            animate={inView ? { scaleY: 1 } : {}}
-            transition={{ duration: 0.5, delay: index * 0.12 + 0.2, ease: 'easeOut' }}
-            style={{ originY: 0 }}
-            className="my-2 w-px flex-1 bg-slate-200"
-          />
-        )}
-      </div>
-
-      {/* Right: Clean Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={inView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.4, delay: index * 0.12 + 0.1 }}
-        className="pb-8 sm:pb-10 pt-1 text-left"
-      >
-        <h3 className="text-base sm:text-lg font-semibold text-slate-900 font-sans tracking-tight">
-          {item.title}
-        </h3>
-        <p className="mt-1.5 text-xs sm:text-sm text-slate-600 leading-relaxed font-sans">
-          {item.desc}
-        </p>
-      </motion.div>
-    </div>
-  );
-}
+1. KTP Asli Kabupaten Sambas
+2. Mahasiswa Aktif di Yogyakarta
+3. Mentaati Tata Tertib dan AD/ART Asrama`;
 
 export default function SyaratWargaSection() {
-  const headRef = useRef(null);
-  const headInView = useInView(headRef, { once: true });
+  const sectionRef = useRef<HTMLElement>(null);
+  const inView = useInView(sectionRef, { once: false, margin: '-60px' });
+
+  // Typewriter effect state
+  const [typedText, setTypedText] = useState('');
+  const [isSelected, setIsSelected] = useState(false);
+
+  useEffect(() => {
+    if (!inView) {
+      setTypedText('');
+      setIsSelected(false);
+      return;
+    }
+
+    let isMounted = true;
+    let timer: NodeJS.Timeout;
+    let typingInterval: NodeJS.Timeout;
+
+    const startTyping = () => {
+      let currentIndex = 0;
+      setTypedText('');
+      setIsSelected(false);
+
+      typingInterval = setInterval(() => {
+        if (!isMounted) {
+          clearInterval(typingInterval);
+          return;
+        }
+
+        currentIndex++;
+        setTypedText(REQUIREMENTS_TEXT.slice(0, currentIndex));
+
+        if (currentIndex >= REQUIREMENTS_TEXT.length) {
+          clearInterval(typingInterval);
+
+          // 1. Jeda 6 detik setelah selesai mengetik agar nyaman dibaca
+          timer = setTimeout(() => {
+            if (!isMounted) return;
+
+            // 2. Efek Select All (highlight seluruh teks seperti di macOS)
+            setIsSelected(true);
+
+            timer = setTimeout(() => {
+              if (!isMounted) return;
+
+              // 3. Hapus semua (delete)
+              setTypedText('');
+              setIsSelected(false);
+
+              // 4. Jeda tenang 700ms lalu ketik lagi (looping)
+              timer = setTimeout(() => {
+                if (!isMounted) return;
+                startTyping();
+              }, 700);
+
+            }, 700);
+
+          }, 6000); // 6 Detik jeda idle
+        }
+      }, 60); // Typing speed yang tenang dan natural
+    };
+
+    startTyping();
+
+    return () => {
+      isMounted = false;
+      clearInterval(typingInterval);
+      clearTimeout(timer);
+    };
+  }, [inView]);
 
   return (
-    <section className="relative overflow-hidden bg-white py-14 md:py-20">
-      {/* Header 2 Baris: Jadi bagian dari Keluarga AMKS */}
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 mb-10 md:mb-14">
-        <h2 className="text-4xl sm:text-5xl md:text-6xl font-serif font-normal tracking-tight text-slate-900 leading-[1.12]">
-          <span className="ml-2.5 sm:ml-4 md:ml-5 inline-block text-slate-900">Jadi bagian dari</span><br />
-          <span className="text-primary font-normal font-serif">Keluarga AMKS</span>
-        </h2>
-        <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed font-sans max-w-2xl">
-          Setiap perjalanan dimulai dari sebuah langkah. Kenali persyaratan dan mulailah menjadi bagian dari keluarga besar Asrama Mahasiswa Kabupaten Sambas Yogyakarta.
-        </p>
-      </div>
-
-      {/* Timeline Items */}
-      <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div className="space-y-1">
-          {syarat.map((item, i) => (
-            <TimelineItem
-              key={i}
-              item={item}
-              index={i}
-              isLast={i === syarat.length - 1}
-            />
-          ))}
-        </div>
-
-        {/* Divider & Prominent CTA Button — Primary Concern */}
-        <div className="mt-10 sm:mt-14 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-5">
-          <p className="text-xs sm:text-sm text-slate-500 font-medium font-sans text-center sm:text-left">
-            Proses pendaftaran 100% online · Gratis · Tanpa dipungut biaya
-          </p>
-          <Link
-            href="/daftar-warga"
-            className="inline-flex items-center justify-center rounded-[10px] bg-slate-900 px-7 sm:px-9 py-3.5 sm:py-4 text-xs sm:text-sm font-semibold text-white shadow-md shadow-slate-900/10 transition-all duration-200 hover:bg-primary hover:shadow-lg hover:shadow-primary/20 active:scale-95 whitespace-nowrap font-montserrat tracking-wide"
+    <section 
+      id="syarat-warga"
+      ref={sectionRef} 
+      className="relative z-10 w-full overflow-hidden bg-[#edf4fc] pt-48 pb-28 sm:pt-60 sm:pb-36 lg:pt-68 lg:pb-44 -mt-24 -mb-24 sm:-mt-32 sm:-mb-32 lg:-mt-40 lg:-mb-40"
+    >
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-7xl py-6 sm:py-10">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-14 xl:gap-16">
+          
+          {/* Sisi Kiri: Typography Besar Editorial (Full Hitam, No Italic) */}
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+            className="flex flex-col justify-center text-left lg:col-span-6 xl:col-span-6"
           >
-            <span>Jadi Bagian dari AMKS</span>
-          </Link>
+            {/* Giant Title: Jadi bagian dari Keluarga AMKS */}
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-normal text-slate-900 tracking-tight leading-[1.06]">
+              Jadi bagian dari<br />
+              Keluarga AMKS
+            </h2>
+
+            {/* Narasi Deskripsi */}
+            <p className="mt-6 sm:mt-8 text-base sm:text-lg text-slate-700 leading-relaxed font-sans font-normal max-w-xl">
+              Setiap perjalanan dimulai dari sebuah langkah. Kenali persyaratan dan mulailah menjadi bagian dari keluarga besar Asrama Mahasiswa Kabupaten Sambas Yogyakarta.
+            </p>
+
+            {/* CTA Button (Tanpa Panah, Tanpa Text Tambahan) */}
+            <div className="mt-8 sm:mt-10 flex items-center">
+              <Link
+                href="/daftar-warga"
+                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-8 py-3.5 text-sm sm:text-base font-medium text-white shadow-md transition-all duration-200 hover:bg-primary hover:shadow-lg active:scale-95"
+              >
+                <span>Daftar Calon Warga</span>
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Sisi Kanan: macOS Notepad App Window Besar (Ujung Bawah Terpotong Bersih Tanpa Memotong Teks) */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, delay: 0.15 }}
+            className="lg:col-span-6 xl:col-span-6 flex justify-center lg:justify-end"
+          >
+            <div className="relative w-full max-w-2xl rounded-t-[28px] sm:rounded-t-[36px] bg-[#faf9f6] border-t border-x border-slate-200/90 shadow-[0_25px_60px_rgba(15,23,42,0.12)] overflow-hidden translate-y-8 sm:translate-y-14 md:translate-y-20 -mb-8 sm:-mb-14 md:-mb-20">
+              
+              {/* macOS Window Top Bar: Bulatan Soft Blue, Tanpa Teks File */}
+              <div className="flex items-center px-6 sm:px-8 py-4 sm:py-5 bg-[#f3f1ec]/80 border-b border-slate-200/70 select-none">
+                {/* 3 Soft Blue Dots */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-3.5 h-3.5 rounded-full bg-blue-300" />
+                  <div className="w-3.5 h-3.5 rounded-full bg-blue-400" />
+                  <div className="w-3.5 h-3.5 rounded-full bg-sky-300" />
+                </div>
+              </div>
+
+              {/* Notepad Body Content: Teks Di Atas Luas & Utuh */}
+              <div className="p-7 sm:p-9 md:p-11 min-h-[380px] sm:min-h-[440px] font-sans">
+                <div className="whitespace-pre-line text-slate-900 text-lg sm:text-xl md:text-2xl lg:text-[25px] leading-[1.65] font-normal">
+                  <span className={isSelected ? 'bg-[#b4d5fe] text-slate-900 rounded px-1 transition-colors' : ''}>
+                    {typedText}
+                  </span>
+                  {/* Blinking Cursor */}
+                  {!isSelected && (
+                    <span className="inline-block w-2.5 h-5 sm:h-6 md:h-7 bg-blue-600 ml-1.5 animate-pulse align-middle" />
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+
         </div>
       </div>
     </section>

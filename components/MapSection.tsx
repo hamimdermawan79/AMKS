@@ -14,7 +14,7 @@ const MapLeaflet = dynamic(() => import('./MapLeaflet'), {
 
 export default function MapSection() {
   return (
-    <section className="py-16 md:py-24 bg-white relative overflow-hidden">
+    <section className="relative z-20 w-full overflow-hidden bg-white text-slate-900 pt-28 pb-16 md:pt-36 md:pb-24 rounded-t-[48px] sm:rounded-t-[72px] md:rounded-t-[96px] shadow-[0_-25px_50px_-12px_rgba(0,0,0,0.12)]">
       <div className="container mx-auto px-4 md:px-6">
         <motion.div
           initial={{ opacity: 0, y: 24 }}

@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { motion, useScroll, useTransform, useInView, animate } from 'framer-motion';
+import { motion, useScroll, useTransform, useInView, animate, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import {
-  Calendar, Images, ChevronDown, Quote, Home,
+  Calendar, Images, ChevronDown, Quote, Home, ArrowRight, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import MapSection from '@/components/MapSection';
 import SyaratWargaSection from '@/components/SyaratWargaSection';
 import Marquee from '@/components/Marquee';
-import StickyScrollGallery from '@/components/ui/sticky-scroll';
+import KegiatanTerkiniSection from '@/components/ui/gallery-animation';
 import AnimatedMarqueeHero from '@/components/ui/hero-3';
 import { useIsLowEndDevice } from '@/lib/animation-utils';
 
@@ -209,17 +209,17 @@ export default function HomeClient({
       </motion.section>
 
       {/* ===== DIVISI ===== */}
-      <section className="relative z-10 overflow-hidden py-24 md:py-32 bg-white">
+      <section className="relative z-20 w-full overflow-hidden pt-20 pb-28 sm:pt-24 sm:pb-36 lg:pb-40 bg-white rounded-b-[48px] sm:rounded-b-[72px] md:rounded-b-[96px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.18)]">
         <div className="container relative mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
-            className="mx-auto mb-14 max-w-2xl text-center"
+            className="mx-auto mb-10 sm:mb-14 max-w-3xl text-center"
           >
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal tracking-tight text-slate-900 leading-[1.1]">
-              Divisi <span className="text-primary italic font-serif">Asrama</span>
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-normal tracking-tight text-slate-900 leading-[1.06]">
+              Divisi Asrama
             </h2>
           </motion.div>
         </div>
@@ -233,7 +233,7 @@ export default function HomeClient({
             transition={{ duration: 0.6 }}
             className="relative mx-auto max-w-5xl lg:max-w-6xl py-3"
           >
-            <Marquee duration={30}>
+            <Marquee duration={70}>
               {(divisionImages.length > 0
                 ? [...divisionImages, ...divisionImages]
                 : [
@@ -272,13 +272,29 @@ export default function HomeClient({
       {/* ===== SEKILAS PROFIL: BARU ===== */}
       <AboutSection about={profileAbout} />
 
-      {/* ===== KEGIATAN TERKINI (STICKY SCROLL GALLERY) ===== */}
-      <StickyScrollGallery activities={recentActivities} />
+      {/* ===== KEGIATAN TERKINI & FASILITAS ASRAMA (MERGED SECTION WITH SHARED BACKGROUND) ===== */}
+      <section className="relative z-20 w-full overflow-hidden pt-28 pb-36 sm:pt-36 sm:pb-44 lg:pt-44 lg:pb-52 rounded-t-[48px] sm:rounded-t-[72px] md:rounded-t-[96px] rounded-b-[48px] sm:rounded-b-[72px] md:rounded-b-[96px] shadow-[0_-25px_50px_-12px_rgba(0,0,0,0.12),0_25px_50px_-12px_rgba(0,0,0,0.12)]">
+        {/* Background Image: public/images/kegiatan-fasilitas-bg.webp with soft opacity */}
+        <div className="absolute inset-0 z-0 pointer-events-none select-none bg-white overflow-hidden">
+          <img
+            src="/images/kegiatan-fasilitas-bg.webp"
+            alt="Background Kegiatan dan Fasilitas"
+            className="w-full h-[112%] -translate-y-8 sm:-translate-y-12 md:-translate-y-16 object-fill object-top opacity-30 sm:opacity-35 transition-all"
+            loading="lazy"
+          />
+        </div>
 
-      {/* ===== FASILITAS ASRAMA ===== */}
-      {facilityItems.length > 0 && (
-        <FasilitasSection items={facilityItems} />
-      )}
+        {/* Content Container */}
+        <div className="relative z-10 space-y-24 sm:space-y-32 lg:space-y-40">
+          {/* Kegiatan Terkini */}
+          <KegiatanTerkiniSection activities={recentActivities} />
+
+          {/* Fasilitas Asrama */}
+          {facilityItems.length > 0 && (
+            <FasilitasSection items={facilityItems} />
+          )}
+        </div>
+      </section>
 
       {/* ===== SYARAT WARGA ===== */}
       <SyaratWargaSection />
@@ -289,39 +305,76 @@ export default function HomeClient({
       {/* ===== TESTIMONIAL ===== */}
       <TestimonialSection />
 
-      {/* ===== CTA (Clean Minimalist Redesign) ===== */}
-      <section className="relative z-10 py-16 md:py-24 bg-white">
-        <div className="container mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="mx-auto max-w-3xl"
-          >
-            <div className="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-600 p-8 sm:p-12 md:p-14 text-center text-white border border-blue-400/30 shadow-xl shadow-blue-500/20 relative overflow-hidden">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-normal tracking-tight text-white leading-[1.15]">
-                Siap Menjadi Bagian dari <span className="italic font-serif">AMKS?</span>
+      {/* ===== CTA (Editorial 2-Column with Clean Large Dual Logos) ===== */}
+      <section className="relative z-10 w-full overflow-hidden bg-[#edf4fc] pt-48 pb-20 sm:pt-60 sm:pb-28 lg:pt-68 lg:pb-36 -mt-24 sm:-mt-32 lg:-mt-40">
+        <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-7xl pt-8 sm:pt-14">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 xl:gap-16 items-center">
+            
+            {/* Sisi Kiri: Typography Besar Editorial (Charcoal & Brand Blue) */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="lg:col-span-7 xl:col-span-7 flex flex-col justify-center text-left"
+            >
+              <h2 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-normal tracking-tight text-slate-900 leading-[1.04]">
+                Siap menjadi<br />
+                bagian dari <span className="text-primary font-normal font-serif">AMKS?</span>
               </h2>
-              <p className="mt-3.5 text-sm sm:text-base text-blue-100/90 max-w-lg mx-auto leading-relaxed">
-                Daftarkan diri Anda sebagai calon warga asrama, atau masuk untuk mengakses dashboard layanan digital warga.
+
+              <p className="mt-5 sm:mt-6 text-sm sm:text-base text-slate-600 leading-relaxed font-sans max-w-lg text-justify">
+                Mari bergabung bersama keluarga besar Asrama Mahasiswa Kabupaten Sambas di Yogyakarta. Kembangkan potensi diri, raih prestasi akademik, dan jalin persaudaraan erat bersama sesama perantau.
               </p>
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+
+              {/* CTA Buttons */}
+              <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-4">
                 <Link
                   href="/daftar-warga"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-7 py-3.5 text-sm sm:text-base font-bold text-primary shadow-md transition-all hover:bg-blue-50 active:scale-95"
+                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-8 py-3.5 text-sm sm:text-base font-medium text-white shadow-md transition-all duration-200 hover:bg-primary hover:shadow-lg active:scale-95"
                 >
-                  Daftar Calon Warga
+                  <span>Daftar Calon Warga</span>
                 </Link>
                 <Link
                   href="/login"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/30 px-7 py-3.5 text-sm sm:text-base font-semibold text-white transition-all backdrop-blur-sm active:scale-95"
+                  className="inline-flex items-center justify-center rounded-full bg-white/80 hover:bg-white text-slate-800 border border-slate-300 px-7 py-3.5 text-sm sm:text-base font-medium transition-all duration-200 shadow-sm hover:shadow"
                 >
-                  Login Warga
+                  <span>Akses Warga Asrama</span>
                 </Link>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+
+            {/* Sisi Kanan: Clean Extra Large Dual Logos (Hidden di Mobile, Gap Sempit dengan Separator) */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.15 }}
+              className="hidden lg:flex lg:col-span-5 xl:col-span-5 justify-center lg:justify-end"
+            >
+              <div className="flex items-center justify-center gap-3 sm:gap-4 md:gap-5">
+                {/* Logo SIMAS */}
+                <img
+                  src="/images/2-simas-logo.webp"
+                  alt="Logo SIMAS Sambas"
+                  className="h-36 sm:h-44 md:h-52 lg:h-60 xl:h-64 w-auto object-contain select-none drop-shadow-sm transition-transform duration-300 hover:scale-105"
+                  loading="lazy"
+                />
+
+                {/* Garis Pemisah Minimalis */}
+                <div className="w-px h-32 sm:h-40 md:h-48 lg:h-56 bg-slate-300/80" />
+
+                {/* Logo AMKS */}
+                <img
+                  src="/images/3-amks-logo.webp"
+                  alt="Logo AMKS Yogyakarta"
+                  className="h-36 sm:h-44 md:h-52 lg:h-60 xl:h-64 w-auto object-contain select-none drop-shadow-sm transition-transform duration-300 hover:scale-105"
+                  loading="lazy"
+                />
+              </div>
+            </motion.div>
+
+          </div>
         </div>
       </section>
     </div>
@@ -431,7 +484,7 @@ function ReviewCard({ t }: { t: (typeof testimonialsCol1)[0] }) {
 
 function TestimonialSection() {
   return (
-    <section className="relative overflow-hidden bg-white text-slate-900 py-20 md:py-28">
+    <section className="relative z-20 w-full overflow-hidden bg-white text-slate-900 pt-20 pb-28 sm:pt-24 sm:pb-36 lg:pb-40 rounded-b-[48px] sm:rounded-b-[72px] md:rounded-b-[96px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.12)]">
       {/* Header — z-30 agar berada di atas gradien */}
       <div className="container relative mx-auto px-6 mb-10 sm:mb-14 z-30">
         <motion.div
@@ -527,39 +580,47 @@ function TestimonialSection() {
   );
 }
 
-// ── About Section (Tentang Kami — Clean Editorial Split Layout) ─────────────
+// ── About Section (Tentang Kami — Gradient Navy with Rounded Section Boundary) ──
 function AboutSection({ about }: { about: string | null }) {
   const ref = useRef<HTMLElement>(null);
   const inView = useInView(ref, { once: true, margin: '-60px' });
+
+  // Ambil hanya paragraf pertama dari narasi profil asrama
+  const firstParagraph = about
+    ? about
+        .split(/\r?\n\s*\r?\n|\r?\n/)
+        .map((p) => p.trim())
+        .find((p) => p.length > 0) || about.trim()
+    : 'Asrama Mahasiswa Kabupaten Sambas merupakan tempat tinggal mahasiswa yang berasal dari kabupaten sambas kalimantan barat, yang sedang menempuh masa studi lanjut di Kota Yogyakarta.';
 
   return (
     <section
       id="tentang-kami"
       ref={ref}
-      className="relative z-10 overflow-hidden bg-white py-16 sm:py-24 lg:py-28"
+      className="relative z-10 w-full overflow-hidden bg-gradient-to-r from-[#12243d] via-[#183459] to-[#214778] text-white pt-48 pb-48 sm:pt-60 sm:pb-60 lg:pt-68 lg:pb-68 -mt-24 -mb-24 sm:-mt-32 sm:-mb-32 lg:-mt-40 lg:-mb-40"
     >
-      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-7xl">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-7xl py-6 sm:py-10">
         <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16">
           
-          {/* Sisi Kiri: Gambar Besar, Clean, Tanpa Border, Tanpa Badge */}
+          {/* Sisi Kiri: Gambar Besar Karakter Warga */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6 }}
             className="flex items-center justify-center lg:col-span-6 xl:col-span-6"
           >
-            <div className="relative w-full max-w-[520px] lg:max-w-none flex items-center justify-center">
+            <div className="relative w-full max-w-[520px] lg:max-w-none flex items-center justify-center bg-transparent">
               <img
                 src="/images/about-us-char.png"
                 alt="Warga Asrama Mahasiswa Kabupaten Sambas"
-                className="w-full h-auto max-h-[580px] lg:max-h-[660px] object-contain object-center select-none pointer-events-none"
+                className="w-full h-auto max-h-[580px] lg:max-h-[660px] object-contain object-center select-none pointer-events-none bg-transparent"
                 loading="lazy"
                 draggable={false}
               />
             </div>
           </motion.div>
 
-          {/* Sisi Kanan: Editorial Layout Sesuai Referensi */}
+          {/* Sisi Kanan: Editorial Layout (Lighter Right Blue Ambient) */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -567,61 +628,56 @@ function AboutSection({ about }: { about: string | null }) {
             className="flex flex-col justify-center lg:col-span-6 xl:col-span-6"
           >
             {/* Giant Title: Tentang Kami. */}
-            <h2 className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-serif font-normal tracking-tight text-slate-900 leading-[1.05]">
-              Tentang Kami<span className="text-primary font-sans font-bold">.</span>
+            <h2 className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-serif font-normal tracking-tight text-white leading-[1.05]">
+              Tentang Kami<span className="text-sky-300 font-sans font-bold">.</span>
             </h2>
 
             {/* 2-Column Content Grid Below Heading */}
             <div className="mt-8 sm:mt-10 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8">
               {/* Kolom Sub Kiri: Lead / Statement Besar */}
               <div className="md:col-span-5">
-                <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed font-montserrat text-justify">
+                <p className="text-base sm:text-lg font-medium text-blue-50 leading-relaxed font-montserrat text-justify">
                   Rumah kedua bagi mahasiswa Sambas di{' '}
-                  <span className="text-primary font-semibold">Yogyakarta</span>, berfokus pada
+                  <span className="text-sky-300 font-semibold">Yogyakarta</span>, berfokus pada
                   pembentukan karakter, solidaritas kekeluargaan, dan prestasi akademik.
                 </p>
               </div>
 
-              {/* Kolom Sub Kanan: Paragraf Narasi Detail */}
-              <div className="md:col-span-7 space-y-4">
-                <p className="text-sm sm:text-base leading-relaxed text-slate-600 text-justify">
-                  {about
-                    ? about
-                    : 'Asrama Mahasiswa Kabupaten Sambas merupakan tempat tinggal mahasiswa yang berasal dari kabupaten sambas kalimantan barat, yang sedang menempuh masa studi lanjut di Kota Yogyakarta.'}
-                </p>
-                <p className="text-sm sm:text-base leading-relaxed text-slate-600 text-justify">
-                  Melalui berbagai program divisi aktif, dari keolahragaan, kesenian, kebersihan, kerohanian hingga keamanan, kami berkomitmen menciptakan lingkungan asrama yang produktif, aman, dan berdaya saing.
+              {/* Kolom Sub Kanan: Paragraf Narasi Detail (Hanya Paragraf Pertama) */}
+              <div className="md:col-span-7">
+                <p className="text-sm sm:text-base leading-relaxed text-blue-100/90 text-justify font-sans">
+                  {firstParagraph}
                 </p>
               </div>
             </div>
 
-            {/* Navigasi Profil, Struktur, Galeri di atas garis, rata kanan, tanpa pemisah "/" */}
-            <div className="mt-8 sm:mt-10 flex items-center justify-end gap-5 sm:gap-6 text-sm font-medium text-slate-600">
+            {/* Navigasi Profil, Struktur, Galeri */}
+            <div className="mt-8 sm:mt-10 flex items-center justify-end gap-5 sm:gap-6 text-sm font-medium text-blue-100">
               <Link
                 href="/tentang-kami"
-                className="transition-colors hover:text-primary"
+                className="transition-colors hover:text-sky-300"
               >
                 Profil
               </Link>
               <Link
                 href="/tentang-kami/struktur"
-                className="transition-colors hover:text-primary"
+                className="transition-colors hover:text-sky-300"
               >
                 Struktur
               </Link>
               <Link
                 href="/tentang-kami/galeri"
-                className="transition-colors hover:text-primary"
+                className="transition-colors hover:text-sky-300"
               >
                 Galeri
               </Link>
             </div>
 
-            {/* Garis Pembatas & CTA di bawah garis, rata kanan, tanpa bold, link dengan garis putus-putus */}
-            <div className="mt-4 pt-4 border-t border-slate-200 flex justify-end">
+            {/* Garis Pembatas & CTA */}
+            <div className="mt-4 pt-4 border-t border-blue-300/20 flex justify-end">
               <Link
                 href="/tentang-kami"
-                className="inline-block text-sm font-medium text-slate-900 border-b border-dashed border-slate-900 pb-0.5 hover:text-primary hover:border-primary transition-colors font-montserrat text-right"
+                className="inline-block text-sm font-medium text-blue-100 border-b border-dashed border-blue-300/40 pb-0.5 hover:text-white hover:border-white transition-colors font-montserrat text-right"
               >
                 Pelajari selengkapnya tentang profil asrama
               </Link>
@@ -634,178 +690,145 @@ function AboutSection({ about }: { about: string | null }) {
   );
 }
 
-// ── Fasilitas Section (Compact Collage Photography Layout with Dynamic Hover) ──
+// ── Fasilitas Section (Clean Split Layout + Reference Carousel with Thumbnail Strip) ──
 function FasilitasSection({ items }: { items: FacilityItem[] }) {
-  // Susun 8 barang fasilitas ke dalam 3 kolom persis seperti layout referensi
-  const col1 = items.slice(0, 2);
-  const col2 = items.slice(2, 5);
-  const col3 = items.slice(5, 8);
+  const facilityList = items.filter((item) => Boolean(item.photoUrl));
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (facilityList.length === 0) return null;
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % facilityList.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + facilityList.length) % facilityList.length);
+  };
+
+  const current = facilityList[currentIndex];
 
   return (
-    <section className="relative z-10 py-14 md:py-20 bg-white text-slate-900">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        {/* Header Bersih */}
-        <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal tracking-tight text-slate-900 leading-[1.1]">
-            Fasilitas <span className="text-primary italic font-serif">Asrama</span>
-          </h2>
-        </div>
-
-        {/* 3-Column Photography Collage Grid — Konsisten 3 Kolom di Mobile & Desktop */}
-        <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:gap-3.5 items-start">
-          {/* Kolom 1 (Kiri - 2 Foto Vertikal) */}
-          <div className="flex flex-col gap-1.5 sm:gap-2.5 md:gap-3.5 col-span-1">
-            {col1.map((item, idx) => {
-              const isTop = idx === 0; // Item 0 di atas, Item 1 di bawah
-
-              return (
-                <div
-                  key={item.id || `col1-${idx}`}
-                  className="group relative w-full aspect-[3/4] overflow-hidden rounded-xl sm:rounded-2xl md:rounded-[22px] bg-slate-100 shadow-sm cursor-pointer"
+    <div className="w-full text-slate-900">
+      <div className="container mx-auto px-5 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 xl:gap-16 items-center">
+          
+          {/* Sisi Kiri: Clean Photo Carousel dengan Strip Thumbnail di Bawah (Sesuai Referensi) */}
+          <div className="lg:col-span-7 xl:col-span-7 order-2 lg:order-1 flex flex-col items-center w-full">
+            
+            {/* Main Large Photo Frame */}
+            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 shadow-xl group select-none">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentIndex}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="relative w-full h-full"
                 >
-                  {item.photoUrl && (
-                    <img
-                      src={item.photoUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  )}
-                  {/* Hover Overlay: Tersembunyi di desktop saat tidak di-hover, muncul saat kursor diarahkan */}
-                  <div
-                    className={`absolute inset-0 transition-all duration-300 pointer-events-none opacity-100 md:opacity-0 md:group-hover:opacity-100 ${isTop
-                        ? 'bg-gradient-to-b from-black/85 via-black/25 to-transparent'
-                        : 'bg-gradient-to-t from-black/85 via-black/25 to-transparent'
-                      }`}
-                  >
-                    <div
-                      className={`absolute inset-x-0 ${isTop
-                          ? 'top-0 pt-2.5 px-2.5 sm:pt-3.5 sm:px-3.5 md:pt-4 md:px-4'
-                          : 'bottom-0 pb-2.5 px-2.5 sm:pb-3.5 sm:px-3.5 md:pb-4 md:px-4'
-                        } flex items-start justify-between gap-1.5`}
-                    >
-                      {/* Nama Barang (Kiri) */}
-                      <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm drop-shadow-md line-clamp-2 max-w-[65%]">
-                        {item.name}
+                  <img
+                    src={current.photoUrl!}
+                    alt={current.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+
+                  {/* Clean Text Overlay (Nama & Jumlah Barang Ukuran Kompak) */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex items-end p-4 sm:p-6 md:p-7">
+                    <div className="flex items-end justify-between gap-4 w-full">
+                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-white tracking-tight drop-shadow-md">
+                        {current.name}
                       </h3>
-                      {/* Status / Kondisi Barang (Kanan) — Plain Text Bersih Tanpa Card & Tanpa Warna Alay */}
-                      <span className="shrink-0 text-[9px] sm:text-[10px] md:text-xs font-medium text-white/80 drop-shadow-sm">
-                        {item.condition || 'Baik'}
-                      </span>
+
+                      {current.quantity > 0 && (
+                        <span className="text-[11px] sm:text-xs font-semibold text-white/90 drop-shadow-sm shrink-0">
+                          {current.quantity} Unit
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                </motion.div>
+              </AnimatePresence>
 
-          {/* Kolom 2 (Tengah - 3 Foto: Sedang, Landscape, Panjang) */}
-          <div className="flex flex-col gap-1.5 sm:gap-2.5 md:gap-3.5 col-span-1">
-            {col2.map((item, idx) => {
-              const aspectClass =
-                idx === 0 ? 'aspect-[4/5]' : idx === 1 ? 'aspect-[16/10]' : 'aspect-[3/4]';
-              const isTop = idx === 1; // Item 2 di bawah, Item 3 di atas, Item 4 di bawah (variatif)
-
-              return (
-                <div
-                  key={item.id || `col2-${idx}`}
-                  className={`group relative w-full ${aspectClass} overflow-hidden rounded-xl sm:rounded-2xl md:rounded-[22px] bg-slate-100 shadow-sm cursor-pointer`}
-                >
-                  {item.photoUrl && (
-                    <img
-                      src={item.photoUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  )}
-                  {/* Hover Overlay: Tersembunyi di desktop saat tidak di-hover, muncul saat kursor diarahkan */}
-                  <div
-                    className={`absolute inset-0 transition-all duration-300 pointer-events-none opacity-100 md:opacity-0 md:group-hover:opacity-100 ${isTop
-                        ? 'bg-gradient-to-b from-black/85 via-black/25 to-transparent'
-                        : 'bg-gradient-to-t from-black/85 via-black/25 to-transparent'
-                      }`}
+              {/* Clean Minimalist Navigation Arrows (Hidden on Mobile, Hover on Desktop) */}
+              {facilityList.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={prevSlide}
+                    className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 hover:bg-black/60 text-white/90 hover:text-white backdrop-blur-md border border-white/20 items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 z-10"
+                    aria-label="Fasilitas sebelumnya"
                   >
-                    <div
-                      className={`absolute inset-x-0 ${isTop
-                          ? 'top-0 pt-2.5 px-2.5 sm:pt-3.5 sm:px-3.5 md:pt-4 md:px-4'
-                          : 'bottom-0 pb-2.5 px-2.5 sm:pb-3.5 sm:px-3.5 md:pb-4 md:px-4'
-                        } flex items-start justify-between gap-1.5`}
-                    >
-                      {/* Nama Barang (Kiri) */}
-                      <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm drop-shadow-md line-clamp-2 max-w-[65%]">
-                        {item.name}
-                      </h3>
-                      {/* Status / Kondisi Barang (Kanan) — Plain Text Bersih Tanpa Card & Tanpa Warna Alay */}
-                      <span className="shrink-0 text-[9px] sm:text-[10px] md:text-xs font-medium text-white/80 drop-shadow-sm">
-                        {item.condition || 'Baik'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    <ChevronLeft className="w-4 h-4 stroke-[1.75]" />
+                  </button>
 
-          {/* Kolom 3 (Kanan - 3 Foto: Sangat Panjang, Landscape, Sedang) */}
-          <div className="flex flex-col gap-1.5 sm:gap-2.5 md:gap-3.5 col-span-1">
-            {col3.map((item, idx) => {
-              const aspectClass =
-                idx === 0 ? 'aspect-[3/4] sm:aspect-[2/3]' : idx === 1 ? 'aspect-[16/10]' : 'aspect-[4/5]';
-              const isTop = idx === 0 || idx === 2; // Item 5 di atas, Item 6 di bawah, Item 7 di atas (variatif)
-
-              return (
-                <div
-                  key={item.id || `col3-${idx}`}
-                  className={`group relative w-full ${aspectClass} overflow-hidden rounded-xl sm:rounded-2xl md:rounded-[22px] bg-slate-100 shadow-sm cursor-pointer`}
-                >
-                  {item.photoUrl && (
-                    <img
-                      src={item.photoUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  )}
-                  {/* Hover Overlay: Tersembunyi di desktop saat tidak di-hover, muncul saat kursor diarahkan */}
-                  <div
-                    className={`absolute inset-0 transition-all duration-300 pointer-events-none opacity-100 md:opacity-0 md:group-hover:opacity-100 ${isTop
-                        ? 'bg-gradient-to-b from-black/85 via-black/25 to-transparent'
-                        : 'bg-gradient-to-t from-black/85 via-black/25 to-transparent'
-                      }`}
+                  <button
+                    type="button"
+                    onClick={nextSlide}
+                    className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/30 hover:bg-black/60 text-white/90 hover:text-white backdrop-blur-md border border-white/20 items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-105 active:scale-95 z-10"
+                    aria-label="Fasilitas berikutnya"
                   >
-                    <div
-                      className={`absolute inset-x-0 ${isTop
-                          ? 'top-0 pt-2.5 px-2.5 sm:pt-3.5 sm:px-3.5 md:pt-4 md:px-4'
-                          : 'bottom-0 pb-2.5 px-2.5 sm:pb-3.5 sm:px-3.5 md:pb-4 md:px-4'
-                        } flex items-start justify-between gap-1.5`}
-                    >
-                      {/* Nama Barang (Kiri) */}
-                      <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm drop-shadow-md line-clamp-2 max-w-[65%]">
-                        {item.name}
-                      </h3>
-                      {/* Status / Kondisi Barang (Kanan) — Plain Text Bersih Tanpa Card & Tanpa Warna Alay */}
-                      <span className="shrink-0 text-[9px] sm:text-[10px] md:text-xs font-medium text-white/80 drop-shadow-sm">
-                        {item.condition || 'Baik'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                    <ChevronRight className="w-4 h-4 stroke-[1.75]" />
+                  </button>
+                </>
+              )}
+            </div>
 
-        {/* Tautan Bawah dengan Garis Putus-putus */}
-        <div className="mt-10 md:mt-14 text-center">
-          <Link
-            href="/fasilitas/inventaris"
-            className="inline-block text-sm md:text-base font-medium text-slate-900 border-b border-dashed border-slate-900 pb-0.5 hover:text-primary hover:border-primary transition-colors font-montserrat"
-          >
-            Lihat semua fasilitas dan inventaris
-          </Link>
+            {/* Thumbnail Preview Strip di Bawah Foto Utama (Sesuai Gambar Referensi) */}
+            {facilityList.length > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-4 sm:mt-5 overflow-x-auto py-1 max-w-full px-2">
+                {facilityList.map((item, idx) => {
+                  const isActive = currentIndex === idx;
+                  return (
+                    <button
+                      key={item.id || `thumb-${idx}`}
+                      type="button"
+                      onClick={() => setCurrentIndex(idx)}
+                      className={`relative overflow-hidden rounded-lg transition-all duration-300 shrink-0 ${
+                        isActive
+                          ? 'aspect-[16/10] w-14 sm:w-20 ring-2 ring-slate-900 scale-105 shadow-md opacity-100'
+                          : 'aspect-[3/4] w-7 sm:w-10 opacity-50 hover:opacity-100'
+                      }`}
+                      aria-label={`Pilih ${item.name}`}
+                    >
+                      <img
+                        src={item.photoUrl!}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+          </div>
+
+          {/* Sisi Kanan: Judul Besar 2 Baris & Narasi Tegas */}
+          <div className="lg:col-span-5 xl:col-span-5 order-1 lg:order-2 flex flex-col justify-center text-left lg:pl-4">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-serif font-normal text-slate-900 tracking-tight leading-[1.05]">
+              Fasilitas<br />
+              Asrama
+            </h2>
+
+            <p className="mt-6 sm:mt-8 text-base sm:text-lg text-slate-600 leading-relaxed font-sans font-normal max-w-lg text-justify">
+              Sarana dan prasarana penunjang yang dirawat secara berkala untuk menciptakan kenyamanan serta produktivitas akademik seluruh warga asrama.
+            </p>
+
+            <div className="mt-8 sm:mt-10">
+              <Link
+                href="/fasilitas/inventaris"
+                className="inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-900 border-b border-slate-900 pb-0.5 hover:text-primary hover:border-primary transition-colors font-montserrat group"
+              >
+                <span>Lihat semua fasilitas dan inventaris</span>
+                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+              </Link>
+            </div>
+          </div>
+
         </div>
       </div>
-    </section>
+    </div>
   );
 }

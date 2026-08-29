@@ -31,17 +31,27 @@ export default async function ProfilAsramaPage() {
           ) : (
             <div className="space-y-12">
               {profile.about && (
-                <p className="text-lg leading-relaxed text-muted-foreground text-justify">
-                  {profile.about}
-                </p>
+                <div className="space-y-5 text-lg leading-relaxed text-muted-foreground text-justify whitespace-pre-line">
+                  {profile.about
+                    .split(/\r?\n\s*\r?\n/)
+                    .filter((p) => p.trim().length > 0)
+                    .map((paragraph, idx) => (
+                      <p key={idx}>{paragraph.trim()}</p>
+                    ))}
+                </div>
               )}
 
               {profile.sejarah && (
                 <div>
                   <h2 className="mb-4 text-2xl font-bold text-foreground">Sejarah</h2>
-                  <p className="leading-relaxed whitespace-pre-line text-muted-foreground text-justify">
-                    {profile.sejarah}
-                  </p>
+                  <div className="space-y-4 leading-relaxed whitespace-pre-line text-muted-foreground text-justify">
+                    {profile.sejarah
+                      .split(/\r?\n\s*\r?\n/)
+                      .filter((p) => p.trim().length > 0)
+                      .map((paragraph, idx) => (
+                        <p key={idx}>{paragraph.trim()}</p>
+                      ))}
+                  </div>
                 </div>
               )}
 
@@ -58,9 +68,14 @@ export default async function ProfilAsramaPage() {
                   {profile.misi && (
                     <div className="text-center">
                       <h2 className="mb-4 text-2xl font-bold text-foreground">Misi</h2>
-                      <p className="leading-relaxed whitespace-pre-line text-muted-foreground text-left inline-block max-w-full">
-                        {profile.misi}
-                      </p>
+                      <div className="leading-relaxed whitespace-pre-line text-muted-foreground text-left inline-block max-w-full space-y-2">
+                        {profile.misi
+                          .split(/\r?\n\s*\r?\n/)
+                          .filter((p) => p.trim().length > 0)
+                          .map((paragraph, idx) => (
+                            <p key={idx}>{paragraph.trim()}</p>
+                          ))}
+                      </div>
                     </div>
                   )}
                 </div>

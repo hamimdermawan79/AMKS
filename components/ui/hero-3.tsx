@@ -30,20 +30,11 @@ export const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
     },
   };
 
-  // Fallback high quality images if db has few photos
-  const fallbackImages = [
-    'https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=900&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=900&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=900&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1543269865-cbf427effbad?w=900&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=900&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=900&auto=format&fit=crop&q=60',
-  ];
-
   const validImages = images && images.length > 0 ? images.filter(Boolean) : [];
-  const sourceImages = validImages.length >= 4 ? validImages : fallbackImages;
-  // Duplicate images for a seamless loop
-  const duplicatedImages = [...sourceImages, ...sourceImages, ...sourceImages];
+  // Duplicate images for a seamless loop if available
+  const duplicatedImages = validImages.length > 0 
+    ? [...validImages, ...validImages, ...validImages]
+    : [];
 
   return (
     <section
