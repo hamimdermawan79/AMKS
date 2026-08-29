@@ -44,3 +44,10 @@ next-env.d.ts
 
 # Waweb
 .wwebjs_auth/
+
+# Local utility scripts and deployment files
+deploy.sh
+merge-production.ps1
+/scripts/
+*.ps1
+*.sh

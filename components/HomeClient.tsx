@@ -138,7 +138,7 @@ export default function HomeClient({
         {/* Layer 1: Background Hero (hero-bg.png) */}
         <div className="absolute inset-0 w-full h-full pointer-events-none select-none z-0 overflow-hidden">
           <img
-            src="/images/hero-bg.png"
+            src="/images/hero-bg.webp"
             alt="AMKS Hero Background"
             className="w-full h-full object-cover object-center select-none pointer-events-none"
             draggable={false}
@@ -611,7 +611,7 @@ function AboutSection({ about }: { about: string | null }) {
           >
             <div className="relative w-full max-w-[520px] lg:max-w-none flex items-center justify-center bg-transparent">
               <img
-                src="/images/about-us-char.png"
+                src="/images/about-us-char.webp"
                 alt="Warga Asrama Mahasiswa Kabupaten Sambas"
                 className="w-full h-auto max-h-[580px] lg:max-h-[660px] object-contain object-center select-none pointer-events-none bg-transparent"
                 loading="lazy"
