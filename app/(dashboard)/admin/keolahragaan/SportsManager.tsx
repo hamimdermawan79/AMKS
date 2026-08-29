@@ -94,12 +94,15 @@ export default function SportsManager({ wargaList, activities, transactions, den
   const [actDate, setActDate] = useState('');
   const [actEndDate, setActEndDate] = useState('');
   const [actFee, setActFee] = useState(5000);
+  const [actFeeStr, setActFeeStr] = useState('5.000');
   const [actFine, setActFine] = useState(5000);
+  const [actFineStr, setActFineStr] = useState('5.000');
   
   // Add transaction form values
   const [txType, setTxType] = useState<'PEMASUKAN' | 'PENGELUARAN'>('PENGELUARAN');
   const [txCategory, setTxCategory] = useState('');
   const [txAmount, setTxAmount] = useState(0);
+  const [txAmountStr, setTxAmountStr] = useState('');
   const [txDesc, setTxDesc] = useState('');
   const [txDate, setTxDate] = useState('');
 
@@ -235,6 +238,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
         setShowAddTx(false);
         setTxCategory('');
         setTxAmount(0);
+        setTxAmountStr('');
         setTxDesc('');
         setTxDate('');
         router.refresh();
@@ -775,20 +779,40 @@ export default function SportsManager({ wargaList, activities, transactions, den
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-muted-foreground block">Iuran Kehadiran (Rp)</label>
                       <input 
-                        type="number" 
+                        type="text" 
                         required
-                        value={actFee}
-                        onChange={(e) => setActFee(Number(e.target.value))}
+                        value={actFeeStr}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, "");
+                          if (!raw) {
+                            setActFeeStr("");
+                            setActFee(0);
+                            return;
+                          }
+                          const num = parseInt(raw, 10);
+                          setActFeeStr(new Intl.NumberFormat("id-ID").format(num));
+                          setActFee(num);
+                        }}
                         className="w-full px-3.5 py-2 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-muted-foreground block">Denda Absen (Rp)</label>
                       <input 
-                        type="number" 
+                        type="text" 
                         required
-                        value={actFine}
-                        onChange={(e) => setActFine(Number(e.target.value))}
+                        value={actFineStr}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, "");
+                          if (!raw) {
+                            setActFineStr("");
+                            setActFine(0);
+                            return;
+                          }
+                          const num = parseInt(raw, 10);
+                          setActFineStr(new Intl.NumberFormat("id-ID").format(num));
+                          setActFine(num);
+                        }}
                         className="w-full px-3.5 py-2 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                       />
                     </div>
@@ -894,13 +918,21 @@ export default function SportsManager({ wargaList, activities, transactions, den
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground block">Nominal (Rp)</label>
                     <input 
-                      type="number" 
+                      type="text" 
                       required
-                      min={1}
-                      max={txType === 'PENGELUARAN' ? saldoKas : undefined}
                       placeholder="Nominal rupiah"
-                      value={txAmount || ''}
-                      onChange={(e) => setTxAmount(Number(e.target.value))}
+                      value={txAmountStr}
+                      onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, "");
+                          if (!raw) {
+                            setTxAmountStr("");
+                            setTxAmount(0);
+                            return;
+                          }
+                          const num = parseInt(raw, 10);
+                          setTxAmountStr(new Intl.NumberFormat("id-ID").format(num));
+                          setTxAmount(num);
+                      }}
                       className="w-full px-3.5 py-2 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                     />
                     {txType === 'PENGELUARAN' && (

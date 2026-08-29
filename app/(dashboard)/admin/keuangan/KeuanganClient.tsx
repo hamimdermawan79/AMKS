@@ -115,6 +115,13 @@ const formatRpHelper = (amount: number) => {
   }).format(amount);
 };
 
+const formatThousand = (val: string | number) => {
+  if (val === undefined || val === null || val === '') return '';
+  const numStr = val.toString().replace(/\D/g, '');
+  if (!numStr) return '';
+  return new Intl.NumberFormat('id-ID').format(parseInt(numStr));
+};
+
 const DebtorRow = ({ deb }: { deb: any }) => {
   const [selectedBillId, setSelectedBillId] = useState<string>(deb.bills[0]?.id || '');
   // make sure selectedBillId exists in bills, else fallback to first bill
@@ -2799,17 +2806,20 @@ export default function KeuanganClient({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Nominal (Rupiah)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    max={newTx.type === 'PENGELUARAN' ? saldo : undefined}
-                    step={1}
-                    value={newTx.amount}
-                    onChange={(e) => setNewTx({ ...newTx, amount: e.target.value })}
-                    placeholder="Masukkan jumlah nominal uang..."
-                    className="input text-sm"
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">Rp</span>
+                    <input
+                      type="text"
+                      required
+                      value={formatThousand(newTx.amount)}
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/\D/g, '');
+                        setNewTx({ ...newTx, amount: rawValue });
+                      }}
+                      placeholder="Masukkan jumlah nominal uang..."
+                      className="input text-sm !pl-9 font-semibold"
+                    />
+                  </div>
                   {newTx.type === 'PENGELUARAN' && (
                     <p className="text-[11px] text-muted-foreground">
                       Saldo tersedia: {formatRp(saldo)}
@@ -3290,15 +3300,20 @@ export default function KeuanganClient({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Nominal (Rupiah)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={newIndividualBill.amount}
-                    onChange={(e) => setNewIndividualBill({ ...newIndividualBill, amount: e.target.value })}
-                    placeholder="Masukkan nominal hutang..."
-                    className="input text-sm"
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">Rp</span>
+                    <input
+                      type="text"
+                      required
+                      value={formatThousand(newIndividualBill.amount)}
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/\D/g, '');
+                        setNewIndividualBill({ ...newIndividualBill, amount: rawValue });
+                      }}
+                      placeholder="Masukkan nominal hutang..."
+                      className="input text-sm !pl-9 font-semibold"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -3405,18 +3420,20 @@ export default function KeuanganClient({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Nominal Dibayarkan (Rupiah)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    step={1}
-                    value={settleAmount}
-                    onChange={(e) => {
-                      const val = Math.max(1, Math.floor(Number(e.target.value)));
-                      setSettleAmount(isNaN(val) ? 0 : val);
-                    }}
-                    className="input text-sm font-bold text-foreground"
-                  />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">Rp</span>
+                    <input
+                      type="text"
+                      required
+                      value={formatThousand(settleAmount)}
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/\D/g, '');
+                        const val = rawValue ? parseInt(rawValue) : 0;
+                        setSettleAmount(val);
+                      }}
+                      className="input text-sm font-bold text-foreground !pl-9"
+                    />
+                  </div>
                   <p className="text-[10px] text-muted-foreground">Nominal ini otomatis menyertakan bunga 20% jika tagihan sudah lewat tenggat waktu.</p>
                 </div>
 
@@ -3552,12 +3569,14 @@ function IuranConfigCard({
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">Rp</span>
               <input
-                type="number"
-                value={baseAmt || ''}
-                onChange={(e) => setBaseAmt(Number(e.target.value))}
+                type="text"
+                value={formatThousand(baseAmt)}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/\D/g, '');
+                  setBaseAmt(rawValue ? parseInt(rawValue) : 0);
+                }}
                 className="input text-sm !pl-9"
-                placeholder="50000"
-                min={0}
+                placeholder="50.000"
               />
             </div>
           </div>
@@ -3568,12 +3587,14 @@ function IuranConfigCard({
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">Rp</span>
               <input
-                type="number"
-                value={wifiAmt || ''}
-                onChange={(e) => setWifiAmt(Number(e.target.value))}
+                type="text"
+                value={formatThousand(wifiAmt)}
+                onChange={(e) => {
+                  const rawValue = e.target.value.replace(/\D/g, '');
+                  setWifiAmt(rawValue ? parseInt(rawValue) : 0);
+                }}
                 className="input text-sm !pl-9"
-                placeholder="30000"
-                min={0}
+                placeholder="30.000"
               />
             </div>
           </div>

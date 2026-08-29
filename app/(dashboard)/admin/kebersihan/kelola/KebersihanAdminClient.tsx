@@ -142,6 +142,7 @@ export default function KebersihanAdminClient({
   const [kerjaBaktiWeekday, setKerjaBaktiWeekday] = useState(0);
   const [peoplePerDay, setPeoplePerDay] = useState(3);
   const [finePerDay, setFinePerDay] = useState(10000);
+  const [finePerDayStr, setFinePerDayStr] = useState("10.000");
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleMsg, setScheduleMsg] = useState("");
 
@@ -483,11 +484,19 @@ export default function KebersihanAdminClient({
               </Field>
               <Field label="Tarif Denda / Hari (Rp)">
                 <input
-                  type="number"
-                  min={0}
-                  step={1000}
-                  value={finePerDay}
-                  onChange={(e) => setFinePerDay(Number(e.target.value))}
+                  type="text"
+                  value={finePerDayStr}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "");
+                    if (!raw) {
+                      setFinePerDayStr("");
+                      setFinePerDay(0);
+                      return;
+                    }
+                    const num = parseInt(raw, 10);
+                    setFinePerDayStr(new Intl.NumberFormat("id-ID").format(num));
+                    setFinePerDay(num);
+                  }}
                   className="form-input"
                 />
               </Field>
