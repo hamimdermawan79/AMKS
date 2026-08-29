@@ -45,6 +45,14 @@ next-env.d.ts
 # Waweb
 .wwebjs_auth/
 
+# AI assistant configs & internal docs
+.claude/
+PRD.md
+Review_QA.md
+plan.md
+\[INVALID\]
+[INVALID]
+
 # Local utility scripts and deployment files
 deploy.sh
 merge-production.ps1
