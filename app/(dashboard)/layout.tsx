@@ -67,6 +67,7 @@ export default async function DashboardLayout({
     { label: 'Keuangan', href: '/admin/keuangan' },
     { label: 'Inventaris', href: '/admin/sekretaris/inventaris' },
     { label: 'Surat Menyurat', href: '/admin/sekretaris/surat' },
+    { label: 'Kesekretariatan', href: '/admin/kesekretariatan' },
   ];
 
   if (hasAdminSection) {

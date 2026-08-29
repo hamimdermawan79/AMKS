@@ -160,6 +160,9 @@ function formatWaMessage(title: string, message: string, type: NotificationType)
 
 ${message}
 
+Silahkan login untuk akses cepatnya, klik link ini:
+https://amksyogyakarta.my.id/login
+
 _Pesan otomatis dari Sistem Web Asrama AMKS. Mohon tidak membalas pesan ini._`;
 }
 

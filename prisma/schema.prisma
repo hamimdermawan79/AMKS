@@ -57,6 +57,22 @@ enum WaStatus {
   FAILED
 }
 
+enum MeetingType {
+  INTERNAL
+  EKSTERNAL_RT
+}
+
+enum MeetingStatus {
+  TERJADWAL
+  SELESAI
+  DIBATALKAN
+}
+
+enum MeetingRole {
+  PESERTA
+  DELEGASI
+}
+
 // Jenis karya tulis ilmiah yang dipublikasikan warga asrama
 enum ScientificWorkType {
   SKRIPSI
@@ -127,6 +143,11 @@ model User {
   cadanganKultumSchedules RohaniSchedule[] @relation("CadanganKultum")
   uploadedLetterTemplates LetterTemplate[] @relation("LetterTemplateUploader")
   createdLetters Letter[] @relation("LetterCreator")
+
+  ledMeetings          Meeting[]           @relation("MeetingLeader")
+  takenNotesMeetings   Meeting[]           @relation("MeetingNoteTaker")
+  meetingAttendances   MeetingAttendance[]
+  actionItems          ActionItem[]        @relation("ActionItemPIC")
 
   @@map("users")
 }
@@ -689,4 +710,68 @@ model Letter {
   updatedAt   DateTime        @updatedAt
 
   @@map("letters")
+}
+
+model Meeting {
+  id           String        @id @default(cuid())
+  title        String
+  type         MeetingType   @default(INTERNAL)
+  scheduledAt  DateTime
+  location     String?
+  status       MeetingStatus @default(TERJADWAL)
+  
+  leaderId     String?       // Warga yang memimpin rapat
+  noteTakerId  String?       // Warga yang mencatat (Notulis)
+  
+  leader       User?         @relation("MeetingLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  noteTaker    User?         @relation("MeetingNoteTaker", fields: [noteTakerId], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  attendances  MeetingAttendance[]
+  notes        MeetingNote[]
+  actionItems  ActionItem[]
+
+  @@map("meetings")
+}
+
+model MeetingAttendance {
+  id          String           @id @default(cuid())
+  meetingId   String
+  userId      String
+  role        MeetingRole      @default(PESERTA)
+  status      AttendanceStatus? // null jika masih terjadwal
+  
+  meeting     Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@map("meeting_attendances")
+}
+
+model MeetingNote {
+  id          String    @id @default(cuid())
+  meetingId   String
+  division    Division? // Opsional: hanya untuk rapat internal yg per divisi
+  content     String    @db.Text
+  evaluation  String?   @db.Text
+  
+  meeting     Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@map("meeting_notes")
+}
+
+model ActionItem {
+  id          String    @id @default(cuid())
+  meetingId   String
+  title       String
+  picId       String?
+  deadline    DateTime?
+  isCompleted Boolean   @default(false)
+  
+  meeting     Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  pic         User?     @relation("ActionItemPIC", fields: [picId], references: [id], onDelete: SetNull)
+
+  @@map("action_items")
 }

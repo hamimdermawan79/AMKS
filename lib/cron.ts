@@ -11,17 +11,17 @@ function getSectorName(sectorIndex: number): string {
 
 /**
  * Check for piket assignments scheduled for TODAY (Hari H ONLY).
- * Reminders are sent on the day of piket between 05:00 WIB and 11:00 WIB,
+ * Reminders are sent periodically on the day of piket at specific hours (01:00, 04:00, 08:00 WIB),
  * accurately displaying sector names (Sektor A, Sektor B, Sektor C, etc.).
- * Sent exactly once per assigned piket day to prevent spam and WA bans.
+ * Will notify user if they haven't marked their attendance yet.
  */
 export async function checkTodayPiketReminders() {
   try {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
 
-    // Reminders are sent on the piket day between 01:00 WIB (1 AM) and 11:00 WIB (when presensi closes)
-    if (currentHour < 1 || currentHour >= 11) {
+    // Reminders are sent periodically if they haven't completed piket. (Jam 1, 4, 8)
+    if (![1, 4, 8].includes(currentHour)) {
       return;
     }
 
@@ -52,9 +52,10 @@ export async function checkTodayPiketReminders() {
     if (assignments.length === 0) return;
 
     for (const assign of assignments) {
-      const refId = `PIKET_REMINDER:${assign.id}`;
+      // Append currentHour so they get notified again if they still haven't done it
+      const refId = `PIKET_REMINDER:${assign.id}:${currentHour}`;
 
-      // Strict Idempotency Check: guarantee only ONE notification row is ever created for this piket assignment
+      // Strict Idempotency Check: guarantee only ONE notification row is ever created for this specific hour reminder
       const existing = await db.notification.findFirst({
         where: {
           referenceId: refId,
@@ -69,7 +70,7 @@ export async function checkTodayPiketReminders() {
       const sectorName = getSectorName(assign.sector);
       const timeRemaining = Math.max(1, 11 - currentHour);
 
-      // Create single Hari H notification with exact sector label
+      // Create notification with exact sector label
       await createNotification({
         userId: assign.userId,
         title: `PENGINGAT PIKET HARI INI: ${sectorName}`,
@@ -78,7 +79,7 @@ export async function checkTodayPiketReminders() {
         referenceId: refId,
       });
 
-      console.log(`✉️ Single Hari H piket reminder queued for ${assign.user.fullName} (${sectorName})`);
+      console.log(`✉️ Piket reminder (Jam ${currentHour}) queued for ${assign.user.fullName} (${sectorName})`);
     }
   } catch (error) {
     console.error('Failed to run checkTodayPiketReminders:', error);

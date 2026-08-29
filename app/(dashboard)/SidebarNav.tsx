@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { 
+  Menu, X, LayoutDashboard, Trash2, Palette, Activity, BookHeart, 
+  ShieldCheck, Wallet, Box, Mail, BookOpen, Users, UserPlus, 
+  Image as ImageIcon, FileText, FileSearch, MessageCircle, Settings, UserCog, LogOut, ChevronRight
+} from 'lucide-react';
 import { handleLogout } from './logout-action';
 import NotificationBell from '@/components/ui/notification-bell';
 
@@ -48,17 +52,72 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
     }
   }, [mobileOpen]);
 
+  const getIcon = (label: string) => {
+    switch(label) {
+      case 'Dashboard': return <LayoutDashboard className="h-4 w-4" />;
+      case 'Kebersihan': return <Trash2 className="h-4 w-4" />;
+      case 'Kesenian': return <Palette className="h-4 w-4" />;
+      case 'Keolahragaan': return <Activity className="h-4 w-4" />;
+      case 'Rohani': return <BookHeart className="h-4 w-4" />;
+      case 'Keamanan': return <ShieldCheck className="h-4 w-4" />;
+      case 'Keuangan': return <Wallet className="h-4 w-4" />;
+      case 'Inventaris': return <Box className="h-4 w-4" />;
+      case 'Surat Menyurat': return <Mail className="h-4 w-4" />;
+      case 'Kesekretariatan': return <BookOpen className="h-4 w-4" />;
+      case 'Warga': return <Users className="h-4 w-4" />;
+      case 'Calon Warga Asrama': return <UserPlus className="h-4 w-4" />;
+      case 'Konten & Gallery': return <ImageIcon className="h-4 w-4" />;
+      case 'Karya Ilmiah': return <FileText className="h-4 w-4" />;
+      case 'Permintaan Akses': return <FileSearch className="h-4 w-4" />;
+      case 'WhatsApp Bot': return <MessageCircle className="h-4 w-4" />;
+      case 'Pengaturan Sistem': return <Settings className="h-4 w-4" />;
+      case 'Pengaturan Akun': return <UserCog className="h-4 w-4" />;
+      default: return <ChevronRight className="h-4 w-4" />;
+    }
+  };
+
+  const getSectionTitle = (href: string) => {
+    if (href === '/admin/kebersihan') return "Divisi & Modul";
+    if (href === '/admin/warga') return "Administrasi User";
+    if (href === '/admin/whatsapp') return "Pengaturan Lanjutan";
+    return null;
+  };
+
   const renderNavLinks = (onNavigate?: () => void) =>
-    navItems.map((item, idx) => (
-      <div key={item.href}>
-        {idx > 0 && dividerHrefs.includes(item.href) && (
-          <div className="border-t border-border/60 my-2" />
-        )}
-        <Link href={item.href} onClick={onNavigate} className="nav-item">
-          {item.label}
-        </Link>
-      </div>
-    ));
+    navItems.map((item, idx) => {
+      const sectionTitle = getSectionTitle(item.href);
+      const isDivider = idx > 0 && dividerHrefs.includes(item.href);
+      const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/user');
+
+      return (
+        <div key={item.href}>
+          {(isDivider || sectionTitle) && (
+            <div className={`mt-6 mb-2 px-3 ${idx === 0 ? 'mt-0' : ''}`}>
+              <div className="border-t border-border/60 mb-3" />
+              {sectionTitle && (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                  {sectionTitle}
+                </span>
+              )}
+            </div>
+          )}
+          <Link 
+            href={item.href} 
+            onClick={onNavigate} 
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              isActive 
+                ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <div className={`${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>
+              {getIcon(item.label)}
+            </div>
+            {item.label}
+          </Link>
+        </div>
+      );
+    });
 
   return (
     <>
@@ -74,10 +133,11 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
           </Link>
 
           <div className="space-y-6 flex-1">
-            <nav className="space-y-2">{renderNavLinks()}</nav>
+            <nav className="space-y-1">{renderNavLinks()}</nav>
 
-            <form action={handleLogout}>
-              <button type="submit" className="w-full nav-item text-red-600 hover:bg-red-50">
+            <form action={handleLogout} className="pt-4 border-t border-border/60">
+              <button type="submit" className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                <LogOut className="h-4 w-4" />
                 Logout
               </button>
             </form>
@@ -154,14 +214,15 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
               </div>
 
               {/* Nav items */}
-              <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+              <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
                 {renderNavLinks(() => setMobileOpen(false))}
               </nav>
 
               {/* Logout */}
               <div className="border-t border-slate-100 px-4 py-4">
                 <form action={handleLogout}>
-                  <button type="submit" className="w-full nav-item text-red-600 hover:bg-red-50">
+                  <button type="submit" className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                    <LogOut className="h-4 w-4" />
                     Logout
                   </button>
                 </form>
