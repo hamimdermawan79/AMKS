@@ -20,7 +20,13 @@ interface Notification {
   createdAt: Date | string;
 }
 
-export default function NotificationBell({ userId }: { userId: string }) {
+export default function NotificationBell({ 
+  userId, 
+  align = 'right' 
+}: { 
+  userId: string; 
+  align?: 'left' | 'right';
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -149,7 +155,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
       {/* Dropdown Card */}
       <AnimatePresence>
         {isOpen && (
-          <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-xl border border-border bg-white shadow-xl z-50 origin-top-right">
+          <div className={`absolute ${align === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'} mt-3 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-white shadow-xl z-50`}>
             {/* Dropdown Header */}
             <div className="flex items-center justify-between border-b border-border bg-slate-50 px-4 py-3">
               <span className="font-bold text-foreground text-sm flex items-center gap-1.5">

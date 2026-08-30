@@ -133,7 +133,7 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
               </div>
             </Link>
             <div className="shrink-0">
-              <NotificationBell userId={user.id} />
+              <NotificationBell userId={user.id} align="left" />
             </div>
           </div>
 
@@ -165,7 +165,7 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
           <span className="text-base font-semibold text-foreground">SIMAS-KS</span>
         </Link>
 
-        <NotificationBell userId={user.id} />
+        <NotificationBell userId={user.id} align="right" />
       </header>
 
       {/* ===== Mobile drawer ===== */}
