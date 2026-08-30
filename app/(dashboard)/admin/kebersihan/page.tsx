@@ -126,6 +126,7 @@ export default async function KebersihanPage() {
     <div className="max-w-6xl mx-auto">
       <KebersihanUserView
       canManage={canManage}
+      userName={session.user.fullName}
       hasPeriod={!!period}
       sectorCount={sectorCount}
       sectorLabels={sectorLabels}

@@ -20,8 +20,9 @@ export async function checkTodayPiketReminders() {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
 
-    // Reminders are sent periodically before deadline 11:00 WIB (Jam 6, 8, 10, serta 1, 4)
-    if (![1, 4, 6, 8, 10].includes(currentHour)) {
+    // Jadwal pengingat: Jam 00:00 (12 malam), 02:00, 05:00, 07:00, 09:00 WIB
+    const validHours = [0, 2, 5, 7, 9];
+    if (!validHours.includes(currentHour)) {
       return;
     }
 
@@ -36,8 +37,8 @@ export async function checkTodayPiketReminders() {
           gte: startOfToday,
           lte: endOfToday,
         },
-        attendance: null, // Hasn't completed presensi yet
-        period: { isActive: true }, // Only from the currently active period
+        attendance: null, // Belum melakukan presensi
+        period: { isActive: true }, // Hanya dari periode aktif
       },
       include: {
         user: {
@@ -52,10 +53,10 @@ export async function checkTodayPiketReminders() {
     if (assignments.length === 0) return;
 
     for (const assign of assignments) {
-      // Append currentHour so they get notified again if they still haven't done it
+      // Append currentHour agar terkirim di setiap sesi jam jika belum presensi
       const refId = `PIKET_REMINDER:${assign.id}:${currentHour}`;
 
-      // Strict Idempotency Check: guarantee only ONE notification row is ever created for this specific hour reminder
+      // Strict Idempotency Check: pastikan hanya 1 notifikasi dibuat per jam tersebut
       const existing = await db.notification.findFirst({
         where: {
           referenceId: refId,
@@ -63,23 +64,42 @@ export async function checkTodayPiketReminders() {
       });
 
       if (existing) {
-        console.log(`🧹 Skipping piket reminder for ${assign.user.fullName} - notification ${refId} already exists in DB.`);
         continue;
       }
 
       const sectorName = getSectorName(assign.sector);
-      const timeRemaining = Math.max(1, 11 - currentHour);
+      let message = '';
 
-      // Create notification with exact sector label
+      if (currentHour === 0) {
+        // Jam 12 Malam (00:00 WIB)
+        message = `Halo ${assign.user.fullName}, HARI INI Anda memiliki jadwal piket di ${sectorName}. Sistem presensi akan dibuka mulai pukul 01:00 WIB dini hari dan batas akhir presensi adalah pukul 11:00 WIB. Mohon bersiap untuk melaksanakan piket Anda.`;
+      } else if (currentHour === 2) {
+        // Jam 2 Dini Hari (02:00 WIB)
+        message = `Halo ${assign.user.fullName}, presensi piket untuk ${sectorName} telah dibuka. Anda dapat melaksanakan piket dan melakukan presensi kehadiran di dashboard sebelum batas akhir pukul 11:00 WIB (tersisa 9 jam lagi).`;
+      } else if (currentHour === 5) {
+        // Jam 5 Subuh (05:00 WIB)
+        message = `Selamat pagi ${assign.user.fullName}, mengingatkan kembali jadwal piket Anda HARI INI di ${sectorName}. Segera laksanakan tugas piket dan isi presensi sebelum pukul 11:00 WIB (tersisa 6 jam lagi).`;
+      } else if (currentHour === 7) {
+        // Jam 7 Pagi (07:00 WIB)
+        message = `Halo ${assign.user.fullName}, pengingat pagi untuk piket Anda di ${sectorName}. Harap segera menyelesaikan piket dan presensi sebelum pukul 11:00 WIB (tersisa 4 jam lagi).`;
+      } else if (currentHour === 9) {
+        // Jam 9 Pagi (09:00 WIB)
+        message = `⚠️ PENTING: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}! Waktu tersisa tinggal 2 jam lagi sebelum batas akhir pukul 11:00 WIB. Hindari denda dengan segera melakukan piket dan presensi.`;
+      } else {
+        const timeRemaining = Math.max(1, 11 - currentHour);
+        message = `Halo ${assign.user.fullName}, mengingatkan bahwa HARI INI Anda memiliki jadwal piket di ${sectorName}. Harap segera melakukan presensi piket di dashboard sebelum pukul 11:00 WIB (tersisa kurang lebih ${timeRemaining} jam lagi). Terima kasih!`;
+      }
+
+      // Create notification
       await createNotification({
         userId: assign.userId,
         title: `PENGINGAT PIKET HARI INI: ${sectorName}`,
-        message: `Halo ${assign.user.fullName}, mengingatkan bahwa HARI INI Anda memiliki jadwal piket di ${sectorName}. Harap segera melakukan presensi piket di dashboard sebelum pukul 11:00 WIB (tersisa kurang lebih ${timeRemaining} jam lagi). Terima kasih!`,
+        message,
         type: 'PIKET_REMINDER',
         referenceId: refId,
       });
 
-      console.log(`✉️ Piket reminder (Jam ${currentHour}) queued for ${assign.user.fullName} (${sectorName})`);
+      console.log(`✉️ Piket reminder (Jam ${currentHour}:00 WIB) queued for ${assign.user.fullName} (${sectorName})`);
     }
   } catch (error) {
     console.error('Failed to run checkTodayPiketReminders:', error);
@@ -189,15 +209,15 @@ export async function checkMissedPikets() {
     if (!activePeriod) return;
 
     // Get today's start and end date (in WIB)
-    const today = new Date(nowWib);
-    today.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(nowWib);
+    endOfToday.setHours(23, 59, 59, 999);
 
-    // Let's check any assignments on or before today
+    // Check assignments up to today that have passed 11:00 WIB
     const unpaidAssignments = await db.piketAssignment.findMany({
       where: {
         periodId: activePeriod.id,
         date: {
-          lt: today, // Only dates BEFORE today (that have definitively passed 11:00 WIB)
+          lte: endOfToday, // Include today's assignments since currentHour >= 11
         },
         attendance: null,
       },
@@ -219,7 +239,6 @@ export async function checkMissedPikets() {
         where: { assignmentId: assign.id },
       });
       if (existingAttendance) {
-        console.log(`🧹 Skipping missed piket for ${assign.user.fullName} - attendance already exists.`);
         continue;
       }
 
@@ -229,7 +248,6 @@ export async function checkMissedPikets() {
         where: { referenceId: dendaRefId },
       });
       if (existingDendaNotif) {
-        console.log(`🧹 Skipping denda for ${assign.user.fullName} - notification ${dendaRefId} already exists.`);
         continue;
       }
 
@@ -277,7 +295,7 @@ export async function checkMissedPikets() {
       await createNotification({
         userId: assign.userId,
         title: 'Denda Piket Otomatis Terbit',
-        message: `Anda dikenakan denda piket sebesar Rp${fineAmount.toLocaleString('id-ID')} karena terlambat / tidak melakukan presensi piket pada tanggal ${new Date(assign.date).toLocaleDateString('id-ID')} sebelum 11:00 WIB. Harap segera melunasi ke Bendahara.`,
+        message: `Pemberitahuan: Anda dikenakan denda piket sebesar Rp${fineAmount.toLocaleString('id-ID')} karena tidak melakukan presensi dan tugas piket pada tanggal ${new Date(assign.date).toLocaleDateString('id-ID')} sebelum batas akhir 11:00 WIB. Tagihan denda telah terbit di sistem, harap segera melakukan pelunasan ke Bendahara.`,
         type: 'TAGIHAN_REMINDER',
         referenceId: dendaRefId,
       });
@@ -288,7 +306,6 @@ export async function checkMissedPikets() {
     console.error('Failed to run checkMissedPikets:', error);
   }
 }
-
 
 /**
  * Broadcast pending announcements to all active users (excl. SUPERADMIN & ALUMNI).
@@ -302,7 +319,6 @@ export async function checkAnnouncementBroadcast() {
     });
 
     if (announcements.length === 0) {
-      console.log('📢 No pending announcements to broadcast.');
       return;
     }
 
@@ -326,7 +342,6 @@ export async function checkAnnouncementBroadcast() {
           where: { id: announcement.id },
           data: { broadcastComplete: true },
         });
-        console.log(`📢 Announcement ${announcement.id} already broadcast (${existingCount} notifications). Marked complete.`);
         continue;
       }
 
@@ -344,7 +359,6 @@ export async function checkAnnouncementBroadcast() {
       });
 
       if (targetUsers.length === 0) {
-        console.log(`📢 Announcement ${announcement.id} has no target users. Marking complete.`);
         await db.announcement.update({
           where: { id: announcement.id },
           data: { broadcastComplete: true },
@@ -383,7 +397,7 @@ let cronInterval: NodeJS.Timeout | null = null;
 export function startCronJobs() {
   if (cronInterval) return;
 
-  console.log('⏰ Starting Cron jobs worker (every 1 hour)...');
+  console.log('⏰ Starting Cron jobs worker (every 15 minutes)...');
   
   // Run checks immediately on startup
   checkTodayPiketReminders();
@@ -391,13 +405,13 @@ export function startCronJobs() {
   checkMissedPikets();
   checkAnnouncementBroadcast();
 
-  // Run checks every hour
+  // Run checks every 15 minutes so specific reminder hours (0, 2, 5, 7, 9, 11 WIB) are caught accurately
   cronInterval = setInterval(() => {
     checkTodayPiketReminders();
     checkUpcomingBills();
     checkMissedPikets();
     checkAnnouncementBroadcast();
-  }, 1000 * 60 * 60); // 1 hour
+  }, 1000 * 60 * 15); // 15 minutes
 }
 
 export function stopCronJobs() {

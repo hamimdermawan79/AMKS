@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useState, useTransition, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
   ArrowRight,
   Bell,
+  Bot,
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
   Clock,
   ImagePlus,
+  Loader2,
+  Scan,
   ShieldCheck,
   Sparkles,
   Wallet,
@@ -19,9 +23,11 @@ import {
   XCircle,
 } from "lucide-react";
 import { selfPresensi } from "./actions";
+import { compressClientImage, formatBytes } from "@/lib/client-image-compression";
 
 type Props = {
   canManage: boolean;
+  userName?: string;
   hasPeriod: boolean;
   sectorCount: number;
   sectorLabels: string[];
@@ -227,6 +233,7 @@ function splitWeeks(
    ================================================================ */
 export default function KebersihanUserView({
   canManage,
+  userName,
   hasPeriod,
   sectorCount,
   sectorLabels,
@@ -247,32 +254,93 @@ export default function KebersihanUserView({
   // Presensi modal state: which assignment is being checked in.
   const [modalAssignmentId, setModalAssignmentId] = useState<string | null>(null);
   const [photoName, setPhotoName] = useState("");
+  const [compressedPhoto, setCompressedPhoto] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [isCompressingPhoto, setIsCompressingPhoto] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState<string | null>(null);
   const [agreement, setAgreement] = useState(false);
   const [complaint, setComplaint] = useState("");
   const [modalError, setModalError] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // AI Kebersihan Scanner & Feedback states
+  const [aiScanState, setAiScanState] = useState<"idle" | "scanning" | "success" | "error">("idle");
+  const [aiScanMessage, setAiScanMessage] = useState("");
+  const [aiScanError, setAiScanError] = useState("");
+
   const openPresensiModal = (assignmentId: string) => {
     setModalAssignmentId(assignmentId);
     setPhotoName("");
+    setCompressedPhoto(null);
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    setPhotoPreviewUrl(null);
+    setIsCompressingPhoto(false);
+    setCompressionInfo(null);
     setAgreement(false);
     setComplaint("");
     setModalError("");
+    setAiScanState("idle");
+    setAiScanError("");
     if (photoInputRef.current) photoInputRef.current.value = "";
   };
 
   const closePresensiModal = () => {
     setModalAssignmentId(null);
+    setAiScanState("idle");
+    setAiScanError("");
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    setPhotoPreviewUrl(null);
   };
 
-  const photoSelected = photoName.length > 0;
-  const canSubmitPresensi =
-    photoSelected && agreement && complaint.trim().length > 0 && !isPending;
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
 
-  const handleSubmitPresensi = () => {
     setModalError("");
-    const file = photoInputRef.current?.files?.[0];
-    if (!file) {
+    setPhotoName(rawFile.name);
+    setIsCompressingPhoto(true);
+    setCompressionInfo("Mengompresi foto...");
+
+    // Create instant local thumbnail preview
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    const tempUrl = URL.createObjectURL(rawFile);
+    setPhotoPreviewUrl(tempUrl);
+
+    try {
+      // Compress in browser (max 1600px, 80% quality)
+      const res = await compressClientImage(rawFile, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.8,
+        mimeType: "image/jpeg",
+      });
+
+      setCompressedPhoto(res.file);
+      setCompressionInfo(
+        `${formatBytes(res.originalSize)} ➔ ${formatBytes(res.compressedSize)} (Siap diunggah cepat ⚡)`
+      );
+    } catch (err) {
+      console.error("Compression error, fallback to raw file:", err);
+      setCompressedPhoto(rawFile);
+      setCompressionInfo(`${formatBytes(rawFile.size)}`);
+    } finally {
+      setIsCompressingPhoto(false);
+    }
+  };
+
+  const photoSelected = Boolean(compressedPhoto || photoName.length > 0);
+  const canSubmitPresensi =
+    photoSelected &&
+    !isCompressingPhoto &&
+    agreement &&
+    complaint.trim().length > 0 &&
+    aiScanState === "idle" &&
+    !isPending;
+
+  const handleSubmitPresensi = async () => {
+    setModalError("");
+    const fileToUpload = compressedPhoto || photoInputRef.current?.files?.[0];
+    if (!fileToUpload) {
       setModalError("Foto bukti piket wajib diunggah");
       return;
     }
@@ -288,19 +356,39 @@ export default function KebersihanUserView({
 
     const fd = new FormData();
     fd.set("assignmentId", modalAssignmentId);
-    fd.set("photo", file);
+    fd.set("photo", fileToUpload);
     fd.set("complaint", complaint.trim());
     fd.set("agreement", "true");
 
-    startTransition(async () => {
-      try {
-        await selfPresensi(fd);
-        closePresensiModal();
-        router.refresh();
-      } catch (e: any) {
-        setModalError(e?.message ?? "Gagal melakukan presensi");
-      }
-    });
+    // Launch AI Scanner Feedback Overlay
+    setAiScanState("scanning");
+    setAiScanMessage("AI Kebersihan sedang menganalisis tingkat kebersihan piket Anda...");
+
+    const step1 = setTimeout(() => {
+      setAiScanMessage("Mendeteksi area sektor & ketertiban lingkungan...");
+    }, 1000);
+
+    const step2 = setTimeout(() => {
+      setAiScanMessage("Memverifikasi kejujuran & mengamankan status denda...");
+    }, 2000);
+
+    try {
+      // Parallel execution: Server action + minimum animation time for delightful UX (2.4s)
+      const minDelay = new Promise((resolve) => setTimeout(resolve, 2400));
+      await Promise.all([selfPresensi(fd), minDelay]);
+
+      clearTimeout(step1);
+      clearTimeout(step2);
+
+      setAiScanState("success");
+      router.refresh();
+    } catch (e: any) {
+      clearTimeout(step1);
+      clearTimeout(step2);
+      console.error("Presensi submission error:", e);
+      setAiScanError(e?.message ?? "Gagal memproses presensi");
+      setAiScanState("error");
+    }
   };
 
   const weeks = useMemo(() => splitWeeks(scheduledDates, kerjaBaktiDates), [scheduledDates, kerjaBaktiDates]);
@@ -771,7 +859,7 @@ export default function KebersihanUserView({
                 </div>
                 <h3 className="font-semibold text-foreground">Presensi Piket</h3>
               </div>
-              <button
+                              <button
                 onClick={() => !isPending && closePresensiModal()}
                 className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-slate-100"
                 aria-label="Tutup"
@@ -783,30 +871,71 @@ export default function KebersihanUserView({
             <div className="space-y-4 px-5 py-5">
               {/* Foto bukti */}
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
-                  Tambahkan Bukti Anda Telah Piket
-                </label>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-foreground">
+                    Tambahkan Bukti Anda Telah Piket
+                  </label>
+                  {isCompressingPhoto && (
+                    <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Mengompres...
+                    </span>
+                  )}
+                </div>
+
                 <input
                   ref={photoInputRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? "")}
+                  accept="image/*"
+                  onChange={handlePhotoChange}
                   className="hidden"
                   id="piket-photo-input"
                 />
-                <label
-                  htmlFor="piket-photo-input"
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border border-dashed px-4 py-3 text-sm transition-colors ${
-                    photoSelected
-                      ? "border-emerald-300 bg-emerald-50/60 text-emerald-700"
-                      : "border-border bg-slate-50/60 text-muted-foreground hover:border-primary/40"
-                  }`}
-                >
-                  <ImagePlus className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">
-                    {photoSelected ? photoName : "Pilih foto (JPG/PNG/WEBP, maks 10 MB)"}
-                  </span>
-                </label>
+
+                {photoPreviewUrl ? (
+                  <div className="relative overflow-hidden rounded-xl border border-border bg-slate-50 p-2">
+                    <div className="flex items-center gap-3">
+                      <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-border bg-black/5">
+                        <img
+                          src={photoPreviewUrl}
+                          alt="Preview Bukti Piket"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-semibold text-foreground">
+                          {photoName || "Foto Piket"}
+                        </p>
+                        {compressionInfo && (
+                          <p className="mt-0.5 text-[11px] font-medium text-emerald-600">
+                            {compressionInfo}
+                          </p>
+                        )}
+                        <label
+                          htmlFor="piket-photo-input"
+                          className="mt-1 inline-block cursor-pointer text-[11px] font-semibold text-primary hover:underline"
+                        >
+                          Ganti Foto
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="piket-photo-input"
+                    className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-slate-50/70 p-4 text-center text-sm transition-all hover:border-primary/50 hover:bg-slate-50"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <ImagePlus className="h-5 w-5" />
+                    </div>
+                    <span className="font-medium text-foreground">
+                      Ambil Foto atau Pilih Gambar
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Foto otomatis dikompres cepat & ringan ⚡
+                    </span>
+                  </label>
+                )}
               </div>
 
               {/* Keluhan */}
@@ -846,21 +975,170 @@ export default function KebersihanUserView({
 
             <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
               <button
-                onClick={() => !isPending && closePresensiModal()}
-                disabled={isPending}
+                onClick={() => !isPending && aiScanState === "idle" && closePresensiModal()}
+                disabled={isPending || aiScanState !== "idle"}
                 className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-slate-50 disabled:opacity-60"
               >
                 Batal
               </button>
               <button
                 onClick={handleSubmitPresensi}
-                disabled={!canSubmitPresensi}
+                disabled={!canSubmitPresensi || isCompressingPhoto}
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <ClipboardCheck className="h-4 w-4" />
-                {isPending ? "Memproses..." : "Presensi"}
+                {isCompressingPhoto ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Mengompres Foto...
+                  </>
+                ) : (
+                  <>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Presensi
+                  </>
+                )}
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ===== AI KEBERSIHAN SCANNER & CONFIRMATION POPUP ===== */}
+      {aiScanState !== "idle" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="relative z-10 w-full max-w-sm overflow-hidden rounded-3xl border border-white/20 bg-white p-6 shadow-2xl text-center"
+          >
+            {/* SCANNING STATE */}
+            {aiScanState === "scanning" && (
+              <div className="space-y-4 py-2">
+                {/* AI Laser Scan Visualizer */}
+                <div className="relative mx-auto h-36 w-36 overflow-hidden rounded-2xl border-2 border-primary/40 bg-slate-900 shadow-inner">
+                  {photoPreviewUrl ? (
+                    <img
+                      src={photoPreviewUrl}
+                      alt="Scanning Target"
+                      className="h-full w-full object-cover opacity-80"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-primary/60">
+                      <Scan className="h-16 w-16" />
+                    </div>
+                  )}
+
+                  {/* Animated Laser Scanning Line */}
+                  <motion.div
+                    animate={{ top: ["0%", "85%", "0%"] }}
+                    transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                    className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee]"
+                  />
+
+                  {/* Grid Scanner Effect Overlay */}
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:12px_12px]" />
+
+                  {/* Top Left AI Indicator Badge */}
+                  <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 backdrop-blur-sm">
+                    <Bot className="h-3 w-3 animate-pulse" />
+                    AI SCAN
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                    <Sparkles className="h-3.5 w-3.5 animate-spin" />
+                    Tunggu sebentar...
+                  </div>
+                  <h3 className="text-base font-bold text-foreground">
+                    AI Kebersihan Sedang Menganalisis
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    AI sedang mendeteksi apakah piket Anda sudah bersih dan bebas kotoran...
+                  </p>
+                </div>
+
+                {/* Status Bar */}
+                <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-medium text-primary flex items-center justify-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin flex-shrink-0" />
+                  <span className="truncate">{aiScanMessage}</span>
+                </div>
+              </div>
+            )}
+
+            {/* SUCCESS STATE */}
+            {aiScanState === "success" && (
+              <div className="space-y-4 py-2">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-lg shadow-emerald-500/20 ring-8 ring-emerald-50">
+                  <CheckCircle2 className="h-10 w-10 animate-bounce" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-emerald-600">
+                    <Sparkles className="h-3.5 w-3.5" /> Terverifikasi Bersih
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 leading-tight">
+                    Terima Kasih Sudah Piket! 🎉
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed px-1">
+                    Piket Anda telah berhasil dicatat dan Anda <span className="font-semibold text-emerald-700">terbebas dari tunggakan denda</span>.
+                  </p>
+                  <p className="text-xs font-semibold text-primary pt-1">
+                    Have a good day, {userName || "Warga AMKS"}! ✨
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setAiScanState("idle");
+                    closePresensiModal();
+                  }}
+                  className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/30 transition-colors hover:bg-emerald-700 active:scale-[0.98]"
+                >
+                  Selesai & Tutup
+                </button>
+              </div>
+            )}
+
+            {/* ERROR STATE */}
+            {aiScanState === "error" && (
+              <div className="space-y-4 py-2">
+                <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100 text-red-600 shadow-lg shadow-red-500/20 ring-8 ring-red-50">
+                  <AlertCircle className="h-10 w-10 animate-pulse" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-red-600">
+                    <XCircle className="h-3.5 w-3.5" /> Verifikasi Belum Berhasil
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 leading-tight">
+                    Piket Belum Terverifikasi
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed px-1">
+                    Maaf, sepertinya hasil dari piket kamu masih terdeteksi kotor atau terdapat kendala sistem:
+                  </p>
+                  <div className="rounded-lg bg-red-50 border border-red-200 p-2 text-xs font-medium text-red-700 break-words">
+                    {aiScanError}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground pt-1">
+                    Silakan periksa foto Anda dan lakukan presensi ulang.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setAiScanState("idle");
+                    // Biarkan modal input tetap terbuka agar warga bisa coba lagi
+                  }}
+                  className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white shadow-md shadow-red-600/30 transition-colors hover:bg-red-700 active:scale-[0.98]"
+                >
+                  Coba Presensi Ulang
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
       )}
