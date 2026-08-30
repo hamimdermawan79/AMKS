@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { sendWhatsAppMessage } from './whatsapp';
+import { sendWhatsAppMessage, getConnectionStatus } from './whatsapp';
 import { NotificationType } from '@prisma/client';
 
 const KARYA_ILMIAH_ACCESS_NOTIFY_ROLES = ['SUPERADMIN', 'KETUA', 'SEKRETARIS'] as const;
@@ -36,7 +36,19 @@ export async function createNotification(payload: CreateNotificationPayload) {
   }
 }
 
+let isProcessingQueue = false;
+
 export async function processNotificationQueue() {
+  // Prevent parallel overlapping runs
+  if (isProcessingQueue) return;
+
+  // Don't burn queue if WhatsApp Bot is not connected yet
+  if (getConnectionStatus() !== 'connected') {
+    return;
+  }
+
+  isProcessingQueue = true;
+
   try {
     const now = new Date();
     
@@ -58,7 +70,7 @@ export async function processNotificationQueue() {
           }
         }
       },
-      take: 5, // Process in small batches to avoid rate limit / socket congestion
+      take: 5, // Process in small batches
     });
 
     if (pendingNotifications.length === 0) return;
@@ -68,6 +80,12 @@ export async function processNotificationQueue() {
     const processedUserTypes = new Set<string>();
 
     for (const notif of pendingNotifications) {
+      // Re-check connection during loop
+      if (getConnectionStatus() !== 'connected') {
+        console.log('⚠️ WhatsApp bot disconnected mid-queue, pausing processing.');
+        break;
+      }
+
       // Deduplicate multiple pending notifications of the same type for the same user in batch
       if (notif.userId && (notif.type === 'PIKET_REMINDER' || notif.type === 'TAGIHAN_REMINDER')) {
         const dupKey = `${notif.userId}:${notif.type}`;
@@ -82,18 +100,24 @@ export async function processNotificationQueue() {
         processedUserTypes.add(dupKey);
       }
 
-      let targetPhone = '';
+      let targetPhone = notif.user?.phone?.trim() || '';
       
-      // If it has a specific user, send to their phone
-      if (notif.user?.phone) {
-        targetPhone = notif.user.phone;
-      } else {
-        // If it's a global announcement but has no userId, we skip WA sending or log it
-        // Note: Broadcast announcements are usually duplicated per active user or sent as single system logs.
-        // If no user is attached, we mark it sentWa: true (nothing to send via personal WA)
+      // If it has no user or no phone attached
+      if (!targetPhone) {
         await db.notification.update({
           where: { id: notif.id },
           data: { sentWa: true, waMessageId: 'SKIPPED_NO_USER' },
+        });
+        continue;
+      }
+
+      // Validate phone length (minimum 9 digits)
+      const digitsOnly = targetPhone.replace(/\D/g, '');
+      if (digitsOnly.length < 9) {
+        console.log(`🧹 Skipping invalid phone number "${targetPhone}" for ${notif.user?.fullName}`);
+        await db.notification.update({
+          where: { id: notif.id },
+          data: { sentWa: true, waMessageId: 'SKIPPED_INVALID_PHONE' },
         });
         continue;
       }
@@ -111,9 +135,8 @@ export async function processNotificationQueue() {
       // Format message with premium look (bold, emojis)
       const formattedMessage = formatWaMessage(notif.title, notif.message, notif.type);
       
-      // Add a randomized delay between 10 to 20 seconds to prevent spamming
-      const delayMs = Math.floor(Math.random() * 10000) + 10000;
-      console.log(`⏳ Waiting for ${(delayMs / 1000).toFixed(1)}s before sending to avoid spam detection...`);
+      // Safe delay between 1.5 to 3 seconds between messages
+      const delayMs = Math.floor(Math.random() * 1500) + 1500;
       await new Promise((resolve) => setTimeout(resolve, delayMs));
 
       console.log(`📤 Sending WA to ${notif.user?.fullName} (${targetPhone})...`);
@@ -130,15 +153,18 @@ export async function processNotificationQueue() {
         console.log(`✅ WA Sent successfully to ${notif.user?.fullName}`);
       } else {
         console.error(`❌ WA Failed to send to ${notif.user?.fullName}:`, result.error);
-        // We update with FAILED status but we can let it retry or mark it failed.
-        // Let's set waMessageId to error message and allow retry a limited number of times.
-        // To keep it simple, let's mark it as FAILED in waMessageId.
+
+        // If error is disconnection, keep sentWa = false so it will be retried when reconnected
+        if (result.error?.toLowerCase().includes('not connected')) {
+          console.log('⚠️ Postponing message until WhatsApp bot reconnects.');
+          break;
+        }
+
+        // Otherwise mark failed so queue doesn't get blocked
         await db.notification.update({
           where: { id: notif.id },
           data: {
             waMessageId: `FAILED: ${result.error?.slice(0, 50)}`,
-            // Set sentWa to true so it doesn't infinite loop, or let it retry once more by keeping it false
-            // But let's set it to true so it doesn't block the queue
             sentWa: true,
           },
         });
@@ -146,6 +172,8 @@ export async function processNotificationQueue() {
     }
   } catch (error) {
     console.error('Error running processNotificationQueue:', error);
+  } finally {
+    isProcessingQueue = false;
   }
 }
 

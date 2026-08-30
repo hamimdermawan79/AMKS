@@ -2,9 +2,6 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { canFromSession } from '@/lib/rbac/can';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import { handleLogout } from './logout-action';
-import NotificationBell from '@/components/ui/notification-bell';
 import SidebarNav, { type NavLinkItem } from './SidebarNav';
 
 export default async function DashboardLayout({

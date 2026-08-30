@@ -20,8 +20,8 @@ export async function checkTodayPiketReminders() {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
 
-    // Reminders are sent periodically if they haven't completed piket. (Jam 1, 4, 8)
-    if (![1, 4, 8].includes(currentHour)) {
+    // Reminders are sent periodically before deadline 11:00 WIB (Jam 6, 8, 10, serta 1, 4)
+    if (![1, 4, 6, 8, 10].includes(currentHour)) {
       return;
     }
 
@@ -289,12 +289,6 @@ export async function checkMissedPikets() {
   }
 }
 
-/**
- * Deprecated alias maintained for backward compatibility. Delegates to checkTodayPiketReminders.
- */
-export async function checkHourlyPiketReminders() {
-  await checkTodayPiketReminders();
-}
 
 /**
  * Broadcast pending announcements to all active users (excl. SUPERADMIN & ALUMNI).

@@ -124,13 +124,18 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
       {/* ===== Desktop persistent sidebar ===== */}
       <aside className="hidden md:flex w-64 glass border-r border-border flex-shrink-0 flex-col">
         <div className="p-6 flex flex-col h-full">
-          <Link href="/" className="flex items-center gap-3 mb-8 hover:opacity-80 smooth-transition">
-            <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-10 h-10 rounded-lg object-contain shadow-sm" />
-            <div className="flex flex-col leading-none">
-              <span className="text-xl font-semibold text-foreground">SIMAS-KS</span>
-              <span className="text-[10px] font-medium text-muted-foreground mt-0.5">Sistem Manajemen Asrama</span>
+          <div className="flex items-center justify-between gap-2 mb-6">
+            <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 smooth-transition min-w-0">
+              <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-9 h-9 rounded-lg object-contain shadow-sm shrink-0" />
+              <div className="flex flex-col leading-none truncate">
+                <span className="text-base font-semibold text-foreground truncate">SIMAS-KS</span>
+                <span className="text-[9px] font-medium text-muted-foreground mt-0.5 truncate">Manajemen Asrama</span>
+              </div>
+            </Link>
+            <div className="shrink-0">
+              <NotificationBell userId={user.id} />
             </div>
-          </Link>
+          </div>
 
           <div className="space-y-6 flex-1">
             <nav className="space-y-1">{renderNavLinks()}</nav>

@@ -143,8 +143,16 @@ export async function sendWhatsAppMessage(
       return { success: false, error: 'WhatsApp bot is not connected' };
     }
 
+    if (!toPhone || typeof toPhone !== 'string') {
+      return { success: false, error: 'Nomor telepon tidak valid' };
+    }
+
     // Clean phone number
     let cleanedPhone = toPhone.replace(/\D/g, '');
+
+    if (cleanedPhone.length < 8) {
+      return { success: false, error: 'Nomor telepon terlalu pendek / tidak valid' };
+    }
 
     // Ensure it starts with 62 (Indonesia)
     if (cleanedPhone.startsWith('0')) {
