@@ -58,6 +58,10 @@ export async function connectToWhatsApp(): Promise<Client> {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--disable-gpu',
+        '--disable-extensions',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
       ],
     },
   });
@@ -170,7 +174,28 @@ export async function sendWhatsAppMessage(
 
     return { success: true };
   } catch (error: any) {
-    console.error(`Failed to send WhatsApp message to ${toPhone}:`, error);
-    return { success: false, error: error.message || 'Unknown error' };
+    const errorMsg = String(error?.message || error || 'Unknown error');
+    console.error(`Failed to send WhatsApp message to ${toPhone}:`, errorMsg);
+
+    // Auto-detect Chromium detached Frame or destroyed execution context
+    const isDetachedFrame = 
+      errorMsg.includes('detached Frame') || 
+      errorMsg.includes('Execution context was destroyed') || 
+      errorMsg.includes('Session closed') ||
+      errorMsg.includes('Protocol error');
+
+    if (isDetachedFrame) {
+      console.warn('⚠️ Chromium frame detached / destroyed. Resetting client state and auto-reconnecting...');
+      globalForWhatsApp.connectionStatus = 'disconnected';
+      
+      // Auto reconnect in background
+      setTimeout(() => {
+        connectToWhatsApp().catch((e) => console.error('Auto-reconnect failed:', e));
+      }, 1000);
+
+      return { success: false, error: 'WhatsApp bot session frame detached. Reconnecting in background...' };
+    }
+
+    return { success: false, error: errorMsg };
   }
 }

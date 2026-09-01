@@ -126,25 +126,6 @@ export async function canAny(
 }
 
 /**
- * Check if user has ALL of the given permissions
- */
-export async function canAll(
-  user: User | null | undefined,
-  permissionCodes: string[],
-  scope?: Division | null
-): Promise<boolean> {
-  if (!user || permissionCodes.length === 0) return false;
-
-  for (const code of permissionCodes) {
-    if (!(await can(user, code, scope))) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/**
  * Check if user is SuperAdmin (has role:manage or permission:manage)
  */
 export async function isSuperAdmin(user: User | null | undefined): Promise<boolean> {
@@ -153,22 +134,6 @@ export async function isSuperAdmin(user: User | null | undefined): Promise<boole
     (await can(user, 'role:manage')) ||
     (await can(user, 'permission:manage'))
   );
-}
-
-/**
- * Check if user can access all division pages (SuperAdmin, Ketua, Sekretaris)
- */
-export async function canAccessAllDivisions(user: User | null | undefined): Promise<boolean> {
-  if (!user) return false;
-  return await canAny(user, [
-    'role:manage',
-    'permission:manage',
-    'division:manage:kebersihan',
-    'division:manage:kesenian',
-    'division:manage:keolahragaan',
-    'division:manage:rohani',
-    'division:manage:keamanan',
-  ]);
 }
 
 /**

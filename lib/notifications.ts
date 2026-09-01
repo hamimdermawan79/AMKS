@@ -154,8 +154,9 @@ export async function processNotificationQueue() {
       } else {
         console.error(`❌ WA Failed to send to ${notif.user?.fullName}:`, result.error);
 
-        // If error is disconnection, keep sentWa = false so it will be retried when reconnected
-        if (result.error?.toLowerCase().includes('not connected')) {
+        // If error is disconnection or detached frame, keep sentWa = false so it will be retried when reconnected
+        const errLower = (result.error || '').toLowerCase();
+        if (errLower.includes('not connected') || errLower.includes('detached') || errLower.includes('reconnecting')) {
           console.log('⚠️ Postponing message until WhatsApp bot reconnects.');
           break;
         }

@@ -417,18 +417,8 @@ export async function extendBillDueDate(billId: string) {
   return { success: true };
 }
 
-// ── Iuran Config ──
 
-export async function getIuranConfig() {
-  await authorizeFinance('finance:read');
-  const config = await db.iuranConfig.findFirst();
-  if (!config) {
-    return db.iuranConfig.create({
-      data: { baseAmount: 50000, wifiAddon: 30000 },
-    });
-  }
-  return config;
-}
+// ── Iuran Config ──
 
 const iuranConfigSchema = z.object({
   baseAmount: z.number().int().min(0, 'Harga tidak boleh negatif'),

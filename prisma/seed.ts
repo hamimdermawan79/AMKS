@@ -102,6 +102,12 @@ const PERMISSIONS = [
   { code: 'division:manage:keamanan', label: 'Kelola divisi Keamanan', group: 'Division' },
   { code: 'division:manage:sekretaris', label: 'Kelola divisi Sekretaris', group: 'Division' },
 
+  // Kesekretariatan & Notulensi (Meeting)
+  { code: 'meeting:create', label: 'Buat agenda rapat & jadwal RT', group: 'Kesekretariatan' },
+  { code: 'meeting:read', label: 'Lihat agenda rapat & notulensi', group: 'Kesekretariatan' },
+  { code: 'meeting:update', label: 'Kelola notulensi & kehadiran rapat', group: 'Kesekretariatan' },
+  { code: 'meeting:delete', label: 'Hapus agenda / notulensi rapat', group: 'Kesekretariatan' },
+
   // CCTV
   { code: 'cctv:view', label: 'Lihat info akun CCTV asrama', group: 'CCTV' },
 ];
@@ -123,6 +129,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'finance:read', 'finance:transaction:create', 'finance:transaction:update', 'finance:transaction:delete',
     'bill:read', 'bill:update',
     'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan', 'division:manage:sekretaris',
+    'meeting:create', 'meeting:read', 'meeting:update', 'meeting:delete',
     'inventory:create', 'inventory:read', 'inventory:update', 'inventory:delete',
     'letter_template:create', 'letter_template:read', 'letter_template:delete',
     'letter:create', 'letter:read', 'letter:update', 'letter:delete',
@@ -142,6 +149,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'finance:read', 'finance:transaction:create', 'finance:transaction:update', 'finance:transaction:delete',
     'bill:read', 'bill:update',
     'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan', 'division:manage:sekretaris',
+    'meeting:create', 'meeting:read', 'meeting:update', 'meeting:delete',
     'inventory:create', 'inventory:read', 'inventory:update', 'inventory:delete',
     'letter_template:create', 'letter_template:read', 'letter_template:delete',
     'letter:create', 'letter:read', 'letter:update', 'letter:delete',
@@ -157,6 +165,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'activity:read', 'announcement:read',
     'piket:read', 'fine:read', 'finance:read', 'bill:read',
     'division:manage:sekretaris',
+    'meeting:create', 'meeting:read', 'meeting:update', 'meeting:delete',
     'inventory:create', 'inventory:read', 'inventory:update', 'inventory:delete',
     'letter_template:create', 'letter_template:read', 'letter_template:delete',
     'letter:create', 'letter:read', 'letter:update', 'letter:delete',
@@ -183,6 +192,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     // each head to their own division by matching the user's divisionScope, so a
     // Kebersihan head can only manage Kebersihan, Keamanan head only Keamanan, etc.
     'division:manage:kebersihan', 'division:manage:kesenian', 'division:manage:keolahragaan', 'division:manage:rohani', 'division:manage:keamanan',
+    'meeting:read', 'meeting:update',
     // Ketua divisi keamanan dapat melihat info CCTV; can() scope check ensures
     // only the head with divisionScope=KEAMANAN actually gets this in practice.
     'cctv:view',
@@ -193,6 +203,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'document:read', 'post:read', 'activity:read', 'announcement:read',
     'work:read',
     'piket:read', 'piket:attendance:mark',
+    'meeting:read',
     'fine:read', 'bill:read',
   ],
   CALON_WARGA: [

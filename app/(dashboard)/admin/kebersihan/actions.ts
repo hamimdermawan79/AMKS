@@ -63,19 +63,6 @@ async function authorizeManage() {
   return session;
 }
 
-/** Fetch warga for the participant picker (active members first). */
-export async function fetchWargaForPicker() {
-  await authorizeManage();
-  return db.user.findMany({
-    where: { 
-      status: 'AKTIF',
-      roles: { none: { role: { name: 'SUPERADMIN' } } },
-    },
-    select: { id: true, fullName: true, username: true },
-    orderBy: { fullName: 'asc' },
-  });
-}
-
 const createScheduleSchema = z.object({
   startDate: z.string().min(1, 'Tanggal mulai wajib diisi'),
   endDate: z.string().min(1, 'Tanggal selesai wajib diisi'),

@@ -159,15 +159,6 @@ export async function submitPendaftaranCalonWarga(formData: FormData): Promise<{
 
 // ── Admin actions ──────────────────────────────────────────────────────────
 
-export async function getCalonWargaList() {
-  const canAccess = await canFromSession('user:read');
-  if (!canAccess) throw new Error('Unauthorized');
-  
-  return db.calonWarga.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
-}
-
 export async function updateCalonWargaStatus(
   id: string,
   status: 'MENUNGGU' | 'DITERIMA' | 'DITOLAK',
