@@ -2,7 +2,28 @@
 
 import { revalidatePath } from "next/cache";
 import { db as prisma } from "@/lib/db";
+import { canFromSession, isSuperAdmin } from "@/lib/rbac/can";
+import { auth } from "@/lib/auth";
 import { Division, MeetingType, MeetingStatus, MeetingRole, AttendanceStatus } from "@prisma/client";
+
+async function authorizeManageKesekretariatan() {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Unauthorized: Silakan login terlebih dahulu");
+  }
+
+  const [canMeeting, canSekretaris, isSuper] = await Promise.all([
+    canFromSession('meeting:create'),
+    canFromSession('division:manage:sekretaris'),
+    isSuperAdmin({ id: session.user.id, username: session.user.username }),
+  ]);
+
+  if (!canMeeting && !canSekretaris && !isSuper) {
+    throw new Error("Akses ditolak: Anda tidak memiliki izin mengelola Kesekretariatan & Notulensi");
+  }
+
+  return session;
+}
 
 // =======================
 // INTERNAL MEETINGS
@@ -14,6 +35,7 @@ export async function createInternalMeeting(data: {
   leaderId?: string;
   noteTakerId?: string;
 }) {
+  await authorizeManageKesekretariatan();
   try {
     const meeting = await prisma.meeting.create({
       data: {
@@ -32,6 +54,7 @@ export async function createInternalMeeting(data: {
 }
 
 export async function updateMeetingStatus(meetingId: string, status: MeetingStatus) {
+  await authorizeManageKesekretariatan();
   try {
     await prisma.meeting.update({
       where: { id: meetingId },
@@ -45,6 +68,7 @@ export async function updateMeetingStatus(meetingId: string, status: MeetingStat
 }
 
 export async function deleteMeeting(meetingId: string) {
+  await authorizeManageKesekretariatan();
   try {
     await prisma.meeting.delete({
       where: { id: meetingId },
@@ -61,6 +85,7 @@ export async function deleteMeeting(meetingId: string) {
 // =======================
 
 export async function generateRTSchedule(year: number) {
+  await authorizeManageKesekretariatan();
   try {
     // Generate 12 meetings for the given year, on the 12th of each month
     const meetings = [];
@@ -84,6 +109,7 @@ export async function generateRTSchedule(year: number) {
 }
 
 export async function updateRTMeeting(meetingId: string, data: { scheduledAt: string }) {
+  await authorizeManageKesekretariatan();
   try {
     await prisma.meeting.update({
       where: { id: meetingId },
@@ -99,6 +125,7 @@ export async function updateRTMeeting(meetingId: string, data: { scheduledAt: st
 }
 
 export async function setRTDelegates(meetingId: string, delegateIds: string[]) {
+  await authorizeManageKesekretariatan();
   try {
     // Hapus delegasi lama
     await prisma.meetingAttendance.deleteMany({
@@ -133,6 +160,7 @@ export async function saveMeetingNote(data: {
   content: string;
   evaluation?: string;
 }) {
+  await authorizeManageKesekretariatan();
   try {
     if (data.id) {
       await prisma.meetingNote.update({
@@ -167,6 +195,7 @@ export async function saveActionItem(data: {
   deadline?: string;
   isCompleted?: boolean;
 }) {
+  await authorizeManageKesekretariatan();
   try {
     if (data.id) {
       await prisma.actionItem.update({
@@ -196,6 +225,7 @@ export async function saveActionItem(data: {
 }
 
 export async function deleteActionItem(id: string) {
+  await authorizeManageKesekretariatan();
   try {
     await prisma.actionItem.delete({
       where: { id },
@@ -208,6 +238,7 @@ export async function deleteActionItem(id: string) {
 }
 
 export async function saveMeetingAttendances(meetingId: string, attendances: { userId: string, status: AttendanceStatus, role?: MeetingRole }[]) {
+  await authorizeManageKesekretariatan();
   try {
     // Upsert or delete-insert is easier
     await prisma.meetingAttendance.deleteMany({
@@ -230,3 +261,4 @@ export async function saveMeetingAttendances(meetingId: string, attendances: { u
     throw new Error("Gagal menyimpan daftar hadir");
   }
 }
+

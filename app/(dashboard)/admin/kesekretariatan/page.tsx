@@ -1,12 +1,22 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db as prisma } from "@/lib/db";
+import { canFromSession, isSuperAdmin } from "@/lib/rbac/can";
 import KesekretariatanClient from "./KesekretariatanClient";
 
 export default async function KesekretariatanPage() {
   const session = await auth();
   if (!session?.user) redirect('/login');
   const user = session.user;
+
+  // Authorization check: SuperAdmin, Ketua, Sekretaris have full manage access
+  const [canManageMeeting, canManageSekretaris, isSuper] = await Promise.all([
+    canFromSession('meeting:create'),
+    canFromSession('division:manage:sekretaris'),
+    isSuperAdmin({ id: user.id, username: user.username }),
+  ]);
+
+  const canManage = canManageMeeting || canManageSekretaris || isSuper;
 
   // Fetch all warga for dropdowns
   const wargaList = await prisma.user.findMany({
@@ -57,6 +67,7 @@ export default async function KesekretariatanPage() {
         internalMeetings={internalMeetings}
         externalMeetings={externalMeetings}
         currentUserId={user.id}
+        canManage={canManage}
       />
     </div>
   );

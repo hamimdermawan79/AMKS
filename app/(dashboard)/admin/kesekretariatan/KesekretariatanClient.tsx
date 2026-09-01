@@ -23,6 +23,7 @@ type Props = {
   internalMeetings: InternalMeetingType[];
   externalMeetings: ExternalMeetingType[];
   currentUserId: string;
+  canManage?: boolean;
 };
 
 const DIVISIONS: Division[] = ["KEBERSIHAN", "KESENIAN", "KEOLAHRAGAAN", "ROHANI", "KEAMANAN", "SEKRETARIS"];
@@ -54,7 +55,7 @@ function formatTanggal(dateInput: string | Date, opts?: { withDay?: boolean; wit
   return result;
 }
 
-export default function KesekretariatanClient({ wargaList, internalMeetings, externalMeetings, currentUserId }: Props) {
+export default function KesekretariatanClient({ wargaList, internalMeetings, externalMeetings, currentUserId, canManage = false }: Props) {
   const [activeTab, setActiveTab] = useState<"internal" | "rt_schedule" | "rt_notes">("internal");
   const [isPending, startTransition] = useTransition();
 
@@ -287,12 +288,14 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Riwayat Rapat Asrama</h2>
-            <button
-              onClick={() => setShowAddInternal(true)}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-            >
-              <Plus className="h-4 w-4" /> Buat Rapat Baru
-            </button>
+            {canManage && (
+              <button
+                onClick={() => setShowAddInternal(true)}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm"
+              >
+                <Plus className="h-4 w-4" /> Buat Rapat Baru
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -328,7 +331,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
             
             {internalMeetings.length === 0 && (
               <div className="col-span-full py-12 text-center text-muted-foreground bg-slate-50 border border-dashed rounded-2xl">
-                Belum ada data rapat. Klik "Buat Rapat Baru" untuk memulai.
+                {canManage ? 'Belum ada data rapat. Klik "Buat Rapat Baru" untuk memulai.' : 'Belum ada agenda rapat asrama.'}
               </div>
             )}
           </div>
@@ -361,23 +364,25 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                   <div><span className="font-semibold">Notulis:</span> {selectedMeeting.noteTaker?.fullName || "-"}</div>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                {selectedMeeting.status === "TERJADWAL" && (
+              {canManage && (
+                <div className="flex gap-2 flex-wrap">
+                  {selectedMeeting.status === "TERJADWAL" && (
+                    <button 
+                      onClick={() => handleMarkSelesai(selectedMeeting.id)}
+                      disabled={isPending}
+                      className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5"
+                    >
+                      <CheckCircle className="h-4 w-4"/> Tandai Selesai
+                    </button>
+                  )}
                   <button 
-                    onClick={() => handleMarkSelesai(selectedMeeting.id)}
-                    disabled={isPending}
-                    className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5"
+                    onClick={() => handleDeleteMeeting(selectedMeeting.id)}
+                    className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5"
                   >
-                    <CheckCircle className="h-4 w-4"/> Tandai Selesai
+                    <Trash2 className="h-4 w-4"/> Hapus
                   </button>
-                )}
-                <button 
-                  onClick={() => handleDeleteMeeting(selectedMeeting.id)}
-                  className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5"
-                >
-                  <Trash2 className="h-4 w-4"/> Hapus
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -396,12 +401,14 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                       <div key={div} className="border border-border rounded-xl p-4 bg-slate-50">
                         <div className="flex justify-between items-center mb-2">
                           <h4 className="font-bold text-foreground">{DIVISION_LABELS[div]}</h4>
-                          <button
-                            onClick={() => openNoteModal(div, note)}
-                            className="text-xs px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1"
-                          >
-                            {note ? <><Edit className="h-3 w-3"/> Edit</> : <><Plus className="h-3 w-3"/> Tambah</>}
-                          </button>
+                          {canManage && (
+                            <button
+                              onClick={() => openNoteModal(div, note)}
+                              className="text-xs px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1"
+                            >
+                              {note ? <><Edit className="h-3 w-3"/> Edit</> : <><Plus className="h-3 w-3"/> Tambah</>}
+                            </button>
+                          )}
                         </div>
                         {note ? (
                           <div className="space-y-2 text-sm">
@@ -417,7 +424,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                             )}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">Belum ada notulensi. Klik "Tambah" untuk mencatat laporan divisi ini.</p>
+                          <p className="text-xs text-muted-foreground italic">{canManage ? 'Belum ada notulensi. Klik "Tambah" untuk mencatat laporan divisi ini.' : 'Belum ada laporan dari divisi ini.'}</p>
                         )}
                       </div>
                     );
@@ -433,26 +440,37 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                   <h3 className="text-lg font-bold flex items-center gap-2">
                     <Target className="h-5 w-5 text-rose-500"/> Action Items
                   </h3>
-                  <button
-                    onClick={() => setShowActionModal(true)}
-                    className="text-xs px-3 py-1 bg-rose-600 text-white rounded-lg hover:bg-rose-700 flex items-center gap-1"
-                  >
-                    <Plus className="h-3 w-3"/> Tambah
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={() => setShowActionModal(true)}
+                      className="text-xs px-3 py-1 bg-rose-600 text-white rounded-lg hover:bg-rose-700 flex items-center gap-1"
+                    >
+                      <Plus className="h-3 w-3"/> Tambah
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-3">
                   {selectedMeeting.actionItems.map((act: any) => (
                     <div key={act.id} className="border border-border rounded-lg p-3 text-sm flex gap-2 items-start group">
-                      <button 
-                        onClick={() => handleToggleActionItem(act)} 
-                        disabled={isPending}
-                        className="pt-0.5 flex-shrink-0"
-                      >
-                        {act.isCompleted 
-                          ? <CheckCircle className="h-5 w-5 text-emerald-500"/> 
-                          : <div className="h-5 w-5 rounded-full border-2 border-slate-300 hover:border-indigo-500 transition-colors"/>
-                        }
-                      </button>
+                      {canManage ? (
+                        <button 
+                          onClick={() => handleToggleActionItem(act)} 
+                          disabled={isPending}
+                          className="pt-0.5 flex-shrink-0"
+                        >
+                          {act.isCompleted 
+                            ? <CheckCircle className="h-5 w-5 text-emerald-500"/> 
+                            : <div className="h-5 w-5 rounded-full border-2 border-slate-300 hover:border-indigo-500 transition-colors"/>
+                          }
+                        </button>
+                      ) : (
+                        <div className="pt-0.5 flex-shrink-0">
+                          {act.isCompleted 
+                            ? <CheckCircle className="h-5 w-5 text-emerald-500"/> 
+                            : <div className="h-5 w-5 rounded-full border-2 border-slate-300"/>
+                          }
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className={`font-medium ${act.isCompleted ? "line-through text-muted-foreground" : ""}`}>{act.title}</p>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -460,17 +478,19 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                           {act.deadline && ` • Deadline: ${formatTanggal(act.deadline)}`}
                         </p>
                       </div>
-                      <button 
-                        onClick={() => handleDeleteActionItem(act.id)}
-                        className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
-                      >
-                        <Trash2 className="h-4 w-4"/>
-                      </button>
+                      {canManage && (
+                        <button 
+                          onClick={() => handleDeleteActionItem(act.id)}
+                          className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
+                        >
+                          <Trash2 className="h-4 w-4"/>
+                        </button>
+                      )}
                     </div>
                   ))}
                   {selectedMeeting.actionItems.length === 0 && (
                     <p className="text-xs text-muted-foreground italic text-center py-4">
-                      Belum ada action item. Klik "Tambah" untuk menambahkan tindak lanjut.
+                      {canManage ? 'Belum ada action item. Klik "Tambah" untuk menambahkan tindak lanjut.' : 'Belum ada action item.'}
                     </p>
                   )}
                 </div>
@@ -487,7 +507,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">Jadwal Perwakilan Rapat RT 12</h2>
-            {externalMeetings.length === 0 && (
+            {canManage && externalMeetings.length === 0 && (
               <button
                 onClick={handleGenerateRTSchedule}
                 disabled={isPending}
@@ -515,7 +535,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                 >
                   <div className="flex justify-between items-start mb-1">
                     <h3 className="font-bold text-foreground text-sm">{m.title}</h3>
-                    {!isEditing && (
+                    {canManage && !isEditing && (
                       <button 
                         onClick={() => {
                           setEditingRT(m.id);
@@ -597,7 +617,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                             ))}
                           </ul>
                         ) : (
-                          <span className="text-xs text-rose-500 font-medium">Belum ada delegasi — klik Edit untuk menentukan</span>
+                          <span className="text-xs text-rose-500 font-medium">Belum ada delegasi</span>
                         )}
                       </div>
                     </>
@@ -609,7 +629,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
 
           {externalMeetings.length === 0 && (
             <div className="py-12 text-center text-muted-foreground bg-slate-50 border border-dashed rounded-2xl">
-              Belum ada jadwal rapat RT. Klik "Generate Jadwal 1 Tahun" untuk membuat jadwal otomatis.
+              {canManage ? 'Belum ada jadwal rapat RT. Klik "Generate Jadwal 1 Tahun" untuk membuat jadwal otomatis.' : 'Belum ada jadwal perwakilan rapat RT.'}
             </div>
           )}
         </div>
@@ -642,16 +662,18 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                         </p>
                       )}
                     </div>
-                    <button
-                      onClick={() => {
-                        setRtNoteMeetingId(m.id);
-                        setRtNoteContent(note?.content || "");
-                        setShowRTNoteModal(true);
-                      }}
-                      className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1 font-medium"
-                    >
-                      {note ? <><Edit className="h-3 w-3"/> Edit Notulensi</> : <><Plus className="h-3 w-3"/> Catat Notulensi</>}
-                    </button>
+                    {canManage && (
+                      <button
+                        onClick={() => {
+                          setRtNoteMeetingId(m.id);
+                          setRtNoteContent(note?.content || "");
+                          setShowRTNoteModal(true);
+                        }}
+                        className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1 font-medium"
+                      >
+                        {note ? <><Edit className="h-3 w-3"/> Edit Notulensi</> : <><Plus className="h-3 w-3"/> Catat Notulensi</>}
+                      </button>
+                    )}
                   </div>
                   
                   {note ? (
@@ -663,7 +685,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                     </div>
                   ) : (
                     <div className="bg-slate-50 border border-dashed border-border rounded-xl p-4 text-center">
-                      <p className="text-sm text-muted-foreground italic">Belum ada notulensi. Klik "Catat Notulensi" untuk mencatat hasil rapat.</p>
+                      <p className="text-sm text-muted-foreground italic">{canManage ? 'Belum ada notulensi. Klik "Catat Notulensi" untuk mencatat hasil rapat.' : 'Belum ada notulensi rapat ini.'}</p>
                     </div>
                   )}
                 </div>
@@ -672,7 +694,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
             
             {externalMeetings.length === 0 && (
               <div className="py-12 text-center text-muted-foreground bg-slate-50 border border-dashed rounded-2xl">
-                Belum ada data rapat RT. Generate jadwal terlebih dahulu di tab "Jadwal Rapat RT".
+                Belum ada data rapat RT.
               </div>
             )}
           </div>
