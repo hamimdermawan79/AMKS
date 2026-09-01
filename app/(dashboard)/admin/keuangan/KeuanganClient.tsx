@@ -305,6 +305,9 @@ export default function KeuanganClient({
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
+  const currentMonthName = now.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+
+  // Pemasukan & Pengeluaran khusus bulan berjalan (reset setiap ganti bulan)
   const pemasukanBulanIni = transactions
     .filter((t) => t.type === 'PEMASUKAN' && new Date(t.occurredAt) >= currentMonthStart && new Date(t.occurredAt) <= currentMonthEnd)
     .reduce((sum, t) => sum + t.amount, 0);
@@ -314,6 +317,11 @@ export default function KeuanganClient({
     .reduce((sum, t) => sum + t.amount, 0);
 
   const saldoBulanIni = pemasukanBulanIni - pengeluaranBulanIni;
+
+  // Saldo kumulatif ditarik dari hasil bulan lalu (carry over)
+  const previousTransactions = transactions.filter((t) => new Date(t.occurredAt) < currentMonthStart);
+  const saldoKumulatifBulanLalu = previousTransactions
+    .reduce((sum, t) => sum + (t.type === 'PEMASUKAN' ? t.amount : -t.amount), 0);
 
   const pemasukanBulanLalu = previousMonthTotals.pemasukan;
   const pengeluaranBulanLalu = previousMonthTotals.pengeluaran;
@@ -736,11 +744,18 @@ export default function KeuanganClient({
       (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()
     );
 
+    const reportMonthStart = new Date(monthlyReportYear, monthlyReportMonth, 1);
+    const prevTxs = transactions.filter((t) => new Date(t.occurredAt) < reportMonthStart);
+    const saldoAwalBulanLalu = prevTxs.reduce((sum, t) => sum + (t.type === 'PEMASUKAN' ? t.amount : -t.amount), 0);
+    const saldoAkhirTotal = saldoAwalBulanLalu + monthlySaldo;
+
     return {
       txs: sortedTxs,
       pemasukan: monthlyPemasukan,
       pengeluaran: monthlyPengeluaran,
       saldo: monthlySaldo,
+      saldoAwal: saldoAwalBulanLalu,
+      saldoAkhirTotal,
       totalBillsAmount,
       lunasAmount,
       belumLunasAmount,
@@ -1078,11 +1093,13 @@ export default function KeuanganClient({
     <div className="space-y-8">
       {/* 4 Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Pemasukan */}
+        {/* Pemasukan Bulan Ini */}
         <div className="glass-card p-6 flex items-center justify-between border border-border/40">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Pemasukan</span>
-            <div className="text-lg sm:text-2xl font-bold text-emerald-600">{formatRp(totalPemasukan)}</div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Pemasukan ({currentMonthName})
+            </span>
+            <div className="text-lg sm:text-2xl font-bold text-emerald-600">{formatRp(pemasukanBulanIni)}</div>
             {renderTrendIndicator(pemasukanBulanIni, pemasukanBulanLalu)}
           </div>
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -1090,11 +1107,13 @@ export default function KeuanganClient({
           </div>
         </div>
 
-        {/* Pengeluaran */}
+        {/* Pengeluaran Bulan Ini */}
         <div className="glass-card p-6 flex items-center justify-between border border-border/40">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Pengeluaran</span>
-            <div className="text-lg sm:text-2xl font-bold text-red-600">{formatRp(totalPengeluaran)}</div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Pengeluaran ({currentMonthName})
+            </span>
+            <div className="text-lg sm:text-2xl font-bold text-red-600">{formatRp(pengeluaranBulanIni)}</div>
             {renderTrendIndicator(pengeluaranBulanIni, pengeluaranBulanLalu)}
           </div>
           <div className="p-3 bg-red-50 text-red-600 rounded-xl">
@@ -1102,14 +1121,16 @@ export default function KeuanganClient({
           </div>
         </div>
 
-        {/* Saldo Sisa */}
+        {/* Total Saldo Kas Asrama (Carry-Over Kumulatif) */}
         <div className="glass-card p-6 flex items-center justify-between border border-border/40">
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Saldo Kas Asrama</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Saldo Kas Asrama</span>
             <div className={`text-lg sm:text-2xl font-bold ${saldo >= 0 ? 'text-primary' : 'text-red-700'}`}>
               {formatRp(saldo)}
             </div>
-            {renderTrendIndicator(saldoBulanIni, saldoBulanLalu)}
+            <div className="text-[10px] text-muted-foreground mt-1 flex flex-col">
+              <span>Sisa Bulan Lalu: <strong className="text-slate-700">{formatRp(saldoKumulatifBulanLalu)}</strong></span>
+            </div>
           </div>
           <div className="p-3 bg-blue-50 text-primary rounded-xl">
             <Wallet className="h-6 w-6" />
@@ -2260,13 +2281,27 @@ export default function KeuanganClient({
             </div>
 
             {/* Section 1: 4 Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Saldo Awal (Bulan Lalu) */}
+              <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Saldo Awal (Bulan Lalu)</span>
+                  <div className={`text-base sm:text-xl font-bold ${monthlyReport.saldoAwal >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+                    {formatRp(monthlyReport.saldoAwal)}
+                  </div>
+                  <div className="text-[9px] text-muted-foreground">Tarik saldo s/d akhir bulan lalu</div>
+                </div>
+                <div className="p-2.5 bg-slate-100 text-slate-700 rounded-lg">
+                  <Clock className="h-5 w-5" />
+                </div>
+              </div>
+
               {/* Pemasukan */}
               <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Pemasukan</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pemasukan Periode Ini</span>
                   <div className="text-base sm:text-xl font-bold text-emerald-600">{formatRp(monthlyReport.pemasukan)}</div>
-                  <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PEMASUKAN').length} transaksi</div>
+                  <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PEMASUKAN').length} transaksi masuk</div>
                 </div>
                 <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg">
                   <TrendingUp className="h-5 w-5" />
@@ -2276,38 +2311,26 @@ export default function KeuanganClient({
               {/* Pengeluaran */}
               <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Pengeluaran</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pengeluaran Periode Ini</span>
                   <div className="text-base sm:text-xl font-bold text-red-600">{formatRp(monthlyReport.pengeluaran)}</div>
-                  <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PENGELUARAN').length} transaksi</div>
+                  <div className="text-[9px] text-muted-foreground">{monthlyReport.txs.filter(t => t.type === 'PENGELUARAN').length} transaksi keluar</div>
                 </div>
                 <div className="p-2.5 bg-red-50 text-red-600 rounded-lg">
                   <TrendingDown className="h-5 w-5" />
                 </div>
               </div>
 
-              {/* Saldo Sisa */}
+              {/* Total Saldo Akhir */}
               <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Saldo Bersih</span>
-                  <div className={`text-xl font-bold ${monthlyReport.saldo >= 0 ? 'text-primary' : 'text-red-700'}`}>
-                    {formatRp(monthlyReport.saldo)}
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Saldo Kas Akhir</span>
+                  <div className={`text-base sm:text-xl font-bold ${monthlyReport.saldoAkhirTotal >= 0 ? 'text-primary' : 'text-red-700'}`}>
+                    {formatRp(monthlyReport.saldoAkhirTotal)}
                   </div>
-                  <div className="text-[9px] text-muted-foreground">Selisih kas masuk-keluar</div>
+                  <div className="text-[9px] text-muted-foreground">Saldo Awal + Selisih Kas ({monthlyReport.saldo >= 0 ? '+' : ''}{formatRp(monthlyReport.saldo)})</div>
                 </div>
                 <div className="p-2.5 bg-blue-50 text-primary rounded-lg">
                   <Wallet className="h-5 w-5" />
-                </div>
-              </div>
-
-              {/* Kolektibilitas */}
-              <div className="glass-card p-5 border border-border/40 flex items-center justify-between">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Kolektibilitas Tagihan</span>
-                  <div className="text-xl font-bold text-amber-600">{monthlyReport.kolektibilitas.toFixed(0)}%</div>
-                  <div className="text-[9px] text-muted-foreground">{monthlyReport.lunasCount} dari {monthlyReport.totalBillsCount} tagihan lunas</div>
-                </div>
-                <div className="p-2.5 bg-amber-50 text-amber-600 rounded-lg">
-                  <CheckCircle2 className="h-5 w-5" />
                 </div>
               </div>
             </div>
