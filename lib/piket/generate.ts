@@ -158,8 +158,12 @@ export async function generatePiketSchedule(options: GeneratePiketOptions) {
 }
 
 /**
- * Close a piket period and generate fines for missing attendance
- * This should be called when the period ends to finalize everything
+ * Close a piket period and finalize attendance / recap.
+ * Daily fines and bills are already issued automatically by cron (checkMissedPikets).
+ * This function:
+ * 1. Finalizes any remaining assignments without attendance (marks TIDAK_HADIR & issues daily fine if missed by cron).
+ * 2. Sends recap notification to members who missed piket without generating duplicate fines/bills.
+ * 3. Marks the period as inactive.
  */
 export async function closePiketPeriod(periodId: string) {
   const period = await db.piketPeriod.findUnique({
@@ -178,70 +182,120 @@ export async function closePiketPeriod(periodId: string) {
     throw new Error('Period not found');
   }
 
-  // Calculate missed days per user
-  const missedDaysMap = new Map<string, number>();
-
+  // Step 1: Finalize any assignments that still have no attendance record
+  // (e.g. if the period is closed before today's cron ran or cron skipped an assignment)
+  let fallbackFinesCount = 0;
   for (const assignment of period.assignments) {
-    // If no attendance record or status is TIDAK_HADIR, count as missed
-    if (!assignment.attendance || assignment.attendance.status === 'TIDAK_HADIR') {
-      const current = missedDaysMap.get(assignment.userId) || 0;
-      missedDaysMap.set(assignment.userId, current + 1);
+    if (!assignment.attendance) {
+      // Mark as TIDAK_HADIR
+      await db.piketAttendance.create({
+        data: {
+          assignmentId: assignment.id,
+          status: 'TIDAK_HADIR',
+          markedById: null, // marked by system
+        },
+      });
+
+      // Super Admin is exempt from fines
+      if (await isUserSuperAdminById(assignment.userId)) {
+        continue;
+      }
+
+      // Check if denda notification / fine already issued (idempotency)
+      const dendaRefId = `DENDA_PIKET:${assignment.id}`;
+      const existingDendaNotif = await db.notification.findFirst({
+        where: { referenceId: dendaRefId },
+      });
+
+      if (!existingDendaNotif) {
+        const fineAmount = period.finePerDay || 10000;
+        const fine = await db.fine.create({
+          data: {
+            userId: assignment.userId,
+            periodId: period.id,
+            daysMissed: 1,
+            amount: fineAmount,
+          },
+        });
+
+        const bill = await db.bill.create({
+          data: {
+            userId: assignment.userId,
+            type: 'DENDA_PIKET',
+            title: `Denda Piket (${new Date(assignment.date).toLocaleDateString('id-ID')})`,
+            amount: fineAmount,
+            status: 'BELUM_LUNAS',
+            division: 'KEBERSIHAN',
+            note: `Terlambat / tidak melakukan presensi piket pada tanggal ${new Date(assignment.date).toLocaleDateString('id-ID')} sebelum penutupan periode.`,
+          },
+        });
+
+        await db.fine.update({
+          where: { id: fine.id },
+          data: { billId: bill.id },
+        });
+
+        await createNotification({
+          userId: assignment.userId,
+          title: 'Denda Piket Otomatis Terbit',
+          message: `Pemberitahuan: Anda dikenakan denda piket sebesar Rp${fineAmount.toLocaleString('id-ID')} karena tidak melakukan presensi dan tugas piket pada tanggal ${new Date(assignment.date).toLocaleDateString('id-ID')}. Tagihan denda telah terbit di sistem, harap segera melakukan pelunasan ke Bendahara.`,
+          type: 'TAGIHAN_REMINDER',
+          referenceId: dendaRefId,
+        });
+
+        fallbackFinesCount++;
+      }
     }
   }
 
-  // Generate fines and bills
-  const finesCreated: string[] = [];
+  // Step 2: Calculate total missed days per user for recap report
+  const updatedAssignments = await db.piketAssignment.findMany({
+    where: { periodId: period.id },
+    include: {
+      user: true,
+      attendance: true,
+    },
+  });
 
-  for (const [userId, daysMissed] of missedDaysMap.entries()) {
-    if (daysMissed === 0) continue;
+  const missedDaysMap = new Map<string, { daysMissed: number; user: { id: string; fullName: string } }>();
 
-    // Super Admin tidak dikenai denda piket
-    if (await isUserSuperAdminById(userId)) continue;
-
-    const amount = daysMissed * period.finePerDay;
-
-    // Create fine record
-    const fine = await db.fine.create({
-      data: {
-        userId,
-        periodId: period.id,
-        daysMissed,
-        amount,
-      },
-    });
-
-    // Create bill for the fine
-    const bill = await db.bill.create({
-      data: {
-        userId,
-        type: 'DENDA_PIKET',
-        title: `Denda Piket (${daysMissed} hari)`,
-        amount,
-        status: 'BELUM_LUNAS',
-        division: 'KEBERSIHAN',
-        note: `Tidak piket selama ${daysMissed} hari, periode ${period.startDate.toLocaleDateString()} - ${period.endDate.toLocaleDateString()}`,
-      },
-    });
-
-    // Link fine to bill
-    await db.fine.update({
-      where: { id: fine.id },
-      data: { billId: bill.id },
-    });
-
-    // Create Notification (which handles WA queues automatically)
-    await createNotification({
-      userId,
-      title: 'Denda Piket Terbit',
-      message: `Anda memiliki tagihan denda piket baru sebesar Rp${amount.toLocaleString('id-ID')} karena tidak piket selama ${daysMissed} hari pada periode ini. Silakan melakukan pelunasan ke Bendahara.`,
-      type: 'TAGIHAN_REMINDER',
-      referenceId: bill.id,
-    });
-
-    finesCreated.push(userId);
+  for (const assignment of updatedAssignments) {
+    if (!assignment.attendance || assignment.attendance.status === 'TIDAK_HADIR') {
+      const current = missedDaysMap.get(assignment.userId) || {
+        daysMissed: 0,
+        user: assignment.user,
+      };
+      current.daysMissed += 1;
+      missedDaysMap.set(assignment.userId, current);
+    }
   }
 
-  // Mark period as inactive
+  // Step 3: Send recap notification per user WITHOUT creating duplicate fines or bills
+  for (const [userId, { daysMissed, user }] of missedDaysMap.entries()) {
+    if (daysMissed === 0) continue;
+
+    // Super Admin is exempt from fines and recap fine warnings
+    if (await isUserSuperAdminById(userId)) continue;
+
+    const totalDendaAccumulated = daysMissed * period.finePerDay;
+    const recapRefId = `REKAP_PIKET_CLOSED:${period.id}:${userId}`;
+
+    const existingRecapNotif = await db.notification.findFirst({
+      where: { referenceId: recapRefId },
+    });
+
+    if (!existingRecapNotif) {
+      await createNotification({
+        userId,
+        title: 'Rekapitulasi Jadwal Piket Selesai',
+        message: `Halo ${user.fullName}, periode piket (${new Date(period.startDate).toLocaleDateString('id-ID')} - ${new Date(period.endDate).toLocaleDateString('id-ID')}) telah resmi ditutup. Catatan kehadiran Anda: tidak hadir piket sebanyak ${daysMissed} kali (akumulasi denda: Rp${totalDendaAccumulated.toLocaleString('id-ID')}). Mohon pastikan tagihan denda piket harian Anda di sistem telah dilunasi ke Bendahara. Terima kasih!`,
+        type: 'PIKET_REMINDER',
+        referenceId: recapRefId,
+      });
+    }
+  }
+
+  // Step 4: Mark period as inactive
   await db.piketPeriod.update({
     where: { id: periodId },
     data: { isActive: false },
@@ -249,9 +303,10 @@ export async function closePiketPeriod(periodId: string) {
 
   return {
     periodId,
-    finesCreated: finesCreated.length,
+    finesCreated: fallbackFinesCount,
+    totalMissedUsers: missedDaysMap.size,
     totalAmount: Array.from(missedDaysMap.values()).reduce(
-      (sum, days) => sum + days * period.finePerDay,
+      (sum, item) => sum + item.daysMissed * period.finePerDay,
       0
     ),
   };

@@ -73,7 +73,7 @@ Alur presensi warga kini mewajibkan kelengkapan bukti melalui sebuah *modal* (po
 
 ### 4. Server Actions Baru (`app/(dashboard)/admin/kebersihan/actions.ts`)
 
-- **`closePeriodAction(periodId)`** — membungkus `closePiketPeriod` dengan otorisasi pengurus dan **penjaga idempotensi**: periode yang sudah ditutup (`isActive = false`) ditolak agar denda tidak terbit ganda. Saat dipanggil, sistem memfinalisasi denda (membuat `Fine` + `Bill` untuk warga yang tidak piket) dan menonaktifkan periode.
+- **`closePeriodAction(periodId)`** — membungkus `closePiketPeriod` dengan otorisasi pengurus dan **penjaga idempotensi**: periode yang sudah ditutup (`isActive = false`) ditolak agar proses tidak berulang. Karena denda harian sudah diterbitkan otomatis oleh cron (`checkMissedPikets`), penutupan periode hanya menyelesaikan absensi yang tertinggal (fallback denda harian), mengirimkan rekapitulasi kehadiran via WhatsApp tanpa menerbitkan tagihan ganda, dan menonaktifkan status periode aktif.
 - **`recordFinePayment({ fineId, amount, note })`** — mencatat pembayaran/cicilan denda:
   - Membuat satu `Transaction` bertipe **PEMASUKAN** kategori **"Denda Piket"** (tanpa relasi `Bill` langsung, karena satu denda dapat dicicil beberapa kali).
   - Mencatat record `FinePayment` yang menunjuk transaksi tersebut.
