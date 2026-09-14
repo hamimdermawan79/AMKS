@@ -18,6 +18,11 @@ import {
   ShieldCheck,
   ArrowRight,
   ArrowLeft,
+  MapPin,
+  ExternalLink,
+  Copy,
+  Check,
+  Search,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,6 +45,8 @@ type SportsActivityType = {
   title: string;
   date: Date;
   endDate: Date | null;
+  location?: string | null;
+  locationUrl?: string | null;
   feeAmount: number;
   fineAmount: number;
   attendance: {
@@ -93,10 +100,15 @@ export default function SportsManager({ wargaList, activities, transactions, den
   const [actTitle, setActTitle] = useState('');
   const [actDate, setActDate] = useState('');
   const [actEndDate, setActEndDate] = useState('');
+  const [actLocation, setActLocation] = useState('');
+  const [actLocationUrl, setActLocationUrl] = useState('');
   const [actFee, setActFee] = useState(5000);
   const [actFeeStr, setActFeeStr] = useState('5.000');
   const [actFine, setActFine] = useState(5000);
   const [actFineStr, setActFineStr] = useState('5.000');
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>([]);
+  const [participantSearch, setParticipantSearch] = useState('');
+  const [copiedMapsId, setCopiedMapsId] = useState<string | null>(null);
   
   // Add transaction form values
   const [txType, setTxType] = useState<'PEMASUKAN' | 'PENGELUARAN'>('PENGELUARAN');
@@ -122,11 +134,48 @@ export default function SportsManager({ wargaList, activities, transactions, den
 
   const saldoKas = totalPemasukan - totalPengeluaran;
 
+  const formatActivityDate = (start: Date) => {
+    return new Date(start).toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta',
+    });
+  };
+
   const formatActivityTimeRange = (start: Date, end: Date | null) => {
-    const startStr = start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    if (!end) return startStr;
-    const endStr = end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    return `${startStr} – ${endStr}`;
+    const startStr = new Date(start).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta',
+    });
+    if (!end) return `${startStr} WIB`;
+    const endStr = new Date(end).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta',
+    });
+    return `${startStr} – ${endStr} WIB`;
+  };
+
+  const handleCopyMapsLink = (id: string, url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedMapsId(id);
+    setTimeout(() => setCopiedMapsId(null), 2000);
+  };
+
+  const handleOpenAddModal = () => {
+    // Default: pilih semua warga aktif
+    setSelectedParticipantIds(wargaList.map(w => w.id));
+    setParticipantSearch('');
+    setActTitle('');
+    setActDate('');
+    setActEndDate('');
+    setActLocation('');
+    setActLocationUrl('');
+    setErrorMsg('');
+    setShowAddActivity(true);
   };
 
   const handleCreateActivity = (e: React.FormEvent) => {
@@ -135,6 +184,11 @@ export default function SportsManager({ wargaList, activities, transactions, den
 
     if (!actDate || !actEndDate) {
       setErrorMsg('Waktu mulai dan waktu selesai wajib diisi');
+      return;
+    }
+
+    if (selectedParticipantIds.length === 0) {
+      setErrorMsg('Pilih minimal 1 warga yang wajib mengikuti kegiatan ini');
       return;
     }
 
@@ -157,13 +211,19 @@ export default function SportsManager({ wargaList, activities, transactions, den
           title: actTitle.trim(),
           date: actDate,
           endDate: actEndDate,
+          location: actLocation.trim() || undefined,
+          locationUrl: actLocationUrl.trim() || undefined,
           feeAmount: Number(actFee),
           fineAmount: Number(actFine),
+          participantIds: selectedParticipantIds,
         });
         setShowAddActivity(false);
         setActTitle('');
         setActDate('');
         setActEndDate('');
+        setActLocation('');
+        setActLocationUrl('');
+        setSelectedParticipantIds([]);
         router.refresh();
       } catch (err: any) {
         setErrorMsg(err.message || 'Gagal membuat kegiatan');
@@ -186,7 +246,14 @@ export default function SportsManager({ wargaList, activities, transactions, den
   const handleOpenAttendance = (act: SportsActivityType) => {
     setSelectedActivityForAttendance(act);
     const initialAttendance: Record<string, 'HADIR' | 'TIDAK_HADIR'> = {};
-    wargaList.forEach(w => {
+    
+    // Hanya peserta yang terdaftar di kegiatan ini
+    const existingUserIds = new Set(act.attendance.map(a => a.userId));
+    const targetWarga = existingUserIds.size > 0 
+      ? wargaList.filter(w => existingUserIds.has(w.id))
+      : wargaList;
+
+    targetWarga.forEach(w => {
       const match = act.attendance.find(a => a.userId === w.id);
       initialAttendance[w.id] = (match?.status as 'HADIR' | 'TIDAK_HADIR') || 'HADIR';
     });
@@ -343,7 +410,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
             <h2 className="text-lg font-semibold text-foreground">Daftar Kegiatan Olahraga</h2>
             {isKelolaMode && (
               <button
-                onClick={() => setShowAddActivity(true)}
+                onClick={handleOpenAddModal}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm"
               >
                 <Plus className="h-4 w-4" /> Buat Kegiatan
@@ -353,8 +420,9 @@ export default function SportsManager({ wargaList, activities, transactions, den
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {activities.map((act) => {
+              const participantCount = act.attendance.length;
               const presentCount = act.attendance.filter(a => a.status === 'HADIR').length;
-              const absentCount = wargaList.length - presentCount;
+              const absentCount = act.attendance.filter(a => a.status === 'TIDAK_HADIR').length;
               return (
                 <motion.div
                   key={act.id}
@@ -366,15 +434,10 @@ export default function SportsManager({ wargaList, activities, transactions, den
                     <div>
                       <h3 className="font-bold text-foreground text-base leading-tight">{act.title}</h3>
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5 text-amber-500" />
-                        {new Date(act.date).toLocaleDateString('id-ID', {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}
+                        <Calendar className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        {formatActivityDate(act.date)}
                         {' · '}
-                        {formatActivityTimeRange(new Date(act.date), act.endDate ? new Date(act.endDate) : null)}
+                        {formatActivityTimeRange(act.date, act.endDate ? act.endDate : null)}
                       </p>
                     </div>
                     {isKelolaMode && (
@@ -386,6 +449,49 @@ export default function SportsManager({ wargaList, activities, transactions, den
                       </button>
                     )}
                   </div>
+
+                  {/* Lokasi & Google Maps Link */}
+                  {(act.location || act.locationUrl) && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1.5">
+                      {act.location && (
+                        <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                          <MapPin className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                          <span className="truncate">{act.location}</span>
+                        </div>
+                      )}
+                      {act.locationUrl && (
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <a
+                            href={act.locationUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-[11px] font-semibold transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Buka di Google Maps
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyMapsLink(act.id, act.locationUrl!)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200/70 hover:bg-slate-200 text-slate-700 text-[11px] font-medium transition-colors"
+                            title="Salin Link Google Maps"
+                          >
+                            {copiedMapsId === act.id ? (
+                              <>
+                                <Check className="h-3 w-3 text-emerald-600" />
+                                <span className="text-emerald-600 font-semibold">Tersalin!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3" />
+                                <span>Salin Link</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl">
                     <div>
@@ -401,10 +507,10 @@ export default function SportsManager({ wargaList, activities, transactions, den
                   <div className="flex items-center justify-between text-xs border-t border-border pt-3">
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Users className="h-3.5 w-3.5 text-slate-400" />
-                      {act.attendance.length > 0 ? (
-                        <span>Hadir: <b>{presentCount}</b> · Absen: <b>{absentCount}</b></span>
+                      {participantCount > 0 ? (
+                        <span>Wajib: <b>{participantCount}</b> · Hadir: <b className="text-emerald-600">{presentCount}</b> · Absen: <b className="text-rose-600">{absentCount}</b></span>
                       ) : (
-                        <span className="text-rose-500 font-medium">Absensi Belum Diisi</span>
+                        <span className="text-slate-400">Belum ada peserta</span>
                       )}
                     </span>
                     {isKelolaMode && (
@@ -412,7 +518,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
                         onClick={() => handleOpenAttendance(act)}
                         className="text-xs font-semibold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100/80 px-3 py-1.5 rounded-lg transition-colors"
                       >
-                        {act.attendance.length > 0 ? 'Edit Absensi' : 'Isi Absensi'}
+                        {act.attendance.length > 0 ? 'Kelola Absensi' : 'Isi Absensi'}
                       </button>
                     )}
                   </div>
@@ -622,11 +728,8 @@ export default function SportsManager({ wargaList, activities, transactions, den
                 <div>
                   <h3 className="font-bold text-foreground">Absensi: {selectedActivityForAttendance.title}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {new Date(selectedActivityForAttendance.date).toLocaleDateString('id-ID', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long'
-                    })}
+                    {formatActivityDate(selectedActivityForAttendance.date)} · {formatActivityTimeRange(selectedActivityForAttendance.date, selectedActivityForAttendance.endDate ? selectedActivityForAttendance.endDate : null)}
+                    {selectedActivityForAttendance.location && ` · 📍 ${selectedActivityForAttendance.location}`}
                   </p>
                 </div>
                 <button 
@@ -645,40 +748,80 @@ export default function SportsManager({ wargaList, activities, transactions, den
                   </span>
                 </div>
 
-                <div className="divide-y divide-border">
-                  {wargaList.map((w) => (
-                    <div key={w.id} className="py-2.5 flex items-center justify-between">
-                      <div className="min-w-0 pr-4">
-                        <p className="font-medium text-sm text-foreground truncate">{w.fullName}</p>
-                        <p className="text-xs text-muted-foreground">@{w.username}</p>
+                {(() => {
+                  const participantUserIds = new Set(selectedActivityForAttendance.attendance.map(a => a.userId));
+                  const targetWarga = participantUserIds.size > 0
+                    ? wargaList.filter(w => participantUserIds.has(w.id))
+                    : wargaList;
+
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pb-1">
+                        <span>Peserta Wajib ({targetWarga.length} warga)</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allHadir: Record<string, 'HADIR' | 'TIDAK_HADIR'> = {};
+                              targetWarga.forEach(w => { allHadir[w.id] = 'HADIR'; });
+                              setTempAttendance(prev => ({ ...prev, ...allHadir }));
+                            }}
+                            className="text-[11px] font-medium text-emerald-600 hover:underline"
+                          >
+                            Semua Hadir
+                          </button>
+                          <span>·</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allAbsen: Record<string, 'HADIR' | 'TIDAK_HADIR'> = {};
+                              targetWarga.forEach(w => { allAbsen[w.id] = 'TIDAK_HADIR'; });
+                              setTempAttendance(prev => ({ ...prev, ...allAbsen }));
+                            }}
+                            className="text-[11px] font-medium text-rose-600 hover:underline"
+                          >
+                            Semua Absen
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setTempAttendance(prev => ({ ...prev, [w.id]: 'HADIR' }))}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
-                            tempAttendance[w.id] === 'HADIR'
-                              ? 'bg-emerald-500 text-white shadow-sm'
-                              : 'bg-slate-100 text-muted-foreground hover:bg-slate-200'
-                          }`}
-                        >
-                          <CheckCircle className="h-3.5 w-3.5" /> Hadir
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTempAttendance(prev => ({ ...prev, [w.id]: 'TIDAK_HADIR' }))}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
-                            tempAttendance[w.id] === 'TIDAK_HADIR'
-                              ? 'bg-rose-500 text-white shadow-sm'
-                              : 'bg-slate-100 text-muted-foreground hover:bg-slate-200'
-                          }`}
-                        >
-                          <XCircle className="h-3.5 w-3.5" /> Absen
-                        </button>
+
+                      <div className="divide-y divide-border border border-border rounded-xl p-2 bg-slate-50/50">
+                        {targetWarga.map((w) => (
+                          <div key={w.id} className="py-2.5 px-2 flex items-center justify-between">
+                            <div className="min-w-0 pr-4">
+                              <p className="font-medium text-sm text-foreground truncate">{w.fullName}</p>
+                              <p className="text-xs text-muted-foreground">@{w.username}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setTempAttendance(prev => ({ ...prev, [w.id]: 'HADIR' }))}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                                  tempAttendance[w.id] === 'HADIR'
+                                    ? 'bg-emerald-500 text-white shadow-sm'
+                                    : 'bg-white border border-slate-200 text-muted-foreground hover:bg-slate-100'
+                                }`}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5" /> Hadir
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setTempAttendance(prev => ({ ...prev, [w.id]: 'TIDAK_HADIR' }))}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                                  tempAttendance[w.id] === 'TIDAK_HADIR'
+                                    ? 'bg-rose-500 text-white shadow-sm'
+                                    : 'bg-white border border-slate-200 text-muted-foreground hover:bg-slate-100'
+                                }`}
+                              >
+                                <XCircle className="h-3.5 w-3.5" /> Absen
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
 
               <div className="p-5 border-t border-border bg-slate-50 flex items-center justify-end gap-3">
@@ -709,11 +852,14 @@ export default function SportsManager({ wargaList, activities, transactions, den
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+              className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col"
             >
-              <form onSubmit={handleCreateActivity}>
-                <div className="p-5 border-b border-border bg-slate-50 flex items-center justify-between">
-                  <h3 className="font-bold text-foreground">Buat Kegiatan Olahraga</h3>
+              <form onSubmit={handleCreateActivity} className="flex flex-col h-full overflow-hidden">
+                <div className="p-5 border-b border-border bg-slate-50 flex items-center justify-between shrink-0">
+                  <div>
+                    <h3 className="font-bold text-foreground">Buat Kegiatan Olahraga</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Jadwalkan kegiatan, seleksi peserta wajib, dan kirim notifikasi otomatis</p>
+                  </div>
                   <button 
                     type="button"
                     onClick={() => setShowAddActivity(false)}
@@ -723,28 +869,111 @@ export default function SportsManager({ wargaList, activities, transactions, den
                   </button>
                 </div>
 
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-4 overflow-y-auto flex-1">
                   {errorMsg && (
                     <div className="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-200 flex gap-2">
-                      <AlertCircle className="h-4 w-4" /> <span>{errorMsg}</span>
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" /> <span>{errorMsg}</span>
                     </div>
                   )}
 
+                  {/* Nama Kegiatan */}
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground block">Nama Kegiatan</label>
                     <input 
                       type="text" 
                       required
-                      placeholder="Contoh: Futsal Mingguan, Badminton Bersama"
+                      placeholder="Contoh: Futsal Mingguan, Badminton Bersama, Jogging Pagi"
                       value={actTitle}
                       onChange={(e) => setActTitle(e.target.value)}
                       className="w-full px-3.5 py-2 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Seleksi Peserta (Warga yang Wajib Ikut) */}
+                  <div className="space-y-2 border border-border/80 rounded-xl p-3.5 bg-slate-50/40">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-amber-500" />
+                        Peserta Wajib ({selectedParticipantIds.length} dari {wargaList.length} warga)
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedParticipantIds(wargaList.map(w => w.id))}
+                          className="text-[11px] font-medium text-amber-600 hover:underline"
+                        >
+                          Pilih Semua
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedParticipantIds([])}
+                          className="text-[11px] font-medium text-slate-500 hover:underline"
+                        >
+                          Kosongkan
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-3 top-2.5" />
+                      <input
+                        type="text"
+                        placeholder="Cari nama atau username warga..."
+                        value={participantSearch}
+                        onChange={(e) => setParticipantSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                    </div>
+
+                    <div className="max-h-44 overflow-y-auto rounded-lg border border-border bg-white divide-y divide-border/60">
+                      {wargaList
+                        .filter(w => 
+                          w.fullName.toLowerCase().includes(participantSearch.toLowerCase()) ||
+                          w.username.toLowerCase().includes(participantSearch.toLowerCase())
+                        )
+                        .map((w) => {
+                          const isSelected = selectedParticipantIds.includes(w.id);
+                          return (
+                            <label
+                              key={w.id}
+                              className={`flex items-center justify-between px-3 py-2 text-xs cursor-pointer transition-colors ${
+                                isSelected ? 'bg-amber-50/60 font-medium text-amber-950' : 'hover:bg-slate-50 text-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedParticipantIds(prev => [...prev, w.id]);
+                                    } else {
+                                      setSelectedParticipantIds(prev => prev.filter(id => id !== w.id));
+                                    }
+                                  }}
+                                  className="rounded border-slate-300 text-amber-500 focus:ring-amber-400 h-4 w-4 shrink-0"
+                                />
+                                <span className="truncate">{w.fullName}</span>
+                              </div>
+                              <span className="text-[11px] text-muted-foreground shrink-0">@{w.username}</span>
+                            </label>
+                          );
+                        })}
+                    </div>
+
+                    <p className="text-[11px] text-amber-700 bg-amber-50/80 p-2 rounded-lg border border-amber-200/50">
+                      💡 <b>Tips:</b> Hilangkan centang pada warga yang sedang pulang kampung atau berhalangan agar mereka tidak tercatat wajib dan tidak dikenakan denda.
+                    </p>
+                  </div>
+
+                  {/* Waktu Kegiatan (WIB) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground block">Waktu Mulai</label>
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5 text-amber-500" />
+                        Waktu Mulai (WIB)
+                      </label>
                       <input 
                         type="datetime-local" 
                         required
@@ -760,7 +989,10 @@ export default function SportsManager({ wargaList, activities, transactions, den
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-muted-foreground block">Waktu Selesai</label>
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5 text-amber-500" />
+                        Waktu Selesai (WIB)
+                      </label>
                       <input 
                         type="datetime-local" 
                         required
@@ -775,7 +1007,42 @@ export default function SportsManager({ wargaList, activities, transactions, den
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Lokasi & Google Maps */}
+                  <div className="space-y-3 border border-border/80 rounded-xl p-3.5 bg-slate-50/40">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5 text-rose-500" />
+                        Lokasi / Nama Tempat (Opsional)
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="Contoh: GOR Badminton Sambas, Lapangan Futsal Asrama"
+                        value={actLocation}
+                        onChange={(e) => setActLocation(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-border rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <ExternalLink className="h-3.5 w-3.5 text-blue-500" />
+                        Link Google Maps (Opsional untuk Redirect Chat)
+                      </label>
+                      <input 
+                        type="url" 
+                        placeholder="Contoh: https://maps.app.goo.gl/... atau https://goo.gl/maps/..."
+                        value={actLocationUrl}
+                        onChange={(e) => setActLocationUrl(e.target.value)}
+                        className="w-full px-3.5 py-2 border border-border rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Link ini akan otomatis disertakan dalam notifikasi chat WhatsApp dan dashboard agar warga bisa langsung mengklik dan membuka peta.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Iuran & Denda */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-muted-foreground block">Iuran Kehadiran (Rp)</label>
                       <input 
@@ -819,7 +1086,7 @@ export default function SportsManager({ wargaList, activities, transactions, den
                   </div>
                 </div>
 
-                <div className="p-5 border-t border-border bg-slate-50 flex items-center justify-end gap-3">
+                <div className="p-5 border-t border-border bg-slate-50 flex items-center justify-end gap-3 shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowAddActivity(false)}
@@ -833,11 +1100,13 @@ export default function SportsManager({ wargaList, activities, transactions, den
                       isPending ||
                       !actDate ||
                       !actEndDate ||
+                      selectedParticipantIds.length === 0 ||
                       new Date(actEndDate).getTime() <= new Date(actDate).getTime()
                     }
-                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-sm font-medium text-white shadow-sm transition-all disabled:opacity-60"
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-sm font-medium text-white shadow-sm transition-all disabled:opacity-60 flex items-center gap-1.5"
                   >
-                    Buat Kegiatan
+                    <Plus className="h-4 w-4" />
+                    Buat Jadwal & Beritahu Warga
                   </button>
                 </div>
               </form>

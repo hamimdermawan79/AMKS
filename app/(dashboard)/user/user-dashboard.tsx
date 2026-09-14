@@ -13,7 +13,10 @@ import {
   Sparkles,
   User,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Trophy,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -23,6 +26,15 @@ function fmtDate(iso: string) {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Asia/Jakarta",
+  });
+}
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
   });
 }
 
@@ -76,7 +88,14 @@ export default function UserDashboard({
   divisionManageHref?: string;
   myUpcomingPiket?: { date: string; sector: number } | null;
   upcomingKerjaBakti?: string | null;
-  upcomingSports?: { id: string; title: string; date: string } | null;
+  upcomingSports?: { 
+    id: string; 
+    title: string; 
+    date: string; 
+    endDate?: string | null; 
+    location?: string | null; 
+    locationUrl?: string | null; 
+  } | null;
   upcomingGeneralActivity?: { id: string; title: string; date: string | null; division: string | null } | null;
   myUpcomingRohani?: { date: string; message: string | null } | null;
   pendingBills?: { id: string; title: string; amount: number; type: string; dueDate: string | null }[];
@@ -250,11 +269,31 @@ export default function UserDashboard({
                   </div>
                 )}
                 {upcomingSports && (
-                  <div className="p-3 border border-border rounded-lg bg-emerald-50/50 flex gap-3 items-center">
-                    <div className="bg-emerald-100 text-emerald-700 p-2 rounded-lg"><User className="h-4 w-4" /></div>
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">{fmtDate(upcomingSports.date)}</p>
+                  <div className="p-3 border border-border rounded-lg bg-emerald-50/50 flex gap-3 items-start">
+                    <div className="bg-emerald-100 text-emerald-700 p-2 rounded-lg shrink-0 mt-0.5"><Trophy className="h-4 w-4" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">
+                        {fmtDate(upcomingSports.date)} · {fmtTime(upcomingSports.date)}{upcomingSports.endDate ? ` – ${fmtTime(upcomingSports.endDate)}` : ''} WIB
+                      </p>
                       <p className="font-medium text-sm text-foreground">{upcomingSports.title}</p>
+                      {upcomingSports.location && (
+                        <p className="text-xs text-slate-600 mt-1 flex items-center gap-1">
+                          <MapPin className="h-3 w-3 text-rose-500 shrink-0" />
+                          <span className="truncate">{upcomingSports.location}</span>
+                        </p>
+                      )}
+                      {upcomingSports.locationUrl && (
+                        <div className="mt-2">
+                          <a
+                            href={upcomingSports.locationUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 border border-blue-200/60 px-2.5 py-1 rounded-md hover:bg-blue-100 transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" /> Buka di Google Maps
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

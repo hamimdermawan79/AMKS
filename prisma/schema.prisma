@@ -532,6 +532,8 @@ model SportsActivity {
   title        String
   date         DateTime
   endDate      DateTime?
+  location     String?
+  locationUrl  String?
   feeAmount    Int                @default(5000)
   fineAmount   Int                @default(5000)
   createdAt    DateTime           @default(now())

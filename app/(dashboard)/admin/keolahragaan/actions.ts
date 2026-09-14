@@ -24,17 +24,31 @@ async function authorizeSports(permission: string = 'division:manage:keolahragaa
   return session;
 }
 
+function parseWibDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  if (dateStr.includes('+') || dateStr.endsWith('Z')) {
+    return new Date(dateStr);
+  }
+  // If formatted as YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss without timezone, append +07:00 (WIB)
+  const normalized = dateStr.length === 16 ? `${dateStr}:00+07:00` : `${dateStr}+07:00`;
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? new Date(dateStr) : parsed;
+}
+
 const sportsActivitySchema = z
   .object({
     title: z.string().min(1, 'Nama kegiatan wajib diisi'),
     date: z.string().min(1, 'Waktu mulai wajib diisi'),
     endDate: z.string().min(1, 'Waktu selesai wajib diisi'),
+    location: z.string().trim().optional(),
+    locationUrl: z.string().trim().optional(),
     feeAmount: z.number().int().min(0, 'Uang iuran tidak valid'),
     fineAmount: z.number().int().min(0, 'Denda tidak valid'),
+    participantIds: z.array(z.string()).min(1, 'Pilih minimal 1 warga peserta'),
   })
   .superRefine((data, ctx) => {
-    const start = new Date(data.date);
-    const end = new Date(data.endDate);
+    const start = parseWibDate(data.date);
+    const end = parseWibDate(data.endDate);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -56,8 +70,11 @@ export async function createSportsActivity(data: {
   title: string;
   date: string;
   endDate: string;
+  location?: string;
+  locationUrl?: string;
   feeAmount: number;
   fineAmount: number;
+  participantIds: string[];
 }) {
   await authorizeSports();
   const parsed = sportsActivitySchema.safeParse(data);
@@ -66,17 +83,91 @@ export async function createSportsActivity(data: {
   }
   const v = parsed.data;
 
+  const startDate = parseWibDate(v.date);
+  const endDate = parseWibDate(v.endDate);
+
+  // Buat kegiatan olahraga
   const activity = await db.sportsActivity.create({
     data: {
       title: v.title,
-      date: new Date(v.date),
-      endDate: new Date(v.endDate),
+      date: startDate,
+      endDate: endDate,
+      location: v.location ? v.location.trim() : null,
+      locationUrl: v.locationUrl ? v.locationUrl.trim() : null,
       feeAmount: v.feeAmount,
       fineAmount: v.fineAmount,
     },
   });
 
+  // Pre-populate absensi untuk peserta terpilih (status default: HADIR)
+  // Warga yang tidak dipilih (misal pulang) tidak dibuatkan attendance sehingga tidak terkena denda
+  if (v.participantIds.length > 0) {
+    await db.sportsAttendance.createMany({
+      data: v.participantIds.map((userId) => ({
+        sportsActivityId: activity.id,
+        userId,
+        status: 'HADIR' as AttendanceStatus,
+        billId: null,
+      })),
+      skipDuplicates: true,
+    });
+
+    // Kirim notifikasi pengumuman jadwal olahraga (in-app & WhatsApp) ke seluruh peserta terpilih
+    const dateFormatted = startDate.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta',
+    });
+    const startTimeFormatted = startDate.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta',
+    });
+    const endTimeFormatted = endDate.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta',
+    });
+
+    const timeString = `${dateFormatted}, pukul ${startTimeFormatted} – ${endTimeFormatted} WIB`;
+    const locationName = v.location?.trim();
+    const mapsLink = v.locationUrl?.trim();
+
+    const notifTitle = `Jadwal Olahraga: ${v.title}`;
+    let notifMessage = `Halo warga asrama! Anda terdaftar wajib mengikuti kegiatan olahraga bersama:\n\n` +
+      `🏆 *${v.title}*\n` +
+      `⏰ *Waktu:* ${timeString}\n`;
+
+    if (locationName) {
+      notifMessage += `📍 *Lokasi:* ${locationName}\n`;
+    }
+    if (mapsLink) {
+      notifMessage += `🗺️ *Google Maps:* ${mapsLink}\n`;
+    }
+
+    notifMessage += `💵 *Iuran Kehadiran:* Rp${v.feeAmount.toLocaleString('id-ID')}\n` +
+      `⚠️ *Denda Absen:* Rp${v.fineAmount.toLocaleString('id-ID')}\n\n` +
+      `_Mohon hadir tepat waktu. Bagi yang memiliki kendala/berhalangan harap konfirmasi ke pengurus Divisi Keolahragaan._`;
+
+    for (const userId of v.participantIds) {
+      try {
+        await createNotification({
+          userId,
+          title: notifTitle,
+          message: notifMessage,
+          type: 'PENGUMUMAN',
+          referenceId: `SPORTS_ACT:${activity.id}:${userId}`,
+        });
+      } catch (notifErr) {
+        console.error(`Failed to send sports notification to user ${userId}:`, notifErr);
+      }
+    }
+  }
+
   revalidatePath('/admin/keolahragaan');
+  revalidatePath('/admin/keolahragaan/kelola');
   return { success: true, activity };
 }
 
@@ -151,6 +242,13 @@ export async function saveSportsAttendance(
       ? `Iuran Olahraga: ${activity.title}`
       : `Denda Olahraga: ${activity.title} (Tidak Ikut)`;
 
+    const activityDateWib = new Date(activity.date).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Asia/Jakarta',
+    });
+
     // Create the bill
     const bill = await db.bill.create({
       data: {
@@ -161,8 +259,8 @@ export async function saveSportsAttendance(
         status: 'BELUM_LUNAS',
         division: 'KEOLAHRAGAAN',
         note: isPresent
-          ? `Iuran kegiatan olahraga "${activity.title}" tanggal ${activity.date.toLocaleDateString('id-ID')}`
-          : `Denda karena berhalangan hadir pada kegiatan olahraga "${activity.title}" tanggal ${activity.date.toLocaleDateString('id-ID')}`,
+          ? `Iuran kegiatan olahraga "${activity.title}" tanggal ${activityDateWib}`
+          : `Denda karena berhalangan hadir pada kegiatan olahraga "${activity.title}" tanggal ${activityDateWib}`,
       },
     });
 
@@ -191,7 +289,7 @@ export async function saveSportsAttendance(
       await createNotification({
         userId: item.userId,
         title: isPresent ? 'Tagihan Iuran Olahraga Baru' : 'Denda Olahraga Terbit',
-        message: `Terbit tagihan baru untuk kegiatan olahraga "${activity.title}": Rp${amount.toLocaleString('id-ID')} (${isPresent ? 'Iuran Keikutsertaan' : 'Denda Ketidakhadiran'}). Silakan lakukan koordinasi dengan Bendahara/Divisi Olahraga.`,
+        message: `Terbit tagihan baru untuk kegiatan olahraga "${activity.title}" (${activityDateWib}): Rp${amount.toLocaleString('id-ID')} (${isPresent ? 'Iuran Keikutsertaan' : 'Denda Ketidakhadiran'}). Silakan lakukan koordinasi dengan Bendahara/Divisi Olahraga.`,
         type: 'TAGIHAN_REMINDER',
         referenceId: bill.id,
       });

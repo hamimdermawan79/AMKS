@@ -77,7 +77,14 @@ export default async function DashboardPage() {
       orderBy: { date: 'asc' },
     }),
     db.sportsActivity.findFirst({
-      where: { date: { gte: now } },
+      where: { 
+        date: { gte: now },
+        attendance: {
+          some: {
+            userId: session?.user.id,
+          },
+        },
+      },
       orderBy: { date: 'asc' },
     }),
     db.activity.findFirst({
@@ -107,7 +114,14 @@ export default async function DashboardPage() {
     session,
     myUpcomingPiket: myUpcomingPiket ? { date: myUpcomingPiket.date.toISOString(), sector: myUpcomingPiket.sector } : null,
     upcomingKerjaBakti: upcomingKerjaBakti ? upcomingKerjaBakti.date.toISOString() : null,
-    upcomingSports: upcomingSports ? { id: upcomingSports.id, title: upcomingSports.title, date: upcomingSports.date.toISOString() } : null,
+    upcomingSports: upcomingSports ? { 
+      id: upcomingSports.id, 
+      title: upcomingSports.title, 
+      date: upcomingSports.date.toISOString(),
+      endDate: upcomingSports.endDate ? upcomingSports.endDate.toISOString() : null,
+      location: upcomingSports.location,
+      locationUrl: upcomingSports.locationUrl,
+    } : null,
     upcomingGeneralActivity: upcomingGeneralActivity ? { id: upcomingGeneralActivity.id, title: upcomingGeneralActivity.title, date: upcomingGeneralActivity.startAt?.toISOString() || null, division: upcomingGeneralActivity.division } : null,
     myUpcomingRohani: myUpcomingRohani ? { date: myUpcomingRohani.date.toISOString(), message: rohaniMessage } : null,
     pendingBills: pendingBills.map(b => ({ id: b.id, title: b.title, amount: b.amount, type: b.type, dueDate: b.dueDate ? b.dueDate.toISOString() : null })),
