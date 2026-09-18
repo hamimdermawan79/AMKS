@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { createNotification } from './notifications';
+import { createNotification, processNotificationQueue } from './notifications';
 import { isUserSuperAdminById } from '@/lib/rbac/can';
 
 const SECTOR_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -392,6 +392,97 @@ export async function checkAnnouncementBroadcast() {
   }
 }
 
+/**
+ * Re-export the WhatsApp formatter from the shared client-safe module.
+ */
+import { formatRohaniH1WhatsAppMessage } from '@/lib/rohani/format-wa';
+export { formatRohaniH1WhatsAppMessage };
+
+/**
+ * Check for Rohani schedules occurring TOMORROW (H-1) in WIB time.
+ * If found, send the H-1 announcement message to ALL active warga via WhatsApp.
+ */
+export async function checkRohaniHMinus1Reminders() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+
+    // Tomorrow in WIB
+    const tomorrowStart = new Date(nowWib);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    tomorrowStart.setHours(0, 0, 0, 0);
+
+    const tomorrowEnd = new Date(nowWib);
+    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+    tomorrowEnd.setHours(23, 59, 59, 999);
+
+    // Find any schedule occurring tomorrow
+    const upcomingSchedules = await db.rohaniSchedule.findMany({
+      where: {
+        date: {
+          gte: tomorrowStart,
+          lte: tomorrowEnd,
+        },
+      },
+      include: {
+        imamMaghrib: { select: { fullName: true } },
+        imamIsha: { select: { fullName: true } },
+        kultumBy: { select: { fullName: true } },
+        cadanganImam: { select: { fullName: true } },
+        cadanganKultum: { select: { fullName: true } },
+      },
+    });
+
+    if (upcomingSchedules.length === 0) return;
+
+    // Get all active users (excluding Superadmin and Alumni)
+    const targetUsers = await db.user.findMany({
+      where: {
+        status: 'AKTIF',
+        roles: {
+          none: {
+            role: { name: { in: ['SUPERADMIN', 'ALUMNI'] } },
+          },
+        },
+      },
+      select: { id: true, fullName: true, phone: true },
+    });
+
+    if (targetUsers.length === 0) return;
+
+    for (const schedule of upcomingSchedules) {
+      const refId = `ROHANI_H1_BROADCAST:${schedule.id}`;
+
+      // Idempotency: skip if already sent
+      const existing = await db.notification.findFirst({
+        where: { referenceId: refId },
+      });
+      if (existing) {
+        continue;
+      }
+
+      const waMessage = formatRohaniH1WhatsAppMessage(schedule);
+
+      // Batch insert notifications
+      await db.notification.createMany({
+        data: targetUsers.map((u) => ({
+          userId: u.id,
+          title: `Pengumuman Rohani (H-1): Sholat & Tadarus QS. ${schedule.currentSurah}`,
+          message: waMessage,
+          type: 'PENGUMUMAN',
+          referenceId: refId,
+        })),
+      });
+
+      console.log(`📢 Rohani H-1 WhatsApp broadcast queued for ${targetUsers.length} users (Schedule: ${schedule.id}).`);
+    }
+
+    // Trigger queue processing
+    processNotificationQueue().catch(console.error);
+  } catch (error) {
+    console.error('Failed to run checkRohaniHMinus1Reminders:', error);
+  }
+}
+
 let cronInterval: NodeJS.Timeout | null = null;
 
 export function startCronJobs() {
@@ -404,6 +495,7 @@ export function startCronJobs() {
   checkUpcomingBills();
   checkMissedPikets();
   checkAnnouncementBroadcast();
+  checkRohaniHMinus1Reminders();
 
   // Run checks every 15 minutes so specific reminder hours (0, 2, 5, 7, 9, 11 WIB) are caught accurately
   cronInterval = setInterval(() => {
@@ -411,6 +503,7 @@ export function startCronJobs() {
     checkUpcomingBills();
     checkMissedPikets();
     checkAnnouncementBroadcast();
+    checkRohaniHMinus1Reminders();
   }, 1000 * 60 * 15); // 15 minutes
 }
 
@@ -421,4 +514,5 @@ export function stopCronJobs() {
     console.log('⏰ Cron jobs worker stopped.');
   }
 }
+
 

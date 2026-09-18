@@ -569,6 +569,7 @@ model RohaniSchedule {
   kultumById       String
   cadanganImamId   String?
   cadanganKultumId String?
+  additionalActivities String? @db.Text
   imamMaghrib      User     @relation("ImamMaghrib", fields: [imamMaghribId], references: [id], onDelete: Cascade)
   imamIsha         User     @relation("ImamIsha", fields: [imamIshaId], references: [id], onDelete: Cascade)
   kultumBy         User     @relation("KultumBy", fields: [kultumById], references: [id], onDelete: Cascade)

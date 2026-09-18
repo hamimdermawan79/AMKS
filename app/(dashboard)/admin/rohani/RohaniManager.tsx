@@ -19,11 +19,14 @@ import {
   Edit2,
   X,
   UserCheck,
-  RefreshCw
+  RefreshCw,
+  FileText,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { generateNextRohaniSchedule, deleteRohaniSchedule, replaceRohaniDuty, activateBackup } from './actions';
+import EditTadarusModal from './EditTadarusModal';
+
 
 type WargaQueue = {
   id: string;
@@ -44,6 +47,7 @@ type RohaniScheduleType = {
   kultumBy: { id: string; fullName: string };
   cadanganImam: { id: string; fullName: string } | null;
   cadanganKultum: { id: string; fullName: string } | null;
+  additionalActivities?: string | null;
 };
 
 type Props = {
@@ -68,6 +72,14 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
   const [replaceUserId, setReplaceUserId] = useState('');
   const [replaceLoading, setReplaceLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState<string | null>(null);
+  const [editTadarusModal, setEditTadarusModal] = useState<{
+    scheduleId: string;
+    currentSurah: string;
+    startVerse: number;
+    endVerse: number;
+    additionalActivities?: string | null;
+  } | null>(null);
+
 
   const nextSchedule = schedules[0] || null;
   const pastSchedules = schedules.slice(1);
@@ -260,15 +272,28 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
             Pengelolaan kegiatan sholat berjamaah 2 mingguan (Kamis malam), Kultum, pembacaan 15 ayat Al-Qur'an teratur, dan giliran petugas.
           </p>
         </div>
-        {isAdmin && !isKelolaMode && (
-          <Link
-            href="/admin/rohani/kelola"
-            className="group inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-600 shadow-sm transition-all duration-300 hover:border-emerald-500 hover:bg-emerald-500 hover:text-white"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Layanan Admin Rohani
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Link>
+        {isAdmin && (
+          <div className="flex flex-wrap items-center gap-3">
+            {!isKelolaMode ? (
+              <Link
+                href="/admin/rohani/kelola"
+                className="group inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-600 shadow-sm transition-all duration-300 hover:border-emerald-500 hover:bg-emerald-500 hover:text-white"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Layanan Admin Rohani
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            ) : (
+              <Link
+                href="/admin/rohani/laporan"
+                className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-foreground shadow-sm transition-all duration-300 hover:border-emerald-500 hover:bg-emerald-500 hover:text-white hover:shadow-md"
+              >
+                <FileText className="h-4 w-4 text-emerald-600 group-hover:text-white transition-colors" />
+                Laporan Bulanan
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            )}
+          </div>
         )}
       </div>
 
@@ -350,16 +375,61 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                     <h3 className="font-bold text-foreground text-lg">{formatDate(nextSchedule.date)}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">Waktu: Setelah Maghrib &amp; Isya Berjamaah</p>
                   </div>
-                  <div className="bg-emerald-50 border border-emerald-200/50 rounded-2xl p-3 flex items-center gap-3">
-                    <BookMarked className="h-6 w-6 text-emerald-600" />
-                    <div>
-                      <span className="text-[10px] text-emerald-700 uppercase tracking-wider font-bold block">Target Tadarus</span>
-                      <span className="text-xs font-semibold text-emerald-800">
-                        QS. {nextSchedule.currentSurah}: {nextSchedule.startVerse} - {nextSchedule.endVerse}
-                      </span>
+                  <div className="bg-emerald-50 border border-emerald-200/50 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <BookMarked className="h-6 w-6 text-emerald-600 flex-shrink-0" />
+                      <div>
+                        <span className="text-[10px] text-emerald-700 uppercase tracking-wider font-bold block">Target Tadarus</span>
+                        <span className="text-xs font-semibold text-emerald-800">
+                          QS. {nextSchedule.currentSurah}: {nextSchedule.startVerse} - {nextSchedule.endVerse}
+                        </span>
+                      </div>
                     </div>
+                    {isKelolaMode && (
+                      <button
+                        onClick={() => setEditTadarusModal({
+                          scheduleId: nextSchedule.id,
+                          currentSurah: nextSchedule.currentSurah,
+                          startVerse: nextSchedule.startVerse,
+                          endVerse: nextSchedule.endVerse,
+                          additionalActivities: nextSchedule.additionalActivities,
+                        })}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-100/70 border border-emerald-300 px-3 py-1.5 rounded-xl transition-all shadow-sm"
+                        title="Pilih surah Al-Qur'an dan tentukan ayat tadarus"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                        Pilih / Edit Surah
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {nextSchedule.additionalActivities && (
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-start justify-between gap-3 text-xs text-slate-700">
+                    <div className="flex items-start gap-2.5">
+                      <FileText className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-[11px] text-slate-900 block">Tambahan Kegiatan:</span>
+                        <p className="mt-0.5 text-slate-600">{nextSchedule.additionalActivities}</p>
+                      </div>
+                    </div>
+                    {isKelolaMode && (
+                      <button
+                        onClick={() => setEditTadarusModal({
+                          scheduleId: nextSchedule.id,
+                          currentSurah: nextSchedule.currentSurah,
+                          startVerse: nextSchedule.startVerse,
+                          endVerse: nextSchedule.endVerse,
+                          additionalActivities: nextSchedule.additionalActivities,
+                        })}
+                        className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors"
+                        title="Edit kegiatan tambahan"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Main petugas - 3 columns */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-border pt-6">
@@ -417,9 +487,31 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Target Tadarus: <b className="text-emerald-700 font-semibold">QS. {schedule.currentSurah} {schedule.startVerse}-{schedule.endVerse}</b>
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs text-muted-foreground">
+                            Target Tadarus: <b className="text-emerald-700 font-semibold">QS. {schedule.currentSurah} {schedule.startVerse}-{schedule.endVerse}</b>
+                          </p>
+                          {isKelolaMode && (
+                            <button
+                              onClick={() => setEditTadarusModal({
+                                scheduleId: schedule.id,
+                                currentSurah: schedule.currentSurah,
+                                startVerse: schedule.startVerse,
+                                endVerse: schedule.endVerse,
+                                additionalActivities: schedule.additionalActivities,
+                              })}
+                              className="text-[10px] text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition-colors inline-flex items-center gap-1 font-medium"
+                              title="Edit Surah & Ayat Tadarus"
+                            >
+                              <Edit2 className="h-2.5 w-2.5" /> Edit
+                            </button>
+                          )}
+                        </div>
+                        {schedule.additionalActivities && (
+                          <p className="text-[11px] text-slate-600 italic">
+                            Kegiatan Tambahan: {schedule.additionalActivities}
+                          </p>
+                        )}
                       </div>
 
                       {isKelolaMode && (
@@ -595,6 +687,25 @@ export default function RohaniManager({ schedules, queues, isAdmin, isKelolaMode
           </div>
         </div>
       )}
+
+      {/* Edit Tadarus & Surah Selection Modal */}
+      {editTadarusModal && (
+        <EditTadarusModal
+          isOpen={!!editTadarusModal}
+          onClose={() => setEditTadarusModal(null)}
+          scheduleId={editTadarusModal.scheduleId}
+          initialSurah={editTadarusModal.currentSurah}
+          initialStartVerse={editTadarusModal.startVerse}
+          initialEndVerse={editTadarusModal.endVerse}
+          initialAdditionalActivities={editTadarusModal.additionalActivities}
+          onSuccess={() => {
+            setEditTadarusModal(null);
+            router.refresh();
+          }}
+        />
+      )}
+
+
     </div>
   );
 }

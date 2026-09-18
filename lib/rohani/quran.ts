@@ -120,3 +120,45 @@ export const QURAN_SURAHS: Surah[] = [
   { number: 113, name: "Al-Falaq", verses: 5 },
   { number: 114, name: "An-Nas", verses: 6 }
 ];
+
+export function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+export function searchSurahs(query: string): Surah[] {
+  const clean = query.trim().toLowerCase();
+  if (!clean) return QURAN_SURAHS;
+
+  const cleanNormalized = normalizeText(clean);
+  const queryNum = parseInt(clean, 10);
+
+  return QURAN_SURAHS.filter((s) => {
+    if (!isNaN(queryNum) && s.number === queryNum) return true;
+    if (s.name.toLowerCase().includes(clean)) return true;
+    if (normalizeText(s.name).includes(cleanNormalized)) return true;
+    return false;
+  });
+}
+
+export function getSurah(nameOrNumber: string | number): Surah | undefined {
+  if (typeof nameOrNumber === 'number') {
+    return QURAN_SURAHS.find((s) => s.number === nameOrNumber);
+  }
+  const clean = nameOrNumber.trim().toLowerCase();
+  const num = parseInt(clean, 10);
+  if (!isNaN(num)) {
+    const foundByNum = QURAN_SURAHS.find((s) => s.number === num);
+    if (foundByNum) return foundByNum;
+  }
+  const cleanNorm = normalizeText(clean);
+  return QURAN_SURAHS.find(
+    (s) => s.name.toLowerCase() === clean || normalizeText(s.name) === cleanNorm
+  );
+}
+
+export function getSurahVerses(surahName: string): number {
+  const surah = getSurah(surahName);
+  return surah ? surah.verses : 286;
+}

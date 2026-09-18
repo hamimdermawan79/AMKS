@@ -23,6 +23,7 @@ import {
   Copy,
   Check,
   Search,
+  FileText,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -348,15 +349,28 @@ export default function SportsManager({ wargaList, activities, transactions, den
             Manajemen kegiatan olahraga mingguan, iuran & denda olahraga, serta pengelolaan uang kas mandiri.
           </p>
         </div>
-        {isAdmin && !isKelolaMode && (
-          <Link
-            href="/admin/keolahragaan/kelola"
-            className="group inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-600 shadow-sm transition-all duration-300 hover:border-amber-500 hover:bg-amber-500 hover:text-white"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Layanan Admin Keolahragaan
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Link>
+        {isAdmin && (
+          <div className="flex flex-wrap items-center gap-3">
+            {!isKelolaMode ? (
+              <Link
+                href="/admin/keolahragaan/kelola"
+                className="group inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-600 shadow-sm transition-all duration-300 hover:border-amber-500 hover:bg-amber-500 hover:text-white"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Layanan Admin Keolahragaan
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            ) : (
+              <Link
+                href="/admin/keolahragaan/laporan"
+                className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-foreground shadow-sm transition-all duration-300 hover:border-amber-500 hover:bg-amber-500 hover:text-white hover:shadow-md"
+              >
+                <FileText className="h-4 w-4 text-amber-600 group-hover:text-white transition-colors" />
+                Laporan Bulanan
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            )}
+          </div>
         )}
       </div>
 

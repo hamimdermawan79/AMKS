@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { canFromSession } from '@/lib/rbac/can';
 import { revalidatePath } from 'next/cache';
-import { QURAN_SURAHS } from '@/lib/rohani/quran';
+import { QURAN_SURAHS, getSurah, getSurahVerses } from '@/lib/rohani/quran';
 import { createNotification } from '@/lib/notifications';
 
 async function authorizeRohani() {
@@ -347,3 +347,139 @@ export async function activateBackup(
   revalidatePath('/admin/rohani/kelola');
   return { success: true };
 }
+
+/**
+ * Update Surah and Verses for a Rohani schedule (after generation or at any time)
+ */
+export async function updateRohaniTadarus(
+  scheduleId: string,
+  currentSurah: string,
+  startVerse: number,
+  endVerse: number,
+  additionalActivities?: string
+) {
+  await authorizeRohani();
+
+  const surah = getSurah(currentSurah);
+  if (!surah) {
+    throw new Error(`Nama surah "${currentSurah}" tidak valid atau tidak ditemukan dalam Al-Qur'an.`);
+  }
+
+  if (startVerse < 1) {
+    throw new Error('Ayat mulai minimal 1.');
+  }
+
+  if (endVerse < startVerse) {
+    throw new Error('Ayat sampai tidak boleh lebih kecil dari ayat mulai.');
+  }
+
+  if (endVerse > surah.verses) {
+    throw new Error(`Surah ${surah.name} hanya memiliki ${surah.verses} ayat. Ayat sampai tidak boleh melebihi batas.`);
+  }
+
+  const updateData: {
+    currentSurah: string;
+    startVerse: number;
+    endVerse: number;
+    additionalActivities?: string | null;
+  } = {
+    currentSurah: surah.name,
+    startVerse,
+    endVerse,
+  };
+
+  if (additionalActivities !== undefined) {
+    updateData.additionalActivities = additionalActivities.trim() || null;
+  }
+
+  const updated = await db.rohaniSchedule.update({
+    where: { id: scheduleId },
+    data: updateData,
+  });
+
+  revalidatePath('/admin/rohani');
+  revalidatePath('/admin/rohani/kelola');
+  revalidatePath('/admin/rohani/laporan');
+
+  return { success: true, schedule: updated };
+}
+
+/**
+ * Update additional manual activities on a Rohani schedule
+ */
+export async function updateRohaniAdditionalActivities(
+  scheduleId: string,
+  additionalActivities: string
+) {
+  await authorizeRohani();
+
+  const updated = await db.rohaniSchedule.update({
+    where: { id: scheduleId },
+    data: {
+      additionalActivities: additionalActivities.trim() || null,
+    },
+  });
+
+  revalidatePath('/admin/rohani');
+  revalidatePath('/admin/rohani/kelola');
+  revalidatePath('/admin/rohani/laporan');
+
+  return { success: true, schedule: updated };
+}
+
+/**
+ * Create a manual Rohani activity entry (e.g. for extra events in the monthly report)
+ */
+export async function createManualRohaniActivity(data: {
+  date: string | Date;
+  imamMaghribId: string;
+  imamIshaId: string;
+  kultumById: string;
+  cadanganImamId?: string | null;
+  cadanganKultumId?: string | null;
+  currentSurah: string;
+  startVerse: number;
+  endVerse: number;
+  additionalActivities?: string | null;
+}) {
+  await authorizeRohani();
+
+  const surah = getSurah(data.currentSurah);
+  if (!surah) {
+    throw new Error(`Nama surah "${data.currentSurah}" tidak valid.`);
+  }
+
+  if (data.startVerse < 1) throw new Error('Ayat mulai minimal 1.');
+  if (data.endVerse < data.startVerse) throw new Error('Ayat sampai tidak boleh lebih kecil dari ayat mulai.');
+  if (data.endVerse > surah.verses) {
+    throw new Error(`Surah ${surah.name} hanya memiliki ${surah.verses} ayat.`);
+  }
+
+  const targetDate = new Date(data.date);
+  if (isNaN(targetDate.getTime())) {
+    throw new Error('Tanggal kegiatan tidak valid.');
+  }
+
+  const newSchedule = await db.rohaniSchedule.create({
+    data: {
+      date: targetDate,
+      imamMaghribId: data.imamMaghribId,
+      imamIshaId: data.imamIshaId,
+      kultumById: data.kultumById,
+      cadanganImamId: data.cadanganImamId || null,
+      cadanganKultumId: data.cadanganKultumId || null,
+      currentSurah: surah.name,
+      startVerse: data.startVerse,
+      endVerse: data.endVerse,
+      additionalActivities: data.additionalActivities?.trim() || null,
+    },
+  });
+
+  revalidatePath('/admin/rohani');
+  revalidatePath('/admin/rohani/kelola');
+  revalidatePath('/admin/rohani/laporan');
+
+  return { success: true, schedule: newSchedule };
+}
+
+
