@@ -638,6 +638,24 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                         ) : (
                           <span className="text-xs text-rose-500 font-medium">Belum ada delegasi</span>
                         )}
+                        {delegates.some((d: any) => d.userId === currentUserId) && (
+                          <div className="mt-3 pt-2.5 border-t border-border flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-emerald-700">
+                              ⭐ Anda Delegasi Rapat Ini
+                            </span>
+                            <button
+                              onClick={() => {
+                                setActiveTab("rt_notes");
+                                setRtNoteMeetingId(m.id);
+                                setRtNoteContent(m.notes?.[0]?.content || "");
+                                setShowRTNoteModal(true);
+                              }}
+                              className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline"
+                            >
+                              <Edit className="h-3 w-3" /> {m.notes?.[0] ? "Edit Notulensi" : "Catat Notulensi"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
@@ -665,12 +683,23 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
             {externalMeetings.map((m: any) => {
               const note = m.notes[0];
               const delegates = m.attendances.filter((a: any) => a.role === "DELEGASI");
+              const isDelegate = delegates.some((d: any) => d.userId === currentUserId);
+              const canRecordRTNote = canManage || isDelegate;
               
               return (
-                <div key={m.id} className="border border-border bg-card p-5 rounded-2xl">
+                <div key={m.id} className={`border p-5 rounded-2xl transition-colors ${
+                  isDelegate ? "border-emerald-200 bg-emerald-50/20" : "border-border bg-card"
+                }`}>
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-3 mb-4">
                     <div>
-                      <h3 className="font-bold text-foreground mb-1">{m.title}</h3>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="font-bold text-foreground">{m.title}</h3>
+                        {isDelegate && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 rounded-md border border-emerald-200">
+                            ⭐ Anda Delegasi
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5" /> 
                         {formatTanggal(m.scheduledAt)}
@@ -681,16 +710,18 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                         </p>
                       )}
                     </div>
-                    {canManage && (
+                    {canRecordRTNote && (
                       <button
                         onClick={() => {
                           setRtNoteMeetingId(m.id);
                           setRtNoteContent(note?.content || "");
                           setShowRTNoteModal(true);
                         }}
-                        className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1 font-medium"
+                        className={`text-xs px-3.5 py-1.5 rounded-lg text-white flex items-center gap-1.5 font-medium shadow-xs transition-colors ${
+                          isDelegate && !canManage ? "bg-emerald-600 hover:bg-emerald-700" : "bg-indigo-600 hover:bg-indigo-700"
+                        }`}
                       >
-                        {note ? <><Edit className="h-3 w-3"/> Edit Notulensi</> : <><Plus className="h-3 w-3"/> Catat Notulensi</>}
+                        {note ? <><Edit className="h-3.5 w-3.5"/> Edit Notulensi</> : <><Plus className="h-3.5 w-3.5"/> Catat Notulensi</>}
                       </button>
                     )}
                   </div>
@@ -704,7 +735,11 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                     </div>
                   ) : (
                     <div className="bg-slate-50 border border-dashed border-border rounded-xl p-4 text-center">
-                      <p className="text-sm text-muted-foreground italic">{canManage ? 'Belum ada notulensi. Klik "Catat Notulensi" untuk mencatat hasil rapat.' : 'Belum ada notulensi rapat ini.'}</p>
+                      <p className="text-sm text-muted-foreground italic">
+                        {canRecordRTNote 
+                          ? 'Belum ada notulensi. Klik "Catat Notulensi" untuk mencatat hasil rapat RT ini.' 
+                          : 'Belum ada notulensi rapat ini.'}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -892,7 +927,12 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
               className="bg-white border border-border rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
             >
               <div className="p-5 border-b border-border bg-slate-50 flex items-center justify-between">
-                <h3 className="font-bold text-foreground">Catat Notulensi Rapat RT</h3>
+                <div>
+                  <h3 className="font-bold text-foreground">Catat Notulensi Rapat RT 12</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Rangkuman keputusan, aspirasi, dan hasil musyawarah warga perwakilan RT 12
+                  </p>
+                </div>
                 <button onClick={() => setShowRTNoteModal(false)} className="text-muted-foreground hover:text-foreground">
                   <X className="h-5 w-5"/>
                 </button>

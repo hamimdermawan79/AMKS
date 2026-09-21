@@ -212,9 +212,45 @@ export async function setRTDelegates(meetingId: string, delegateIds: string[]) {
   }
 }
 
-// =======================
-// NOTES & ACTION ITEMS
-// =======================
+async function authorizeSaveMeetingNote(meetingId: string) {
+  const session = await auth();
+  if (!session?.user) {
+    throw new Error("Unauthorized: Silakan login terlebih dahulu");
+  }
+
+  const [canMeetingCreate, canMeetingUpdate, canSekretaris, isSuper] = await Promise.all([
+    canFromSession('meeting:create'),
+    canFromSession('meeting:update'),
+    canFromSession('division:manage:sekretaris'),
+    isSuperAdmin({ id: session.user.id, username: session.user.username }),
+  ]);
+
+  if (canMeetingCreate || canMeetingUpdate || canSekretaris || isSuper) {
+    return session;
+  }
+
+  // Khusus Rapat RT (EKSTERNAL_RT): Delegasi resmi yang ditugaskan berhak mencatat notulensi
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: meetingId },
+    select: {
+      type: true,
+      attendances: {
+        where: {
+          userId: session.user.id,
+          role: 'DELEGASI',
+        },
+        select: { id: true },
+      },
+    },
+  });
+
+  const isDelegate = meeting?.type === 'EKSTERNAL_RT' && (meeting.attendances?.length ?? 0) > 0;
+  if (isDelegate) {
+    return session;
+  }
+
+  throw new Error("Akses ditolak: Anda tidak memiliki izin mencatat notulensi rapat ini");
+}
 
 export async function saveMeetingNote(data: {
   id?: string; // If updating
@@ -223,7 +259,7 @@ export async function saveMeetingNote(data: {
   content: string;
   evaluation?: string;
 }) {
-  await authorizeManageKesekretariatan();
+  await authorizeSaveMeetingNote(data.meetingId);
   try {
     if (data.id) {
       await prisma.meetingNote.update({
