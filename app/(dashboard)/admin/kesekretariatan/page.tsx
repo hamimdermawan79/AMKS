@@ -9,14 +9,15 @@ export default async function KesekretariatanPage() {
   if (!session?.user) redirect('/login');
   const user = session.user;
 
-  // Authorization check: SuperAdmin, Ketua, Sekretaris have full manage access
-  const [canManageMeeting, canManageSekretaris, isSuper] = await Promise.all([
+  // Authorization check: SuperAdmin, Ketua, Sekretaris, Bendahara, Division Heads
+  const [canManageMeeting, canUpdateMeeting, canManageSekretaris, isSuper] = await Promise.all([
     canFromSession('meeting:create'),
+    canFromSession('meeting:update'),
     canFromSession('division:manage:sekretaris'),
     isSuperAdmin({ id: user.id, username: user.username }),
   ]);
 
-  const canManage = canManageMeeting || canManageSekretaris || isSuper;
+  const canManage = canManageMeeting || canUpdateMeeting || canManageSekretaris || isSuper;
 
   // Fetch all warga for dropdowns
   const wargaList = await prisma.user.findMany({

@@ -15,6 +15,7 @@ const ROLE_PERM_MAP: Record<string, string[]> = {
   KETUA: ['meeting:create', 'meeting:read', 'meeting:update', 'meeting:delete', 'division:manage:sekretaris'],
   SEKRETARIS: ['meeting:create', 'meeting:read', 'meeting:update', 'meeting:delete', 'division:manage:sekretaris'],
   DIVISION_HEAD: ['meeting:read', 'meeting:update'],
+  BENDAHARA: ['meeting:read', 'meeting:update'],
   WARGA: ['meeting:read'],
   CALON_WARGA: ['meeting:read'],
   ALUMNI: ['meeting:read'],

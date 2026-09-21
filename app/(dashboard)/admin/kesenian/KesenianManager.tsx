@@ -1,21 +1,21 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import NextImage from 'next/image';
 import {
   Sparkles,
   Image,
   Plus,
-  Trash2,
   Calendar,
   Tv,
   BarChart,
   ArrowRight,
   ShieldCheck,
-  Compass
+  Compass,
+  MapPin,
+  ExternalLink
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 type PostType = {
@@ -24,6 +24,9 @@ type PostType = {
   body: string;
   createdAt: Date;
   coverUrl: string | null;
+  images?: string[];
+  location?: string | null;
+  division?: string | null;
 };
 
 type ActivityType = {
@@ -36,6 +39,7 @@ type ActivityType = {
 
 type Props = {
   posts: PostType[];
+  totalGalleryCount?: number;
   activities: ActivityType[];
   announcements: {
     id: string;
@@ -46,7 +50,7 @@ type Props = {
   canManage: boolean;
 };
 
-export default function KesenianManager({ posts, activities, announcements, canManage }: Props) {
+export default function KesenianManager({ posts, totalGalleryCount, activities, announcements, canManage }: Props) {
   const [activeTab, setActiveTab] = useState<'posting' | 'kegiatan'>('posting');
 
   // Find next monthly entertainment event
@@ -100,7 +104,7 @@ export default function KesenianManager({ posts, activities, announcements, canM
           </div>
           <div>
             <span className="text-xs text-muted-foreground font-medium">Post Publikasi Aktif</span>
-            <h3 className="text-xl font-bold text-foreground mt-0.5">{posts.length} Postingan</h3>
+            <h3 className="text-xl font-bold text-foreground mt-0.5">{totalGalleryCount ?? posts.length} Postingan</h3>
           </div>
         </div>
 
@@ -168,16 +172,30 @@ export default function KesenianManager({ posts, activities, announcements, canM
       {/* TAB CONTENT: POSTING & PUBLIKASI */}
       {activeTab === 'posting' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Postingan Kegiatan Asrama</h2>
-            {canManage && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Postingan Kegiatan Asrama (Galeri)</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Dokumentasi & publikasi kegiatan yang terhubung langsung dengan Galeri Kegiatan Asrama
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
               <Link
-                href="/admin/tentang-kami?tab=galeri"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500 hover:bg-purple-600 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm"
+                href="/tentang-kami/galeri"
+                target="_blank"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 transition-all shadow-xs"
               >
-                <Plus className="h-4 w-4" /> Buat Postingan Baru
+                <ExternalLink className="h-3.5 w-3.5 text-slate-500" /> Galeri Publik
               </Link>
-            )}
+              {canManage && (
+                <Link
+                  href="/admin/tentang-kami?tab=galeri"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-purple-500 hover:bg-purple-600 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm"
+                >
+                  <Plus className="h-4 w-4" /> Kelola Galeri Kegiatan
+                </Link>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -186,39 +204,52 @@ export default function KesenianManager({ posts, activities, announcements, canM
                 key={post.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm flex flex-col md:flex-row"
+                className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm flex flex-col md:flex-row hover:border-purple-200 transition-colors"
               >
                 {post.coverUrl ? (
-                  <div className="relative md:w-1/3 h-40 md:h-auto bg-slate-100 flex-shrink-0">
+                  <div className="relative md:w-2/5 h-44 md:h-auto bg-slate-100 flex-shrink-0">
                     <NextImage
                       src={post.coverUrl}
                       alt={post.title}
                       fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
+                      sizes="(max-width: 768px) 100vw, 40vw"
                       className="object-cover"
                     />
                   </div>
                 ) : (
-                  <div className="md:w-1/3 h-40 md:h-auto bg-purple-50 text-purple-300 flex items-center justify-center flex-shrink-0">
+                  <div className="md:w-2/5 h-44 md:h-auto bg-purple-50 text-purple-300 flex items-center justify-center flex-shrink-0">
                     <Image className="h-10 w-10" />
                   </div>
                 )}
                 <div className="p-5 flex-1 flex flex-col justify-between">
                   <div className="space-y-2">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                      {new Date(post.createdAt).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                        {new Date(post.createdAt).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </span>
+                      {post.division && (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-purple-100 text-purple-700 rounded-md">
+                          {post.division}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="font-bold text-foreground text-base leading-snug">{post.title}</h3>
                     <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{post.body}</p>
+                    {post.location && (
+                      <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                        <MapPin className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                        <span className="truncate">{post.location}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="border-t border-border mt-4 pt-3 flex items-center justify-end">
                     <Link
-                      href={`/tentang-kami`}
-                      className="text-xs font-semibold text-purple-600 hover:underline flex items-center gap-1"
+                      href={`/tentang-kami/${post.id}`}
+                      className="text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1"
                     >
                       Lihat Detail <ArrowRight className="h-3 w-3" />
                     </Link>
@@ -230,7 +261,15 @@ export default function KesenianManager({ posts, activities, announcements, canM
             {posts.length === 0 && (
               <div className="col-span-full py-12 text-center rounded-2xl border border-dashed border-border bg-slate-50/50">
                 <Image className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground font-medium">Belum ada postingan publikasi.</p>
+                <p className="text-sm text-muted-foreground font-medium">Belum ada postingan publikasi kegiatan.</p>
+                {canManage && (
+                  <Link
+                    href="/admin/tentang-kami?tab=galeri"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 hover:underline mt-2"
+                  >
+                    Tambah postingan di Galeri Kegiatan &rarr;
+                  </Link>
+                )}
               </div>
             )}
           </div>

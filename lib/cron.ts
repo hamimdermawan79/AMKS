@@ -483,6 +483,295 @@ export async function checkRohaniHMinus1Reminders() {
   }
 }
 
+import {
+  formatMeetingReminderMessage,
+  formatActivityReminderMessage,
+} from '@/lib/kesekretariatan/format-meeting-wa';
+
+/**
+ * Check for upcoming meetings (Internal Asrama & Eksternal RT)
+ * and send automatic WhatsApp reminder on H-3, H-2, H-1, and Hari H (H-0).
+ */
+export async function checkMeetingReminders() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const startOfToday = new Date(nowWib);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const endOfWindow = new Date(startOfToday);
+    endOfWindow.setDate(endOfWindow.getDate() + 4); // Cek hingga 4 hari ke depan
+
+    const upcomingMeetings = await db.meeting.findMany({
+      where: {
+        status: 'TERJADWAL',
+        scheduledAt: {
+          gte: startOfToday,
+          lte: endOfWindow,
+        },
+      },
+      include: {
+        leader: { select: { fullName: true } },
+        noteTaker: { select: { fullName: true } },
+        attendances: {
+          where: { role: 'DELEGASI' },
+          include: {
+            user: { select: { id: true, fullName: true } },
+          },
+        },
+      },
+    });
+
+    if (upcomingMeetings.length === 0) return;
+
+    // Cache active warga for internal meeting broadcasts
+    let cachedActiveUsers: { id: string }[] | null = null;
+
+    for (const meeting of upcomingMeetings) {
+      const meetingWib = new Date(new Date(meeting.scheduledAt).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const meetingDateOnly = new Date(meetingWib);
+      meetingDateOnly.setHours(0, 0, 0, 0);
+
+      const diffMs = meetingDateOnly.getTime() - startOfToday.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      // Hanya proses jika tepat H-3, H-2, H-1, atau Hari H (0)
+      if (diffDays < 0 || diffDays > 3) continue;
+
+      const refId = `MEETING_REMINDER:${meeting.id}:H${diffDays}`;
+
+      // Idempotency: skip if already sent
+      const existing = await db.notification.findFirst({
+        where: { referenceId: refId },
+      });
+      if (existing) continue;
+
+      if (meeting.type === 'INTERNAL') {
+        // Broadcast ke seluruh warga asrama aktif
+        if (!cachedActiveUsers) {
+          cachedActiveUsers = await db.user.findMany({
+            where: {
+              status: 'AKTIF',
+              roles: {
+                none: {
+                  role: { name: { in: ['SUPERADMIN', 'ALUMNI'] } },
+                },
+              },
+            },
+            select: { id: true },
+          });
+        }
+
+        if (cachedActiveUsers.length === 0) continue;
+
+        const { title, message } = formatMeetingReminderMessage(meeting, diffDays, false);
+
+        await db.notification.createMany({
+          data: cachedActiveUsers.map((u) => ({
+            userId: u.id,
+            title,
+            message,
+            type: 'RAPAT_REMINDER',
+            referenceId: refId,
+          })),
+        });
+
+        console.log(`📢 Rapat Internal H-${diffDays} reminder queued for ${cachedActiveUsers.length} users (Meeting: ${meeting.title}).`);
+      } else {
+        // EKSTERNAL_RT: kirim ke seluruh delegasi RT
+        const delegates = meeting.attendances;
+        let targetUserIds = delegates.map((d) => d.userId);
+
+        // Jika delegasi belum ditentukan, beritahu Ketua & Sekretaris
+        if (targetUserIds.length === 0) {
+          const admins = await db.user.findMany({
+            where: {
+              status: 'AKTIF',
+              roles: {
+                some: {
+                  role: { name: { in: ['KETUA', 'SEKRETARIS'] } },
+                },
+              },
+            },
+            select: { id: true },
+          });
+          targetUserIds = admins.map((a) => a.id);
+        }
+
+        if (targetUserIds.length === 0) continue;
+
+        const { title, message } = formatMeetingReminderMessage(meeting, diffDays, delegates.length > 0);
+
+        await db.notification.createMany({
+          data: targetUserIds.map((userId) => ({
+            userId,
+            title,
+            message,
+            type: 'RAPAT_REMINDER',
+            referenceId: refId,
+          })),
+        });
+
+        console.log(`📢 Rapat RT 12 H-${diffDays} reminder queued for ${targetUserIds.length} recipients (Meeting: ${meeting.title}).`);
+      }
+    }
+
+    processNotificationQueue().catch(console.error);
+  } catch (error) {
+    console.error('Failed to run checkMeetingReminders:', error);
+  }
+}
+
+/**
+ * Check for upcoming activities across IKMAS (Division Activities & Sports)
+ * and send automatic WhatsApp reminder on H-3, H-2, H-1, and Hari H (H-0).
+ */
+export async function checkActivityReminders() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const startOfToday = new Date(nowWib);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const endOfWindow = new Date(startOfToday);
+    endOfWindow.setDate(endOfWindow.getDate() + 4);
+
+    // 1. Division Activities (Activity model)
+    const upcomingActivities = await db.activity.findMany({
+      where: {
+        startAt: {
+          gte: startOfToday,
+          lte: endOfWindow,
+        },
+      },
+    });
+
+    // 2. Sports Activities (SportsActivity model)
+    const upcomingSports = await db.sportsActivity.findMany({
+      where: {
+        date: {
+          gte: startOfToday,
+          lte: endOfWindow,
+        },
+      },
+      include: {
+        attendance: {
+          select: { userId: true },
+        },
+      },
+    });
+
+    if (upcomingActivities.length === 0 && upcomingSports.length === 0) return;
+
+    let cachedActiveUsers: { id: string }[] | null = null;
+    const getActiveUsers = async () => {
+      if (!cachedActiveUsers) {
+        cachedActiveUsers = await db.user.findMany({
+          where: {
+            status: 'AKTIF',
+            roles: {
+              none: {
+                role: { name: { in: ['SUPERADMIN', 'ALUMNI'] } },
+              },
+            },
+          },
+          select: { id: true },
+        });
+      }
+      return cachedActiveUsers;
+    };
+
+    // Process General Division Activities
+    for (const act of upcomingActivities) {
+      if (!act.startAt) continue;
+
+      const actWib = new Date(new Date(act.startAt).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const actDateOnly = new Date(actWib);
+      actDateOnly.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.round((actDateOnly.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0 || diffDays > 3) continue;
+
+      const refId = `ACTIVITY_REMINDER:${act.id}:H${diffDays}`;
+      const existing = await db.notification.findFirst({ where: { referenceId: refId } });
+      if (existing) continue;
+
+      const targetUsers = await getActiveUsers();
+      if (targetUsers.length === 0) continue;
+
+      const { title, message } = formatActivityReminderMessage(
+        {
+          id: act.id,
+          title: act.title,
+          startAt: act.startAt,
+          location: act.location,
+          description: act.description,
+          division: act.division,
+        },
+        diffDays
+      );
+
+      await db.notification.createMany({
+        data: targetUsers.map((u) => ({
+          userId: u.id,
+          title,
+          message,
+          type: 'KEGIATAN_REMINDER',
+          referenceId: refId,
+        })),
+      });
+
+      console.log(`📢 Kegiatan H-${diffDays} reminder queued for ${targetUsers.length} users (${act.title}).`);
+    }
+
+    // Process Sports Activities
+    for (const sport of upcomingSports) {
+      const sportWib = new Date(new Date(sport.date).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const sportDateOnly = new Date(sportWib);
+      sportDateOnly.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.round((sportDateOnly.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0 || diffDays > 3) continue;
+
+      const refId = `SPORTS_REMINDER:${sport.id}:H${diffDays}`;
+      const existing = await db.notification.findFirst({ where: { referenceId: refId } });
+      if (existing) continue;
+
+      const targetUserIds = sport.attendance.length > 0
+        ? sport.attendance.map((a) => a.userId)
+        : (await getActiveUsers()).map((u) => u.id);
+
+      if (targetUserIds.length === 0) continue;
+
+      const { title, message } = formatActivityReminderMessage(
+        {
+          id: sport.id,
+          title: sport.title,
+          startAt: sport.date,
+          location: sport.location,
+          description: `Kegiatan Olahraga Bersama. Iuran: Rp${sport.feeAmount.toLocaleString('id-ID')}, Denda bila mangkir: Rp${sport.fineAmount.toLocaleString('id-ID')}`,
+          division: 'KEOLAHRAGAAN',
+        },
+        diffDays
+      );
+
+      await db.notification.createMany({
+        data: targetUserIds.map((userId) => ({
+          userId,
+          title,
+          message,
+          type: 'KEGIATAN_REMINDER',
+          referenceId: refId,
+        })),
+      });
+
+      console.log(`📢 Olahraga H-${diffDays} reminder queued for ${targetUserIds.length} users (${sport.title}).`);
+    }
+
+    processNotificationQueue().catch(console.error);
+  } catch (error) {
+    console.error('Failed to run checkActivityReminders:', error);
+  }
+}
+
 let cronInterval: NodeJS.Timeout | null = null;
 
 export function startCronJobs() {
@@ -496,14 +785,18 @@ export function startCronJobs() {
   checkMissedPikets();
   checkAnnouncementBroadcast();
   checkRohaniHMinus1Reminders();
+  checkMeetingReminders();
+  checkActivityReminders();
 
-  // Run checks every 15 minutes so specific reminder hours (0, 2, 5, 7, 9, 11 WIB) are caught accurately
+  // Run checks every 15 minutes so specific reminder hours are caught accurately
   cronInterval = setInterval(() => {
     checkTodayPiketReminders();
     checkUpcomingBills();
     checkMissedPikets();
     checkAnnouncementBroadcast();
     checkRohaniHMinus1Reminders();
+    checkMeetingReminders();
+    checkActivityReminders();
   }, 1000 * 60 * 15); // 15 minutes
 }
 

@@ -63,6 +63,7 @@ export async function addAnnouncementAction(division: Division, data: {
       ROHANI: 'Rohani',
       KEAMANAN: 'Keamanan',
       SEKRETARIS: 'Sekretaris',
+      BENDAHARA: 'Bendahara',
     };
     const divLabel = divisionLabels[division] || division;
 
@@ -137,8 +138,57 @@ export async function addActivityAction(division: Division, data: {
     },
   });
 
+  // Broadcast agenda kegiatan baru ke seluruh warga aktif
+  try {
+    const activeUsers = await db.user.findMany({
+      where: { 
+        status: 'AKTIF',
+        roles: { none: { role: { name: 'SUPERADMIN' } } },
+      },
+      select: { id: true },
+    });
+
+    const divisionLabels: Record<Division, string> = {
+      KEBERSIHAN: 'Kebersihan',
+      KESENIAN: 'Kesenian',
+      KEOLAHRAGAAN: 'Keolahragaan',
+      ROHANI: 'Rohani',
+      KEAMANAN: 'Keamanan',
+      SEKRETARIS: 'Sekretaris',
+      BENDAHARA: 'Bendahara',
+    };
+    const divLabel = divisionLabels[division] || division;
+
+    const startStr = start 
+      ? start.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : 'Segera diumumkan';
+
+    const msgLines = [
+      `Ada agenda kegiatan baru dari Divisi ${divLabel}:`,
+      `📌 *${v.title}*`,
+      `🗓️ Waktu: ${startStr}`,
+      v.location ? `📍 Lokasi: ${v.location}` : '',
+      v.description ? `\n📝 Deskripsi:\n${v.description}` : '',
+      `\nMari bersama-sama meramaikan dan menyukseskan kegiatan asrama kita!`,
+    ].filter(Boolean).join('\n');
+
+    for (const u of activeUsers) {
+      await createNotification({
+        userId: u.id,
+        title: `Agenda Baru: ${v.title}`,
+        message: msgLines,
+        type: 'KEGIATAN_REMINDER',
+        referenceId: `NEW_ACT:${activity.id}`,
+      });
+    }
+  } catch (err) {
+    console.error('Failed to broadcast activity notification:', err);
+  }
+
   revalidatePath(`/admin/${division.toLowerCase()}`);
   revalidatePath('/');
+  revalidatePath('/user');
+  revalidatePath('/notifications');
   return { success: true, id: activity.id };
 }
 

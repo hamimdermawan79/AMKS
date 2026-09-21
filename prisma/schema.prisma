@@ -19,6 +19,7 @@ enum Division {
   ROHANI
   KEAMANAN
   SEKRETARIS
+  BENDAHARA
 }
 
 enum WargaStatus {
@@ -525,6 +526,8 @@ enum NotificationType {
   TAGIHAN_REMINDER
   PENGUMUMAN
   SYSTEM
+  RAPAT_REMINDER
+  KEGIATAN_REMINDER
 }
 
 model SportsActivity {

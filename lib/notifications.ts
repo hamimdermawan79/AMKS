@@ -183,6 +183,8 @@ function formatWaMessage(title: string, message: string, type: NotificationType)
   if (type === 'PIKET_REMINDER') emoji = '🧹';
   else if (type === 'TAGIHAN_REMINDER') emoji = '💵';
   else if (type === 'PENGUMUMAN') emoji = '📢';
+  else if (type === 'RAPAT_REMINDER') emoji = '📅';
+  else if (type === 'KEGIATAN_REMINDER') emoji = '🎯';
   else if (type === 'SYSTEM') emoji = '📚';
   
   return `*${emoji} ${title.toUpperCase()} ${emoji}*

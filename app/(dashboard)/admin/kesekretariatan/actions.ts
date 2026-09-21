@@ -5,21 +5,29 @@ import { db as prisma } from "@/lib/db";
 import { canFromSession, isSuperAdmin } from "@/lib/rbac/can";
 import { auth } from "@/lib/auth";
 import { Division, MeetingType, MeetingStatus, MeetingRole, AttendanceStatus } from "@prisma/client";
+import { createNotification } from "@/lib/notifications";
 
-async function authorizeManageKesekretariatan() {
+async function authorizeManageKesekretariatan(requireCreate = false) {
   const session = await auth();
   if (!session?.user) {
     throw new Error("Unauthorized: Silakan login terlebih dahulu");
   }
 
-  const [canMeeting, canSekretaris, isSuper] = await Promise.all([
+  const [canMeetingCreate, canMeetingUpdate, canSekretaris, isSuper] = await Promise.all([
     canFromSession('meeting:create'),
+    canFromSession('meeting:update'),
     canFromSession('division:manage:sekretaris'),
     isSuperAdmin({ id: session.user.id, username: session.user.username }),
   ]);
 
-  if (!canMeeting && !canSekretaris && !isSuper) {
-    throw new Error("Akses ditolak: Anda tidak memiliki izin mengelola Kesekretariatan & Notulensi");
+  if (requireCreate) {
+    if (!canMeetingCreate && !canSekretaris && !isSuper) {
+      throw new Error("Akses ditolak: Anda tidak memiliki izin membuat/menghapus agenda rapat");
+    }
+  } else {
+    if (!canMeetingCreate && !canMeetingUpdate && !canSekretaris && !isSuper) {
+      throw new Error("Akses ditolak: Anda tidak memiliki izin mengelola Kesekretariatan & Notulensi");
+    }
   }
 
   return session;
@@ -35,18 +43,73 @@ export async function createInternalMeeting(data: {
   leaderId?: string;
   noteTakerId?: string;
 }) {
-  await authorizeManageKesekretariatan();
+  await authorizeManageKesekretariatan(true);
   try {
+    const scheduledDate = new Date(data.scheduledAt);
     const meeting = await prisma.meeting.create({
       data: {
         title: data.title,
         type: "INTERNAL",
-        scheduledAt: new Date(data.scheduledAt),
+        scheduledAt: scheduledDate,
         leaderId: data.leaderId || null,
         noteTakerId: data.noteTakerId || null,
       },
+      include: {
+        leader: { select: { fullName: true } },
+        noteTaker: { select: { fullName: true } },
+      },
     });
+
+    // Broadcast agenda rapat baru ke seluruh warga aktif
+    try {
+      const activeUsers = await prisma.user.findMany({
+        where: {
+          status: 'AKTIF',
+          roles: { none: { role: { name: { in: ['SUPERADMIN', 'ALUMNI'] } } } },
+        },
+        select: { id: true },
+      });
+
+      const dateStr = scheduledDate.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta',
+      });
+      const timeStr = scheduledDate.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Jakarta',
+      });
+
+      const msg = `*📢 AGENDA RAPAT BARU TERJADWAL 📢*\n\n` +
+        `Assalamu'alaikum Wr. Wb.\n` +
+        `Diberitahukan kepada seluruh Warga Asrama AMKS, agenda rapat baru telah dijadwalkan:\n\n` +
+        `📋 *${meeting.title}*\n` +
+        `🗓️ Waktu: *${dateStr}* (Pukul ${timeStr} WIB)\n` +
+        `📍 Tempat: Asrama AMKS\n` +
+        (meeting.leader?.fullName ? `👤 Pemimpin: ${meeting.leader.fullName}\n` : '') +
+        (meeting.noteTaker?.fullName ? `📝 Notulis: ${meeting.noteTaker.fullName}\n` : '') +
+        `\nMohon seluruh warga mencatat tanggal pelaksanaan dan hadir tepat waktu. Terima kasih!\n\n` +
+        `_Pengurus Asrama AMKS (Kesekretariatan)_`;
+
+      for (const u of activeUsers) {
+        await createNotification({
+          userId: u.id,
+          title: `Agenda Rapat Baru: ${meeting.title}`,
+          message: msg,
+          type: 'RAPAT_REMINDER',
+          referenceId: `NEW_MEETING:${meeting.id}`,
+        });
+      }
+    } catch (broadcastErr) {
+      console.error('Failed to broadcast new meeting notification:', broadcastErr);
+    }
+
     revalidatePath("/admin/kesekretariatan");
+    revalidatePath("/user");
+    revalidatePath("/notifications");
     return { success: true, meetingId: meeting.id };
   } catch (error: any) {
     throw new Error(error.message || "Gagal membuat rapat internal");

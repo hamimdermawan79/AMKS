@@ -26,7 +26,7 @@ type Props = {
   canManage?: boolean;
 };
 
-const DIVISIONS: Division[] = ["KEBERSIHAN", "KESENIAN", "KEOLAHRAGAAN", "ROHANI", "KEAMANAN", "SEKRETARIS"];
+const DIVISIONS: Division[] = ["KEBERSIHAN", "KESENIAN", "KEOLAHRAGAAN", "ROHANI", "KEAMANAN", "SEKRETARIS", "BENDAHARA"];
 
 const DIVISION_LABELS: Record<string, string> = {
   KEBERSIHAN: "Kebersihan",
@@ -35,6 +35,7 @@ const DIVISION_LABELS: Record<string, string> = {
   ROHANI: "Kerohanian",
   KEAMANAN: "Keamanan",
   SEKRETARIS: "Sekretaris",
+  BENDAHARA: "Bendahara / Keuangan",
 };
 
 const BULAN = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -324,7 +325,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                 <div className="flex gap-4 text-xs text-muted-foreground">
                   <div><span className="font-semibold block">Pemimpin</span> {m.leader?.fullName || "-"}</div>
                   <div><span className="font-semibold block">Notulis</span> {m.noteTaker?.fullName || "-"}</div>
-                  <div><span className="font-semibold block">Notulensi</span> {m.notes.length} divisi</div>
+                  <div><span className="font-semibold block">Notulensi</span> {m.notes.length} bidang tercatat</div>
                 </div>
               </motion.div>
             ))}
@@ -387,24 +388,36 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* LEFT: Notulensi Per Divisi */}
+            {/* LEFT: Notulensi Per Divisi & Kebendaharaan */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white border border-border p-6 rounded-2xl shadow-sm">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-indigo-500"/> Notulensi per Divisi
+                  <FileText className="h-5 w-5 text-indigo-500"/> Notulensi per Divisi & Kebendaharaan
                 </h3>
                 
                 <div className="space-y-4">
                   {DIVISIONS.map(div => {
                     const note = selectedMeeting.notes.find((n: any) => n.division === div);
+                    const isBendahara = div === "BENDAHARA";
                     return (
-                      <div key={div} className="border border-border rounded-xl p-4 bg-slate-50">
+                      <div key={div} className={`border rounded-xl p-4 transition-colors ${
+                        isBendahara ? "border-emerald-200 bg-emerald-50/40" : "border-border bg-slate-50"
+                      }`}>
                         <div className="flex justify-between items-center mb-2">
-                          <h4 className="font-bold text-foreground">{DIVISION_LABELS[div]}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-foreground">{DIVISION_LABELS[div]}</h4>
+                            {isBendahara && (
+                              <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 rounded-md border border-emerald-200">
+                                Kas & Keuangan
+                              </span>
+                            )}
+                          </div>
                           {canManage && (
                             <button
                               onClick={() => openNoteModal(div, note)}
-                              className="text-xs px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1"
+                              className={`text-xs px-3 py-1 rounded-lg text-white flex items-center gap-1 shadow-sm transition-colors ${
+                                isBendahara ? "bg-emerald-600 hover:bg-emerald-700" : "bg-indigo-600 hover:bg-indigo-700"
+                              }`}
                             >
                               {note ? <><Edit className="h-3 w-3"/> Edit</> : <><Plus className="h-3 w-3"/> Tambah</>}
                             </button>
@@ -413,7 +426,9 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                         {note ? (
                           <div className="space-y-2 text-sm">
                             <div>
-                              <span className="font-semibold text-slate-700">Laporan:</span>
+                              <span className="font-semibold text-slate-700">
+                                {isBendahara ? "Laporan Keuangan & Kas:" : "Laporan:"}
+                              </span>
                               <p className="text-muted-foreground whitespace-pre-wrap mt-1">{note.content}</p>
                             </div>
                             {note.evaluation && (
@@ -424,7 +439,11 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                             )}
                           </div>
                         ) : (
-                          <p className="text-xs text-muted-foreground italic">{canManage ? 'Belum ada notulensi. Klik "Tambah" untuk mencatat laporan divisi ini.' : 'Belum ada laporan dari divisi ini.'}</p>
+                          <p className="text-xs text-muted-foreground italic">
+                            {canManage 
+                              ? `Belum ada notulensi. Klik "Tambah" untuk mencatat ${isBendahara ? 'laporan kas/keuangan Bendahara.' : 'laporan divisi ini.'}`
+                              : `Belum ada laporan dari ${isBendahara ? 'Bendahara.' : 'divisi ini.'}`}
+                          </p>
                         )}
                       </div>
                     );
@@ -778,12 +797,17 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
               </div>
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">Laporan / Isi Notulensi *</label>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    {noteDivision === "BENDAHARA" ? "Laporan Kas & Keuangan Bendahara *" : "Laporan / Isi Notulensi *"}
+                  </label>
                   <textarea 
                     rows={5}
                     value={noteContent} 
                     onChange={e => setNoteContent(e.target.value)} 
-                    placeholder="Tuliskan laporan kegiatan divisi di sini..."
+                    placeholder={noteDivision === "BENDAHARA" 
+                      ? "Tuliskan laporan kas keuangan, tagihan, iuran, atau sirkulasi dana asrama..." 
+                      : "Tuliskan laporan kegiatan divisi di sini..."
+                    }
                     className="w-full px-3 py-2 rounded-xl border border-border focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm resize-y"
                   />
                 </div>
