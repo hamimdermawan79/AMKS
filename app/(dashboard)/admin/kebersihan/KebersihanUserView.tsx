@@ -128,10 +128,13 @@ function presensiStatus(iso: string, present: boolean): PresensiStatus {
   if (dateKey > todayKey) return "belum";
   if (dateKey < todayKey) return "tutup";
 
-  // Same WIB day: gate by the 01:00–11:00 window.
+  // Same WIB day: gate by the 01:00–17:00 window.
+  // Tahap 1: 01:00–11:00 WIB (Tepat Waktu)
+  // Tahap 2: 11:00–17:00 WIB (Terlambat, Denda Tahap 1 Rp10.000, presensi tetap aktif)
+  // Setelah 17:00 WIB: Tutup, Denda Tahap 2 Rp10.000 (total denda Rp20.000)
   const hour = wib.getHours();
   if (hour < 1) return "belum";
-  if (hour >= 11) return "tutup";
+  if (hour >= 17) return "tutup";
   return "buka";
 }
 
@@ -492,6 +495,9 @@ export default function KebersihanUserView({
                 </p>
                 {(() => {
                   const status = presensiStatus(myNextPiket.date, myNextPiket.present);
+                  const currentHour = nowWib().getHours();
+                  const isLateStage = currentHour >= 11 && currentHour < 17;
+
                   if (status === "hadir") {
                     return (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -501,14 +507,41 @@ export default function KebersihanUserView({
                   }
                   if (status === "buka") {
                     return (
-                      <button
-                        onClick={() => openPresensiModal(myNextPiket.assignmentId)}
-                        disabled={isPending}
-                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"
-                      >
-                        <ClipboardCheck className="h-4 w-4" />
-                        Presensi di sini
-                      </button>
+                      <div className="space-y-2">
+                        {isLateStage ? (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50/90 p-2.5 text-xs text-amber-900 space-y-0.5">
+                            <p className="font-semibold flex items-center gap-1.5 text-amber-900">
+                              <AlertCircle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0" />
+                              Tahap 2: Batas Jam 11:00 Terlewat (Denda Rp10.000)
+                            </p>
+                            <p className="text-amber-800 leading-relaxed">
+                              Anda tetap wajib piket membersihkan sektor ini. Presensi dibuka sampai pukul 17:00 WIB. Segera presensi sekarang agar <strong>tidak terkena denda tambahan Tahap 2 Rp10.000 lagi (total Rp20.000)</strong>!
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-emerald-200 bg-emerald-50/90 p-2 text-xs text-emerald-900 space-y-0.5">
+                            <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
+                              <Clock className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+                              Tahap 1: Tepat Waktu (Bebas Denda)
+                            </p>
+                            <p className="text-emerald-800 leading-relaxed">
+                              Batas tepat waktu pukul 11:00 WIB. Lakukan piket dan presensi sebelum jam 11:00 WIB untuk menghindari denda keterlambatan Rp10.000.
+                            </p>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => openPresensiModal(myNextPiket.assignmentId)}
+                          disabled={isPending}
+                          className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors disabled:opacity-60 ${
+                            isLateStage
+                              ? "bg-amber-600 hover:bg-amber-700"
+                              : "bg-primary hover:bg-primary/90"
+                          }`}
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                          {isLateStage ? "Presensi Sekarang (Tahap 2)" : "Presensi di sini"}
+                        </button>
+                      </div>
                     );
                   }
                   // status === "belum" | "tutup": window not open
@@ -523,8 +556,8 @@ export default function KebersihanUserView({
                       </button>
                       <p className="text-xs text-muted-foreground">
                         {status === "belum"
-                          ? "Presensi dibuka pukul 01:00–11:00 WIB pada hari piket Anda."
-                          : "Batas waktu presensi (01:00–11:00 WIB) sudah terlewat."}
+                          ? "Presensi dibuka pukul 01:00–17:00 WIB pada hari piket Anda (Batas tepat waktu: 11:00 WIB, batas akhir: 17:00 WIB)."
+                          : "Batas akhir presensi (pukul 17:00 WIB) sudah terlewat. Presensi resmi ditutup."}
                       </p>
                     </div>
                   );
@@ -869,6 +902,35 @@ export default function KebersihanUserView({
             </div>
 
             <div className="space-y-4 px-5 py-5">
+              {/* Info Tahap Presensi */}
+              {(() => {
+                const currentHour = nowWib().getHours();
+                if (currentHour >= 11) {
+                  return (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 space-y-1">
+                      <div className="flex items-center gap-1.5 font-semibold text-amber-950">
+                        <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                        Presensi Tahap 2: Melewati Batas 11:00 WIB
+                      </div>
+                      <p className="text-amber-800">
+                        Anda melakukan presensi setelah batas tepat waktu (11:00 WIB). Denda keterlambatan Tahap 1 sebesar <strong>Rp10.000</strong> berlaku.
+                      </p>
+                      <p className="text-emerald-700 font-medium">
+                        ✓ Presensi sebelum pukul 17:00 WIB ini menyelamatkan Anda dari denda tambahan Tahap 2 (Rp10.000), sehingga Anda tidak terkena total denda Rp20.000.
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-800 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                    <span>
+                      Presensi Tahap 1 (Tepat Waktu). Batas tepat waktu adalah pukul <strong>11:00 WIB</strong> (bebas denda).
+                    </span>
+                  </div>
+                );
+              })()}
+
               {/* Foto bukti */}
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
@@ -1084,7 +1146,15 @@ export default function KebersihanUserView({
                     Terima Kasih Sudah Piket! 🎉
                   </h3>
                   <p className="text-xs text-slate-600 leading-relaxed px-1">
-                    Piket Anda telah berhasil dicatat dan Anda <span className="font-semibold text-emerald-700">terbebas dari tunggakan denda</span>.
+                    {nowWib().getHours() >= 11 ? (
+                      <>
+                        Piket Anda berhasil dicatat di Tahap 2. Anda <span className="font-semibold text-emerald-700">terbebas dari denda tambahan Tahap 2 (Rp10.000)</span>. Denda keterlambatan Tahap 1 (Rp10.000) telah dicatat.
+                      </>
+                    ) : (
+                      <>
+                        Piket Anda telah berhasil dicatat tepat waktu dan Anda <span className="font-semibold text-emerald-700">terbebas dari tunggakan denda</span>.
+                      </>
+                    )}
                   </p>
                   <p className="text-xs font-semibold text-primary pt-1">
                     Have a good day, {userName || "Warga AMKS"}! ✨

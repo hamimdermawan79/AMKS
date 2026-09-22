@@ -183,7 +183,7 @@ export async function closePiketPeriod(periodId: string) {
   }
 
   // Step 1: Finalize any assignments that still have no attendance record
-  // (e.g. if the period is closed before today's cron ran or cron skipped an assignment)
+  // (e.g. if the period is closed before cron ran or an assignment was skipped)
   let fallbackFinesCount = 0;
   for (const assignment of period.assignments) {
     if (!assignment.attendance) {
@@ -201,15 +201,18 @@ export async function closePiketPeriod(periodId: string) {
         continue;
       }
 
-      // Check if denda notification / fine already issued (idempotency)
-      const dendaRefId = `DENDA_PIKET:${assignment.id}`;
-      const existingDendaNotif = await db.notification.findFirst({
-        where: { referenceId: dendaRefId },
+      const fineAmount = period.finePerDay || 10000;
+      const dateStr = new Date(assignment.date).toLocaleDateString('id-ID');
+
+      // Check & issue Stage 1 Fine if not yet issued
+      const stage1RefId = `DENDA_PIKET_STAGE1:${assignment.id}`;
+      const legacyRefId = `DENDA_PIKET:${assignment.id}`;
+      const existingStage1 = await db.notification.findFirst({
+        where: { referenceId: { in: [stage1RefId, legacyRefId] } },
       });
 
-      if (!existingDendaNotif) {
-        const fineAmount = period.finePerDay || 10000;
-        const fine = await db.fine.create({
+      if (!existingStage1) {
+        const fine1 = await db.fine.create({
           data: {
             userId: assignment.userId,
             periodId: period.id,
@@ -218,29 +221,73 @@ export async function closePiketPeriod(periodId: string) {
           },
         });
 
-        const bill = await db.bill.create({
+        const bill1 = await db.bill.create({
           data: {
             userId: assignment.userId,
             type: 'DENDA_PIKET',
-            title: `Denda Piket (${new Date(assignment.date).toLocaleDateString('id-ID')})`,
+            title: `Denda Keterlambatan Piket - Tahap 1 (${dateStr})`,
             amount: fineAmount,
             status: 'BELUM_LUNAS',
             division: 'KEBERSIHAN',
-            note: `Terlambat / tidak melakukan presensi piket pada tanggal ${new Date(assignment.date).toLocaleDateString('id-ID')} sebelum penutupan periode.`,
+            note: `Terlambat melakukan presensi piket pada tanggal ${dateStr} sebelum penutupan periode.`,
           },
         });
 
         await db.fine.update({
-          where: { id: fine.id },
-          data: { billId: bill.id },
+          where: { id: fine1.id },
+          data: { billId: bill1.id },
         });
 
         await createNotification({
           userId: assignment.userId,
-          title: 'Denda Piket Otomatis Terbit',
-          message: `Pemberitahuan: Anda dikenakan denda piket sebesar Rp${fineAmount.toLocaleString('id-ID')} karena tidak melakukan presensi dan tugas piket pada tanggal ${new Date(assignment.date).toLocaleDateString('id-ID')}. Tagihan denda telah terbit di sistem, harap segera melakukan pelunasan ke Bendahara.`,
+          title: 'Denda Keterlambatan Piket (Tahap 1)',
+          message: `Pemberitahuan: Anda dikenakan denda keterlambatan piket Tahap 1 sebesar Rp${fineAmount.toLocaleString('id-ID')} untuk tanggal ${dateStr}.`,
           type: 'TAGIHAN_REMINDER',
-          referenceId: dendaRefId,
+          referenceId: stage1RefId,
+        });
+
+        fallbackFinesCount++;
+      }
+
+      // Check & issue Stage 2 Fine if not yet issued
+      const stage2RefId = `DENDA_PIKET_STAGE2:${assignment.id}`;
+      const existingStage2 = await db.notification.findFirst({
+        where: { referenceId: stage2RefId },
+      });
+
+      if (!existingStage2) {
+        const fine2 = await db.fine.create({
+          data: {
+            userId: assignment.userId,
+            periodId: period.id,
+            daysMissed: 1,
+            amount: fineAmount,
+          },
+        });
+
+        const bill2 = await db.bill.create({
+          data: {
+            userId: assignment.userId,
+            type: 'DENDA_PIKET',
+            title: `Denda Tidak Piket - Tahap 2 (${dateStr})`,
+            amount: fineAmount,
+            status: 'BELUM_LUNAS',
+            division: 'KEBERSIHAN',
+            note: `Tidak melakukan presensi piket pada tanggal ${dateStr} hingga penutupan periode. Total denda: Rp${(fineAmount * 2).toLocaleString('id-ID')}.`,
+          },
+        });
+
+        await db.fine.update({
+          where: { id: fine2.id },
+          data: { billId: bill2.id },
+        });
+
+        await createNotification({
+          userId: assignment.userId,
+          title: 'Denda Tidak Piket (Tahap 2) - Periode Ditutup',
+          message: `Peringatan: Periode piket telah ditutup. Anda tercatat TIDAK HADIR pada tanggal ${dateStr} dan dikenakan denda tambahan Tahap 2 sebesar Rp${fineAmount.toLocaleString('id-ID')} (Total denda: Rp${(fineAmount * 2).toLocaleString('id-ID')}).`,
+          type: 'TAGIHAN_REMINDER',
+          referenceId: stage2RefId,
         });
 
         fallbackFinesCount++;

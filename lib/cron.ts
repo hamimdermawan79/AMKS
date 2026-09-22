@@ -20,8 +20,8 @@ export async function checkTodayPiketReminders() {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
 
-    // Jadwal pengingat: Jam 00:00 (12 malam), 02:00, 05:00, 07:00, 09:00 WIB
-    const validHours = [0, 2, 5, 7, 9];
+    // Jadwal pengingat: Jam 00:00 (12 malam), 02:00, 05:00, 07:00, 09:00, 10:00, 11:00, 13:00, 15:00, 16:00 WIB
+    const validHours = [0, 2, 5, 7, 9, 10, 11, 13, 15, 16];
     if (!validHours.includes(currentHour)) {
       return;
     }
@@ -72,22 +72,30 @@ export async function checkTodayPiketReminders() {
 
       if (currentHour === 0) {
         // Jam 12 Malam (00:00 WIB)
-        message = `Halo ${assign.user.fullName}, HARI INI Anda memiliki jadwal piket di ${sectorName}. Sistem presensi akan dibuka mulai pukul 01:00 WIB dini hari dan batas akhir presensi adalah pukul 11:00 WIB. Mohon bersiap untuk melaksanakan piket Anda.`;
+        message = `Halo ${assign.user.fullName}, HARI INI Anda memiliki jadwal piket di ${sectorName}. Sistem presensi dibuka mulai pukul 01:00 WIB. Batas tepat waktu adalah pukul 11:00 WIB (denda Rp10.000 jika terlambat) dan batas akhir presensi pukul 17:00 WIB (total denda Rp20.000 jika tidak piket). Mohon bersiap melaksanakan tugas piket Anda.`;
       } else if (currentHour === 2) {
         // Jam 2 Dini Hari (02:00 WIB)
-        message = `Halo ${assign.user.fullName}, presensi piket untuk ${sectorName} telah dibuka. Anda dapat melaksanakan piket dan melakukan presensi kehadiran di dashboard sebelum batas akhir pukul 11:00 WIB (tersisa 9 jam lagi).`;
+        message = `Halo ${assign.user.fullName}, presensi piket untuk ${sectorName} telah dibuka. Anda dapat melaksanakan tugas piket dan melakukan presensi di dashboard sebelum batas tepat waktu pukul 11:00 WIB.`;
       } else if (currentHour === 5) {
         // Jam 5 Subuh (05:00 WIB)
-        message = `Selamat pagi ${assign.user.fullName}, mengingatkan kembali jadwal piket Anda HARI INI di ${sectorName}. Segera laksanakan tugas piket dan isi presensi sebelum pukul 11:00 WIB (tersisa 6 jam lagi).`;
+        message = `Selamat pagi ${assign.user.fullName}, mengingatkan kembali jadwal piket Anda HARI INI di ${sectorName}. Segera laksanakan tugas piket dan isi presensi sebelum batas tepat waktu pukul 11:00 WIB (tersisa 6 jam lagi).`;
       } else if (currentHour === 7) {
         // Jam 7 Pagi (07:00 WIB)
         message = `Halo ${assign.user.fullName}, pengingat pagi untuk piket Anda di ${sectorName}. Harap segera menyelesaikan piket dan presensi sebelum pukul 11:00 WIB (tersisa 4 jam lagi).`;
-      } else if (currentHour === 9) {
-        // Jam 9 Pagi (09:00 WIB)
-        message = `⚠️ PENTING: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}! Waktu tersisa tinggal 2 jam lagi sebelum batas akhir pukul 11:00 WIB. Hindari denda dengan segera melakukan piket dan presensi.`;
+      } else if (currentHour === 9 || currentHour === 10) {
+        // Jam 9 & 10 Pagi (09:00, 10:00 WIB)
+        message = `⚠️ PENTING: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}! Waktu tersisa tinggal ${Math.max(1, 11 - currentHour)} jam sebelum batas tepat waktu pukul 11:00 WIB. Hindari denda keterlambatan Tahap 1 (Rp10.000) dengan segera melakukan piket dan presensi.`;
+      } else if (currentHour === 11) {
+        // Jam 11 Siang (11:00 WIB)
+        message = `⚠️ PERINGATAN TAHAP 1: Halo ${assign.user.fullName}, batas waktu presensi tepat waktu pukul 11:00 WIB telah lewat. Denda keterlambatan Tahap 1 sebesar Rp10.000 telah terbit. Namun presensi TETAP DIBUKA sampai pukul 17:00 WIB (5 sore). Anda masih diwajibkan membersihkan area ${sectorName}. Segera lakukan presensi sebelum jam 17:00 WIB agar TIDAK terkena denda tambahan Tahap 2 sebesar Rp10.000 lagi!`;
+      } else if (currentHour === 13 || currentHour === 15) {
+        // Jam 13 & 15 Sore (13:00, 15:00 WIB)
+        message = `📢 PENGINGAT SORE: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}. Presensi Tahap 2 akan ditutup pada pukul 17:00 WIB (tersisa ${17 - currentHour} jam lagi). Segera selesaikan piket dan presensi untuk menghindari total denda Rp20.000!`;
+      } else if (currentHour === 16) {
+        // Jam 16 Sore (16:00 WIB - 1 Jam Terakhir)
+        message = `🚨 MENDESAK (1 JAM TERAKHIR): Halo ${assign.user.fullName}, waktu presensi piket di ${sectorName} tersisa kurang dari 1 jam (tutup tepat pukul 17:00 WIB)! Segera unggah bukti presensi sekarang. Jika lewat jam 17:00 WIB, presensi ditutup permanen dan Anda dikenakan denda tambahan Tahap 2 sebesar Rp10.000 (total denda Rp20.000)!`;
       } else {
-        const timeRemaining = Math.max(1, 11 - currentHour);
-        message = `Halo ${assign.user.fullName}, mengingatkan bahwa HARI INI Anda memiliki jadwal piket di ${sectorName}. Harap segera melakukan presensi piket di dashboard sebelum pukul 11:00 WIB (tersisa kurang lebih ${timeRemaining} jam lagi). Terima kasih!`;
+        message = `Halo ${assign.user.fullName}, mengingatkan bahwa HARI INI Anda memiliki jadwal piket di ${sectorName}. Harap segera melakukan presensi piket di dashboard sebelum pukul 17:00 WIB. Terima kasih!`;
       }
 
       // Create notification
@@ -187,20 +195,19 @@ export async function checkUpcomingBills() {
 
 
 /**
- * Automatically check today's and yesterday's piket assignments that have passed 11:00 WIB.
- * If they don't have an attendance record, mark them as TIDAK_HADIR, issue a 10,000 fine,
- * and create a bill.
+ * Automatically handle the 2-stage piket attendance and fine schedule:
+ * 1. Tahap 1 (Pukul >= 11:00 WIB):
+ *    - If resident hasn't marked attendance by 11:00 WIB, issue Stage 1 fine of Rp10,000.
+ *    - Presensi REMAINS OPEN until 17:00 WIB (5 sore). DO NOT create a PiketAttendance record yet!
+ * 2. Tahap 2 (Pukul >= 17:00 WIB):
+ *    - Presensi officially CLOSES.
+ *    - If resident STILL hasn't submitted attendance, mark attendance as TIDAK_HADIR,
+ *      issue Stage 2 fine of Rp10,000 (total fine = Rp20,000).
  */
 export async function checkMissedPikets() {
   try {
     const nowWib = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
     const currentHour = nowWib.getHours();
-    
-    // We only process if it's past 11:00 WIB
-    if (currentHour < 11) {
-      console.log('⏰ Skipping checkMissedPikets: current time is before 11:00 WIB.');
-      return;
-    }
 
     // Get active period
     const activePeriod = await db.piketPeriod.findFirst({
@@ -208,17 +215,104 @@ export async function checkMissedPikets() {
     });
     if (!activePeriod) return;
 
-    // Get today's start and end date (in WIB)
+    const startOfToday = new Date(nowWib);
+    startOfToday.setHours(0, 0, 0, 0);
     const endOfToday = new Date(nowWib);
     endOfToday.setHours(23, 59, 59, 999);
 
-    // Check assignments up to today that have passed 11:00 WIB
-    const unpaidAssignments = await db.piketAssignment.findMany({
+    const fineAmount = activePeriod.finePerDay || 10000;
+
+    // =========================================================================
+    // TAHAP 1 (Pukul >= 11:00 WIB):
+    // Jika lewat jam 11 siang belum presensi, terbitkan denda Tahap 1 (Rp10.000).
+    // Presensi TETAP BUKA sampai jam 17:00, jadi JANGAN buat PiketAttendance record!
+    // =========================================================================
+    if (currentHour >= 11) {
+      const stage1Candidates = await db.piketAssignment.findMany({
+        where: {
+          periodId: activePeriod.id,
+          date: {
+            gte: startOfToday,
+            lte: endOfToday,
+          },
+          attendance: null,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      for (const assign of stage1Candidates) {
+        if (await isUserSuperAdminById(assign.userId)) {
+          continue;
+        }
+
+        const stage1RefId = `DENDA_PIKET_STAGE1:${assign.id}`;
+        const legacyRefId = `DENDA_PIKET:${assign.id}`;
+        const existingStage1 = await db.notification.findFirst({
+          where: { referenceId: { in: [stage1RefId, legacyRefId] } },
+        });
+
+        if (existingStage1) {
+          continue;
+        }
+
+        const dateStr = new Date(assign.date).toLocaleDateString('id-ID');
+        const sectorName = getSectorName(assign.sector);
+
+        // Create Stage 1 Fine record
+        const fine = await db.fine.create({
+          data: {
+            userId: assign.userId,
+            periodId: activePeriod.id,
+            daysMissed: 1,
+            amount: fineAmount,
+          },
+        });
+
+        // Create Stage 1 Bill
+        const bill = await db.bill.create({
+          data: {
+            userId: assign.userId,
+            type: 'DENDA_PIKET',
+            title: `Denda Keterlambatan Piket - Tahap 1 (${dateStr})`,
+            amount: fineAmount,
+            status: 'BELUM_LUNAS',
+            division: 'KEBERSIHAN',
+            note: `Belum melakukan presensi piket pada tanggal ${dateStr} hingga batas tepat waktu pukul 11:00 WIB. Presensi tetap dibuka sampai pukul 17:00 WIB.`,
+          },
+        });
+
+        // Link fine to bill
+        await db.fine.update({
+          where: { id: fine.id },
+          data: { billId: bill.id },
+        });
+
+        // Send Stage 1 Notification & Reminder
+        await createNotification({
+          userId: assign.userId,
+          title: 'Denda Keterlambatan Piket (Tahap 1)',
+          message: `Pemberitahuan: Anda belum melakukan presensi piket hingga pukul 11:00 WIB hari ini (${dateStr}). Anda dikenakan denda keterlambatan Tahap 1 sebesar Rp${fineAmount.toLocaleString('id-ID')}.\n\nAnda MASIH DIHARUSKAN piket membersihkan area ${sectorName}. Presensi tetap dibuka sampai pukul 17:00 WIB (5 sore). Harap segera bersihkan dan kirim bukti presensi sebelum pukul 17:00 WIB agar tidak terkena denda tambahan Tahap 2 sebesar Rp${fineAmount.toLocaleString('id-ID')}.`,
+          type: 'TAGIHAN_REMINDER',
+          referenceId: stage1RefId,
+        });
+
+        console.log(`⚠️ Tahap 1 denda issued for ${assign.user.fullName} (${sectorName}) on date ${dateStr}`);
+      }
+    }
+
+    // =========================================================================
+    // TAHAP 2 (Pukul >= 17:00 WIB untuk hari ini, ATAU hari-hari sebelumnya yang terlewat):
+    // Presensi resmi TUTUP. Warga yang tidak presensi dicatat TIDAK_HADIR,
+    // dan diterbitkan denda Tahap 2 (Rp10.000), total denda menjadi Rp20.000.
+    // =========================================================================
+    const dateCondition = currentHour >= 17 ? { lte: endOfToday } : { lt: startOfToday };
+
+    const missedAssignments = await db.piketAssignment.findMany({
       where: {
         periodId: activePeriod.id,
-        date: {
-          lte: endOfToday, // Include today's assignments since currentHour >= 11
-        },
+        date: dateCondition,
         attendance: null,
       },
       include: {
@@ -226,81 +320,113 @@ export async function checkMissedPikets() {
       },
     });
 
-    console.log(`⏰ Found ${unpaidAssignments.length} assignments to process for missed picket status.`);
-
-    for (const assign of unpaidAssignments) {
-      // Super Admin tidak dikenai denda piket otomatis
+    for (const assign of missedAssignments) {
       if (await isUserSuperAdminById(assign.userId)) {
         continue;
       }
 
-      // Idempotency: skip if attendance already exists for this assignment
+      const dateStr = new Date(assign.date).toLocaleDateString('id-ID');
+
+      // 1. Pastikan kehadiran dicatat sebagai TIDAK_HADIR
       const existingAttendance = await db.piketAttendance.findUnique({
         where: { assignmentId: assign.id },
       });
-      if (existingAttendance) {
-        continue;
+      if (!existingAttendance) {
+        await db.piketAttendance.create({
+          data: {
+            assignmentId: assign.id,
+            status: 'TIDAK_HADIR',
+            markedById: null, // marked by system
+          },
+        });
       }
 
-      // Idempotency: skip if denda notification already exists for this assignment
-      const dendaRefId = `DENDA_PIKET:${assign.id}`;
-      const existingDendaNotif = await db.notification.findFirst({
-        where: { referenceId: dendaRefId },
+      // 2. Pastikan denda Tahap 1 sudah terbit (jika server down antara jam 11-17)
+      const stage1RefId = `DENDA_PIKET_STAGE1:${assign.id}`;
+      const legacyRefId = `DENDA_PIKET:${assign.id}`;
+      const existingStage1 = await db.notification.findFirst({
+        where: { referenceId: { in: [stage1RefId, legacyRefId] } },
       });
-      if (existingDendaNotif) {
-        continue;
+
+      if (!existingStage1) {
+        const fine1 = await db.fine.create({
+          data: {
+            userId: assign.userId,
+            periodId: activePeriod.id,
+            daysMissed: 1,
+            amount: fineAmount,
+          },
+        });
+
+        const bill1 = await db.bill.create({
+          data: {
+            userId: assign.userId,
+            type: 'DENDA_PIKET',
+            title: `Denda Keterlambatan Piket - Tahap 1 (${dateStr})`,
+            amount: fineAmount,
+            status: 'BELUM_LUNAS',
+            division: 'KEBERSIHAN',
+            note: `Terlambat melakukan presensi piket pada tanggal ${dateStr} melewati batas waktu pukul 11:00 WIB.`,
+          },
+        });
+
+        await db.fine.update({
+          where: { id: fine1.id },
+          data: { billId: bill1.id },
+        });
+
+        await createNotification({
+          userId: assign.userId,
+          title: 'Denda Keterlambatan Piket (Tahap 1)',
+          message: `Pemberitahuan: Anda dikenakan denda keterlambatan piket Tahap 1 sebesar Rp${fineAmount.toLocaleString('id-ID')} untuk tanggal ${dateStr}.`,
+          type: 'TAGIHAN_REMINDER',
+          referenceId: stage1RefId,
+        });
       }
 
-      // Create attendance as TIDAK_HADIR
-      await db.piketAttendance.create({
-        data: {
-          assignmentId: assign.id,
-          status: 'TIDAK_HADIR',
-          markedById: null, // marked by system
-        },
+      // 3. Terbitkan denda Tahap 2 (Rp10.000)
+      const stage2RefId = `DENDA_PIKET_STAGE2:${assign.id}`;
+      const existingStage2 = await db.notification.findFirst({
+        where: { referenceId: stage2RefId },
       });
 
-      const fineAmount = activePeriod.finePerDay || 10000;
+      if (!existingStage2) {
+        const fine2 = await db.fine.create({
+          data: {
+            userId: assign.userId,
+            periodId: activePeriod.id,
+            daysMissed: 1,
+            amount: fineAmount,
+          },
+        });
 
-      // Create fine record
-      const fine = await db.fine.create({
-        data: {
+        const bill2 = await db.bill.create({
+          data: {
+            userId: assign.userId,
+            type: 'DENDA_PIKET',
+            title: `Denda Tidak Piket - Tahap 2 (${dateStr})`,
+            amount: fineAmount,
+            status: 'BELUM_LUNAS',
+            division: 'KEBERSIHAN',
+            note: `Tidak melakukan presensi piket hingga batas akhir pukul 17:00 WIB ditutup pada tanggal ${dateStr}. Total denda piket: Rp${(fineAmount * 2).toLocaleString('id-ID')}.`,
+          },
+        });
+
+        await db.fine.update({
+          where: { id: fine2.id },
+          data: { billId: bill2.id },
+        });
+
+        await createNotification({
           userId: assign.userId,
-          periodId: activePeriod.id,
-          daysMissed: 1,
-          amount: fineAmount,
-        },
-      });
+          title: 'Denda Tidak Piket (Tahap 2) - Presensi Ditutup',
+          message: `Peringatan: Presensi piket tanggal ${dateStr} telah resmi ditutup pada pukul 17:00 WIB. Anda tercatat TIDAK HADIR dan dikenakan denda tambahan Tahap 2 sebesar Rp${fineAmount.toLocaleString('id-ID')} (Total denda piket hari ini: Rp${(fineAmount * 2).toLocaleString('id-ID')}). Tagihan denda telah terbit di sistem, harap segera melakukan pelunasan ke Bendahara.`,
+          type: 'TAGIHAN_REMINDER',
+          referenceId: stage2RefId,
+        });
 
-      // Create bill
-      const bill = await db.bill.create({
-        data: {
-          userId: assign.userId,
-          type: 'DENDA_PIKET',
-          title: `Denda Piket (${new Date(assign.date).toLocaleDateString('id-ID')})`,
-          amount: fineAmount,
-          status: 'BELUM_LUNAS',
-          division: 'KEBERSIHAN',
-          note: `Terlambat / tidak melakukan presensi piket pada tanggal ${new Date(assign.date).toLocaleDateString('id-ID')} sebelum pukul 11:00 WIB.`,
-        },
-      });
-
-      // Link fine to bill
-      await db.fine.update({
-        where: { id: fine.id },
-        data: { billId: bill.id },
-      });
-
-      // Create Notification with unique referenceId to prevent duplicates
-      await createNotification({
-        userId: assign.userId,
-        title: 'Denda Piket Otomatis Terbit',
-        message: `Pemberitahuan: Anda dikenakan denda piket sebesar Rp${fineAmount.toLocaleString('id-ID')} karena tidak melakukan presensi dan tugas piket pada tanggal ${new Date(assign.date).toLocaleDateString('id-ID')} sebelum batas akhir 11:00 WIB. Tagihan denda telah terbit di sistem, harap segera melakukan pelunasan ke Bendahara.`,
-        type: 'TAGIHAN_REMINDER',
-        referenceId: dendaRefId,
-      });
-      
-      console.log(`✅ Automated denda issued for ${assign.user.fullName} on date ${assign.date.toLocaleDateString()}`);
+        console.log(`⛔ Tahap 2 Denda (Final) issued for ${assign.user.fullName} on date ${dateStr}`);
+      }
     }
   } catch (error) {
     console.error('Failed to run checkMissedPikets:', error);
@@ -393,34 +519,33 @@ export async function checkAnnouncementBroadcast() {
 }
 
 /**
- * Re-export the WhatsApp formatter from the shared client-safe module.
+ * Re-export the WhatsApp formatters from the shared client-safe module.
  */
-import { formatRohaniH1WhatsAppMessage } from '@/lib/rohani/format-wa';
-export { formatRohaniH1WhatsAppMessage };
+import {
+  formatRohaniReminderWhatsAppMessage,
+  formatRohaniH1WhatsAppMessage,
+} from '@/lib/rohani/format-wa';
+export { formatRohaniReminderWhatsAppMessage, formatRohaniH1WhatsAppMessage };
 
 /**
- * Check for Rohani schedules occurring TOMORROW (H-1) in WIB time.
- * If found, send the H-1 announcement message to ALL active warga via WhatsApp.
+ * Check for Rohani schedules occurring within the next 4 days in WIB time (H-3, H-2, H-1, Hari H).
+ * Sends reminder message with days remaining to ALL active warga via WhatsApp & notifications.
  */
-export async function checkRohaniHMinus1Reminders() {
+export async function checkRohaniReminders() {
   try {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const startOfToday = new Date(nowWib);
+    startOfToday.setHours(0, 0, 0, 0);
 
-    // Tomorrow in WIB
-    const tomorrowStart = new Date(nowWib);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    tomorrowStart.setHours(0, 0, 0, 0);
+    const endOfWindow = new Date(startOfToday);
+    endOfWindow.setDate(endOfWindow.getDate() + 4); // Cek hingga 4 hari ke depan
 
-    const tomorrowEnd = new Date(nowWib);
-    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-    tomorrowEnd.setHours(23, 59, 59, 999);
-
-    // Find any schedule occurring tomorrow
+    // Find any schedule occurring within H-3, H-2, H-1, or Hari H
     const upcomingSchedules = await db.rohaniSchedule.findMany({
       where: {
         date: {
-          gte: tomorrowStart,
-          lte: tomorrowEnd,
+          gte: startOfToday,
+          lte: endOfWindow,
         },
       },
       include: {
@@ -450,38 +575,54 @@ export async function checkRohaniHMinus1Reminders() {
     if (targetUsers.length === 0) return;
 
     for (const schedule of upcomingSchedules) {
-      const refId = `ROHANI_H1_BROADCAST:${schedule.id}`;
+      const scheduleWib = new Date(new Date(schedule.date).toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const scheduleDateOnly = new Date(scheduleWib);
+      scheduleDateOnly.setHours(0, 0, 0, 0);
 
-      // Idempotency: skip if already sent
+      const diffMs = scheduleDateOnly.getTime() - startOfToday.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      // Remind only on H-3, H-2, H-1, and Hari H (0)
+      if (diffDays < 0 || diffDays > 3) continue;
+
+      const refId = `ROHANI_REMINDER:${schedule.id}:H${diffDays}`;
+      const legacyH1RefId = `ROHANI_H1_BROADCAST:${schedule.id}`;
+
+      // Idempotency: skip if already sent for this specific H-day
       const existing = await db.notification.findFirst({
-        where: { referenceId: refId },
+        where: {
+          referenceId: diffDays === 1 ? { in: [refId, legacyH1RefId] } : refId,
+        },
       });
       if (existing) {
         continue;
       }
 
-      const waMessage = formatRohaniH1WhatsAppMessage(schedule);
+      const { title, message } = formatRohaniReminderWhatsAppMessage(schedule, diffDays);
 
       // Batch insert notifications
       await db.notification.createMany({
         data: targetUsers.map((u) => ({
           userId: u.id,
-          title: `Pengumuman Rohani (H-1): Sholat & Tadarus QS. ${schedule.currentSurah}`,
-          message: waMessage,
+          title,
+          message,
           type: 'PENGUMUMAN',
           referenceId: refId,
         })),
       });
 
-      console.log(`📢 Rohani H-1 WhatsApp broadcast queued for ${targetUsers.length} users (Schedule: ${schedule.id}).`);
+      console.log(`📢 Rohani H-${diffDays} reminder broadcast queued for ${targetUsers.length} users (Schedule: ${schedule.id}).`);
     }
 
     // Trigger queue processing
     processNotificationQueue().catch(console.error);
   } catch (error) {
-    console.error('Failed to run checkRohaniHMinus1Reminders:', error);
+    console.error('Failed to run checkRohaniReminders:', error);
   }
 }
+
+// Backwards-compatible alias for existing callers
+export const checkRohaniHMinus1Reminders = checkRohaniReminders;
 
 import {
   formatMeetingReminderMessage,
@@ -784,7 +925,7 @@ export function startCronJobs() {
   checkUpcomingBills();
   checkMissedPikets();
   checkAnnouncementBroadcast();
-  checkRohaniHMinus1Reminders();
+  checkRohaniReminders();
   checkMeetingReminders();
   checkActivityReminders();
 
@@ -794,7 +935,7 @@ export function startCronJobs() {
     checkUpcomingBills();
     checkMissedPikets();
     checkAnnouncementBroadcast();
-    checkRohaniHMinus1Reminders();
+    checkRohaniReminders();
     checkMeetingReminders();
     checkActivityReminders();
   }, 1000 * 60 * 15); // 15 minutes

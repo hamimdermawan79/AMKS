@@ -19,14 +19,14 @@ function wibTodayKey(): string {
 
 type DayStatus = 'piket' | 'tidakPiket' | 'pending';
 
-/** Finalized status for a piket day (mirrors the user-view 01:00–11:00 WIB rule). */
+/** Finalized status for a piket day (mirrors the user-view 01:00–17:00 WIB rule). */
 function dayStatus(dateKey: string, present: boolean): DayStatus {
   if (present) return 'piket';
   const today = wibTodayKey();
   if (dateKey < today) return 'tidakPiket';
   if (dateKey > today) return 'pending';
-  // same WIB day: window closes at 11:00
-  return wibNow().getHours() >= 11 ? 'tidakPiket' : 'pending';
+  // same WIB day: presensi window closes at 17:00 WIB
+  return wibNow().getHours() >= 17 ? 'tidakPiket' : 'pending';
 }
 
 const SECTOR_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];

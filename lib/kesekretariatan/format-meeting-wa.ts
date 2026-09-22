@@ -114,39 +114,55 @@ export function formatActivityReminderMessage(
 ): { title: string; message: string } {
   const { dateStr, timeStr } = formatWibDateTime(activity.startAt);
 
+  const divisionLabels: Record<string, string> = {
+    KEBERSIHAN: 'Kebersihan',
+    KESENIAN: 'Kesenian',
+    KEOLAHRAGAAN: 'Keolahragaan',
+    ROHANI: 'Kerohanian',
+    KEAMANAN: 'Keamanan',
+    SEKRETARIS: 'Kesekretariatan',
+    BENDAHARA: 'Kebendaharaan',
+  };
+  const divLabel = activity.division ? (divisionLabels[activity.division] || activity.division) : null;
+
   let tag = '';
   let greetingLead = '';
+  let daysNotice = '';
 
   if (diffDays === 3) {
     tag = 'PENGINGAT H-3';
-    greetingLead = 'Mengingatkan kembali bahwa dalam 3 hari ke depan';
+    daysNotice = '(Tinggal 3 Hari Lagi)';
+    greetingLead = `Mengingatkan kembali bahwa agenda kegiatan ini tinggal *3 hari lagi*! Pada hari ${dateStr}`;
   } else if (diffDays === 2) {
     tag = 'PENGINGAT H-2';
-    greetingLead = 'Mengingatkan kembali bahwa dalam 2 hari ke depan';
+    daysNotice = '(Tinggal 2 Hari Lagi)';
+    greetingLead = `Mengingatkan kembali bahwa agenda kegiatan ini tinggal *2 hari lagi*! Pada hari ${dateStr}`;
   } else if (diffDays === 1) {
     tag = 'PENGINGAT H-1 (BESOK)';
-    greetingLead = 'PENTING! Mengingatkan bahwa BESOK';
+    daysNotice = '(Besok)';
+    greetingLead = `PENTING! Mengingatkan bahwa agenda kegiatan ini tinggal *1 hari lagi (BESOK)*! Tepatnya pada hari ${dateStr}`;
   } else {
     tag = 'PENGINGAT HARI H (HARI INI)';
-    greetingLead = '⚠️ PENTING: Hari ini';
+    daysNotice = '(Hari Ini)';
+    greetingLead = `⚠️ PENTING: Agenda kegiatan ini dilaksanakan *HARI INI* (${dateStr})`;
   }
 
-  const notifTitle = `[${tag}] Kegiatan: ${activity.title}`;
+  const notifTitle = `[${tag}] ${daysNotice} Kegiatan: ${activity.title}`;
 
   const body = `*🎯 ${tag}: KEGIATAN ASRAMA AMKS 🎯*
 
 Halo Warga Asrama AMKS,
 
-${greetingLead} akan dilaksanakan kegiatan:
+${greetingLead} akan dilaksanakan agenda kegiatan:
 
 📌 *${activity.title}*
-${activity.division ? `• Divisi : ${activity.division}\n` : ''}• Waktu  : *${dateStr}* (Pukul ${timeStr})
+${divLabel ? `• Penyelenggara : Divisi ${divLabel}\n` : ''}• Waktu Pelaksanaan : *${dateStr} ${daysNotice}* (Pukul ${timeStr})
 • Lokasi : *${activity.location || 'Asrama AMKS'}*
-${activity.description ? `\n📝 Keterangan:\n${activity.description}\n` : ''}
-Mari bersama-sama hadir, meramaikan, dan menyukseskan agenda kegiatan kita bersama!
+${activity.description ? `\n📝 Keterangan / Deskripsi:\n${activity.description}\n` : ''}
+Mari bersama-sama hadir tepat waktu, meramaikan, dan menyukseskan agenda kegiatan kita bersama!
 
 Salam hangat,
-_Keluarga Besar Asrama AMKS_`;
+_${divLabel ? `Divisi ${divLabel} & ` : ''}Pengurus Asrama AMKS_`;
 
   return { title: notifTitle, message: body };
 }

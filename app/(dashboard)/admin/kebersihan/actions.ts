@@ -2,8 +2,9 @@
 
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { canFromSession } from '@/lib/rbac/can';
+import { canFromSession, isUserSuperAdminById } from '@/lib/rbac/can';
 import { generatePiketSchedule, closePiketPeriod } from '@/lib/piket/generate';
+import { createNotification } from '@/lib/notifications';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { writeFile, mkdir } from 'fs/promises';
@@ -234,7 +235,7 @@ export async function selfPresensi(formData: FormData) {
 
   const assignment = await db.piketAssignment.findUnique({
     where: { id: assignmentId },
-    include: { attendance: true },
+    include: { attendance: true, period: true },
   });
 
   if (!assignment) {
@@ -247,7 +248,10 @@ export async function selfPresensi(formData: FormData) {
     throw new Error('Anda sudah melakukan presensi untuk jadwal ini');
   }
 
-  // Validate time window: only on the piket date, 01:00–11:00 WIB (Jakarta)
+  // Validate time window: on the piket date, 01:00–17:00 WIB (Jakarta)
+  // Tahap 1: 01:00–11:00 WIB (Tepat waktu)
+  // Tahap 2: 11:00–17:00 WIB (Terlambat, denda Tahap 1 Rp10.000 berlaku)
+  // Setelah 17:00 WIB: Presensi ditutup, denda Tahap 2 Rp10.000 tambahan (total 20k)
   const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
   const piketDate = new Date(assignment.date.toISOString().slice(0, 10) + 'T00:00:00+07:00');
   const todayWib = new Date(nowWib.toDateString() + ' 00:00:00+07:00');
@@ -257,8 +261,8 @@ export async function selfPresensi(formData: FormData) {
   }
 
   const hour = nowWib.getHours();
-  if (hour < 1 || hour >= 11) {
-    throw new Error('Presensi hanya dibuka pukul 01:00–11:00 WIB');
+  if (hour < 1 || hour >= 17) {
+    throw new Error('Presensi hanya dibuka pukul 01:00–17:00 WIB (Batas tepat waktu: 11:00 WIB, batas akhir: 17:00 WIB)');
   }
 
   // Simpan foto bukti (wajib) sebelum menulis attendance
@@ -274,7 +278,60 @@ export async function selfPresensi(formData: FormData) {
     },
   });
 
+  // Jika presensi dilakukan melewati pukul 11:00 WIB (Tahap 2: 11:00–17:00 WIB),
+  // pastikan denda keterlambatan Tahap 1 (Rp10.000) terbit bila belum ada
+  if (hour >= 11) {
+    const isSuperAdmin = await isUserSuperAdminById(session.user.id);
+    if (!isSuperAdmin) {
+      const stage1RefId = `DENDA_PIKET_STAGE1:${assignment.id}`;
+      const legacyRefId = `DENDA_PIKET:${assignment.id}`;
+      const existingNotif = await db.notification.findFirst({
+        where: { referenceId: { in: [stage1RefId, legacyRefId] } },
+      });
+
+      if (!existingNotif) {
+        const fineAmount = assignment.period?.finePerDay || 10000;
+        const dateStr = assignment.date.toLocaleDateString('id-ID');
+
+        const fine = await db.fine.create({
+          data: {
+            userId: session.user.id,
+            periodId: assignment.periodId,
+            daysMissed: 1,
+            amount: fineAmount,
+          },
+        });
+
+        const bill = await db.bill.create({
+          data: {
+            userId: session.user.id,
+            type: 'DENDA_PIKET',
+            title: `Denda Keterlambatan Piket - Tahap 1 (${dateStr})`,
+            amount: fineAmount,
+            status: 'BELUM_LUNAS',
+            division: 'KEBERSIHAN',
+            note: `Terlambat melakukan presensi piket pada tanggal ${dateStr} melewati batas pukul 11:00 WIB. Presensi diterima pada Tahap 2 sebelum pukul 17:00 WIB.`,
+          },
+        });
+
+        await db.fine.update({
+          where: { id: fine.id },
+          data: { billId: bill.id },
+        });
+
+        await createNotification({
+          userId: session.user.id,
+          title: 'Denda Keterlambatan Piket (Tahap 1)',
+          message: `Presensi piket Anda pada tanggal ${dateStr} berhasil dicatat, namun dilakukan setelah pukul 11:00 WIB. Anda dikenakan denda keterlambatan Tahap 1 sebesar Rp${fineAmount.toLocaleString('id-ID')}. Anda terbebas dari denda tambahan Tahap 2.`,
+          type: 'TAGIHAN_REMINDER',
+          referenceId: stage1RefId,
+        });
+      }
+    }
+  }
+
   revalidatePath('/admin/kebersihan');
+  revalidatePath('/admin/keuangan');
 }
 
 /**

@@ -200,6 +200,51 @@ export async function generateNextRohaniSchedule() {
     referenceId: schedule.id,
   });
 
+  // Broadcast jadwal rohani baru ke seluruh warga aktif asrama
+  try {
+    const allActiveUsers = await db.user.findMany({
+      where: {
+        status: 'AKTIF',
+        roles: {
+          none: {
+            role: { name: { in: ['SUPERADMIN', 'ALUMNI'] } },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    const diffMs = nextDate.getTime() - Date.now();
+    const daysUntil = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+    const daysNote = daysUntil > 0 ? ` (Tinggal ${daysUntil} Hari Lagi)` : ' (Hari Ini)';
+
+    const rohaniBroadcastMsg = `*📢 JADWAL BARU KEGIATAN KEROHANIAN ASRAMA AMKS 📢*\n\n` +
+      `Assalamu'alaikum Wr. Wb.\n` +
+      `Halo Seluruh Warga Asrama AMKS, telah diterbitkan jadwal Sholat Berjamaah & Tadarus Al-Qur'an Rutin mendatang${daysNote}:\n\n` +
+      `🗓️ *WAKTU:* ${formattedDate} (Ba'da Maghrib & Isya Berjamaah)\n` +
+      `📍 *TEMPAT:* Musholla Asrama AMKS\n\n` +
+      `👥 *PETUGAS:*\n` +
+      `• Imam Maghrib : *${imamMaghrib.fullName}*\n` +
+      `• Imam Isya    : *${imamIsha.fullName}*\n` +
+      `• Pembawa Kultum : *${kultumBy.fullName}*\n` +
+      `• Cadangan Imam : *${cadanganImam.fullName}*\n` +
+      `• Cadangan Kultum : *${cadanganKultum.fullName}*\n\n` +
+      `📖 *TARGET TADARUS:* QS. ${currentSurahName} (Ayat ${startVerse} s/d ${endVerse})\n\n` +
+      `Mari bersama-sama hadir tepat waktu meramaikan musholla asrama kita!`;
+
+    await db.notification.createMany({
+      data: allActiveUsers.map((u) => ({
+        userId: u.id,
+        title: `Jadwal Baru Rohani: Sholat & Tadarus QS. ${currentSurahName}${daysNote}`,
+        message: rohaniBroadcastMsg,
+        type: 'PENGUMUMAN',
+        referenceId: `ROHANI_NEW_SCHEDULE:${schedule.id}`,
+      })),
+    });
+  } catch (broadcastErr) {
+    console.error('Failed to broadcast new rohani schedule:', broadcastErr);
+  }
+
   revalidatePath('/admin/rohani');
   return { success: true, schedule };
 }
