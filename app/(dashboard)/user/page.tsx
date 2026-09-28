@@ -39,8 +39,18 @@ export default async function DashboardPage() {
       ? DIVISION_SLUGS[userWithRoles.divisionScope]
       : null;
 
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  // Use WIB-aware current time for filtering finished activities
+  const nowWib = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+  const currentHour = nowWib.getHours();
+
+  // Today boundaries in WIB
+  const todayStart = new Date(nowWib);
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(nowWib);
+  todayEnd.setHours(23, 59, 59, 999);
+
+  // 3 hours ago (for sports/activity without explicit end time)
+  const threeHoursAgo = new Date(nowWib.getTime() - 3 * 60 * 60 * 1000);
 
   // Fetch upcoming activities
   // Fetch latest announcements (from notification table — broadcast by divisi)
@@ -48,6 +58,7 @@ export default async function DashboardPage() {
     where: {
       userId: session?.user.id,
       type: 'PENGUMUMAN',
+      createdAt: { gte: new Date(nowWib.getTime() - 14 * 24 * 60 * 60 * 1000) },
     },
     orderBy: { createdAt: 'desc' },
     take: 5,
@@ -61,38 +72,60 @@ export default async function DashboardPage() {
     myUpcomingRohani,
     pendingBills,
   ] = await Promise.all([
+    // PIKET: If it's after 17:00 WIB today, skip today's assignment. Also skip if already attended.
     db.piketAssignment.findFirst({
       where: { 
-        userId: session?.user.id, 
-        date: { gte: now },
-        period: { isActive: true }
+        userId: session?.user.id,
+        period: { isActive: true },
+        attendance: null, // only unattended assignments
+        ...(currentHour >= 17
+          ? { date: { gt: todayEnd } }           // after 17:00 → only future
+          : { date: { gte: todayStart } }),       // before 17:00 → today onwards
       },
       orderBy: { date: 'asc' },
     }),
+    // KERJA BAKTI: If it's after 13:00 WIB today, skip today's kerja bakti
     db.piketKerjaBakti.findFirst({
       where: { 
-        date: { gte: now },
-        period: { isActive: true }
+        period: { isActive: true },
+        ...(currentHour >= 13
+          ? { date: { gt: todayEnd } }
+          : { date: { gte: todayStart } }),
       },
       orderBy: { date: 'asc' },
     }),
+    // SPORTS: Show if endDate >= now, or if no endDate then start was within last 3 hours
     db.sportsActivity.findFirst({
       where: { 
-        date: { gte: now },
         attendance: {
           some: {
             userId: session?.user.id,
           },
         },
+        OR: [
+          { endDate: { gte: nowWib } },
+          { endDate: null, date: { gte: threeHoursAgo } },
+        ],
       },
       orderBy: { date: 'asc' },
     }),
+    // GENERAL ACTIVITY: Show if endAt >= now, or if no endAt then startAt within last 3 hours
     db.activity.findFirst({
-      where: { startAt: { gte: now } },
+      where: {
+        OR: [
+          { endAt: { gte: nowWib } },
+          { endAt: null, startAt: { gte: threeHoursAgo } },
+        ],
+      },
       orderBy: { startAt: 'asc' },
     }),
+    // ROHANI: If it's after 21:00 WIB on the schedule day, it's done
     db.rohaniSchedule.findFirst({
-      where: { date: { gte: now } },
+      where: {
+        ...(currentHour >= 21
+          ? { date: { gt: todayEnd } }
+          : { date: { gte: todayStart } }),
+      },
       orderBy: { date: 'asc' },
     }),
     db.bill.findMany({

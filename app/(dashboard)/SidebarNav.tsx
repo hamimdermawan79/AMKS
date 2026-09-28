@@ -122,7 +122,7 @@ export default function SidebarNav({ navItems, dividerHrefs, user }: SidebarNavP
   return (
     <>
       {/* ===== Desktop persistent sidebar ===== */}
-      <aside className="hidden md:flex w-64 glass border-r border-border flex-shrink-0 flex-col">
+      <aside className="hidden md:flex w-64 glass border-r border-border flex-shrink-0 flex-col relative z-40">
         <div className="p-6 flex flex-col h-full">
           <div className="flex items-center justify-between gap-2 mb-6">
             <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 smooth-transition min-w-0">

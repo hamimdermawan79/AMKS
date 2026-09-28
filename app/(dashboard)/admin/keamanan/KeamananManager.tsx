@@ -13,15 +13,21 @@ import {
   Calendar,
   Megaphone,
   Plus,
-  Trash2,
   AlertTriangle,
   CheckCircle2,
   ArrowRight,
   Lock,
   ClipboardCopy,
   Check,
+  Moon,
+  BookUser,
+  RefreshCw,
+  HardDrive,
+  Power,
 } from 'lucide-react';
 import Link from 'next/link';
+import SecurityDutyTab from './SecurityDutyTab';
+import GuestBookTab from './GuestBookTab';
 
 type ActivityType = {
   id: string;
@@ -38,12 +44,77 @@ type AnnouncementType = {
   createdAt: string;
 };
 
+type UserBasic = { id: string; fullName: string };
+
+type AssignmentWithAttendance = {
+  id: string;
+  date: string;
+  userId: string;
+  user: UserBasic;
+  attendance: {
+    id: string;
+    status: string;
+    doorsLocked: boolean;
+    garagesClosed: boolean;
+    bikesSecured: boolean;
+    note: string | null;
+    markedAt: string;
+  } | null;
+};
+
+type SecurityPeriod = {
+  id: string;
+  month: number;
+  year: number;
+  startDate?: string | null;
+  endDate?: string | null;
+  isActive: boolean;
+  assignments: AssignmentWithAttendance[];
+};
+
+type GuestEntry = {
+  id: string;
+  visitorName: string;
+  originCity: string;
+  institution: string | null;
+  purpose: string;
+  knownById: string | null;
+  knownByOther: string | null;
+  entryTime: string;
+  exitTime: string | null;
+  isStaying?: boolean;
+  stayDuration?: number | null;
+  note: string | null;
+  month: number;
+  year: number;
+  createdBy: UserBasic | null;
+  knownBy: UserBasic | null;
+};
+
+type CctvStatusData = {
+  id: string;
+  isActive: boolean;
+  lastVerifiedAt: string;
+  lastMemoryCleanedAt: string | null;
+  verifiedBy: UserBasic | null;
+  note: string | null;
+  daysSinceVerified: number;
+  daysSinceMemoryCleaned: number | null;
+};
+
 type Props = {
   activities: ActivityType[];
   announcements: AnnouncementType[];
   canManage: boolean;
   canViewCctv: boolean;
+  canInputGuest: boolean;
+  currentUserId: string;
+  cctvStatus: CctvStatusData;
+  securityPeriods: SecurityPeriod[];
+  guestEntries: GuestEntry[];
+  allUsers: UserBasic[];
 };
+
 
 const CCTV_INFO = {
   email: 'asramasambas20006@gmail.com',
@@ -70,8 +141,19 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export default function KeamananManager({ activities, announcements, canManage, canViewCctv }: Props) {
-  const [activeTab, setActiveTab] = useState<'cctv' | 'kegiatan'>('cctv');
+export default function KeamananManager({
+  activities,
+  announcements,
+  canManage,
+  canViewCctv,
+  canInputGuest,
+  currentUserId,
+  cctvStatus,
+  securityPeriods,
+  guestEntries,
+  allUsers,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<'cctv' | 'kegiatan' | 'piket_malam' | 'buku_tamu'>('cctv');
   const [showPassword, setShowPassword] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -127,16 +209,28 @@ export default function KeamananManager({ activities, announcements, canManage, 
       {/* QUICK STATS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* CCTV Status */}
-        <div className="rounded-3xl border border-border bg-gradient-to-br from-blue-50/60 via-white to-white p-6 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl">
+        <div className={`rounded-3xl border p-6 shadow-sm flex items-center gap-4 ${
+          cctvStatus.isActive
+            ? 'border-border bg-gradient-to-br from-blue-50/60 via-white to-white'
+            : 'border-red-200 bg-gradient-to-br from-red-50/60 via-white to-white'
+        }`}>
+          <div className={`p-3 rounded-2xl ${
+            cctvStatus.isActive ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'
+          }`}>
             <Camera className="h-6 w-6" />
           </div>
           <div>
             <span className="text-xs text-muted-foreground font-medium">Status CCTV</span>
             <h3 className="text-base font-bold text-foreground mt-0.5 flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-green-500 inline-block animate-pulse" />
-              Aktif & Terpantau
+              <span className={`h-2 w-2 rounded-full inline-block ${
+                cctvStatus.isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+              }`} />
+              {cctvStatus.isActive ? 'Aktif & Terpantau' : 'Nonaktif'}
             </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Terakhir cek: {cctvStatus.daysSinceVerified === 0 ? 'Hari ini' : `${cctvStatus.daysSinceVerified} hari lalu`}
+              {cctvStatus.verifiedBy && ` oleh ${cctvStatus.verifiedBy.fullName}`}
+            </p>
           </div>
         </div>
 
@@ -195,9 +289,10 @@ export default function KeamananManager({ activities, announcements, canManage, 
       <div className="flex border-b border-border overflow-x-auto">
         <button
           onClick={() => setActiveTab('cctv')}
-          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'cctv'
-            ? 'border-blue-600 text-blue-600'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'cctv'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
         >
           <span className="flex items-center gap-2">
@@ -207,14 +302,41 @@ export default function KeamananManager({ activities, announcements, canManage, 
         </button>
         <button
           onClick={() => setActiveTab('kegiatan')}
-          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'kegiatan'
-            ? 'border-blue-600 text-blue-600'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'kegiatan'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
         >
           <span className="flex items-center gap-2">
             <Calendar className="h-4 w-4" />
-            Pengumuman & Kegiatan
+            Pengumuman &amp; Kegiatan
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('piket_malam')}
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'piket_malam'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          <span className="flex items-center gap-2">
+            <Moon className="h-4 w-4" />
+            Piket Malam
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('buku_tamu')}
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'buku_tamu'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          <span className="flex items-center gap-2">
+            <BookUser className="h-4 w-4" />
+            Buku Tamu
           </span>
         </button>
       </div>
@@ -222,8 +344,85 @@ export default function KeamananManager({ activities, announcements, canManage, 
       {/* TAB: INFO CCTV */}
       {activeTab === 'cctv' && (
         <div className="space-y-6">
+          {/* CCTV Status Management Card (for keamanan role) */}
           {canViewCctv ? (
             <>
+              {/* Read-only CCTV Status Preview */}
+              <div className={`rounded-2xl border p-5 shadow-sm space-y-4 ${
+                cctvStatus.isActive
+                  ? 'border-green-200 bg-green-50/50'
+                  : 'border-red-200 bg-red-50/50'
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl ${
+                      cctvStatus.isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                    }`}>
+                      <Power className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                        Status CCTV: {cctvStatus.isActive ? '✅ Aktif (Merekam)' : '🔴 Nonaktif'}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Terakhir diverifikasi {cctvStatus.daysSinceVerified === 0 ? 'hari ini' : `${cctvStatus.daysSinceVerified} hari lalu`}
+                        {cctvStatus.verifiedBy && ` oleh ${cctvStatus.verifiedBy.fullName}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                      cctvStatus.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {cctvStatus.isActive ? 'Terpantau Normal' : 'Perlu Pengecekan'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Memory Status Info (Read-only) */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200/50 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <HardDrive className="h-3.5 w-3.5 text-slate-500" />
+                    Memori CCTV:
+                  </span>
+                  <span>
+                    {cctvStatus.lastMemoryCleanedAt
+                      ? `Dibersihkan ${cctvStatus.daysSinceMemoryCleaned} hari lalu (${new Date(cctvStatus.lastMemoryCleanedAt).toLocaleDateString('id-ID')})`
+                      : 'Belum ada catatan'}
+                  </span>
+                </div>
+
+                {cctvStatus.note && (
+                  <p className="text-xs text-muted-foreground bg-white/70 rounded-lg px-3 py-2 border border-slate-200/50">
+                    📝 Catatan: {cctvStatus.note}
+                  </p>
+                )}
+              </div>
+
+              {/* Admin Banner (if canManage, direct to Layanan Admin) */}
+              {canManage && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/80 p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900">
+                        Kelola CCTV di Layanan Admin
+                      </p>
+                      <p className="text-xs text-blue-700 mt-0.5">
+                        Sebagai pengurus keamanan, Anda dapat mengubah status CCTV (aktif/nonaktif), memperbarui verifikasi 5-harian, dan mengonfirmasi pembersihan memori melalui Layanan Admin.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/admin/keamanan/kelola"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-semibold text-white transition-all shadow-sm whitespace-nowrap"
+                  >
+                    Buka Layanan Admin <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">Akses Sistem CCTV Asrama</h2>
               </div>
@@ -436,6 +635,60 @@ export default function KeamananManager({ activities, announcements, canManage, 
               )}
             </div>
           </div>
+        </div>
+      )}
+      {/* TAB: PIKET MALAM */}
+      {activeTab === 'piket_malam' && (
+        <div className="space-y-4">
+          {canManage && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 shadow-xs">
+              <div className="flex items-center gap-3">
+                <Moon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                <p className="text-xs text-blue-900 font-medium">
+                  Anda sedang di <strong>Tampilan Warga (Preview)</strong>. Untuk membuat jadwal piket baru atau mengedit giliran piket, buka Layanan Admin Keamanan.
+                </p>
+              </div>
+              <Link
+                href="/admin/keamanan/kelola"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold whitespace-nowrap transition-all shadow-sm self-start sm:self-auto"
+              >
+                Buka Layanan Admin <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
+          <SecurityDutyTab
+            periods={securityPeriods}
+            currentUserId={currentUserId}
+            canManage={false}
+            allUsers={allUsers}
+          />
+        </div>
+      )}
+
+      {/* TAB: BUKU TAMU */}
+      {activeTab === 'buku_tamu' && (
+        <div className="space-y-4">
+          {canManage && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 shadow-xs">
+              <div className="flex items-center gap-3">
+                <BookUser className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+                <p className="text-xs text-indigo-900 font-medium">
+                  Anda sedang di <strong>Tampilan Warga (Preview)</strong>. Untuk mencatat tamu baru, menandai tamu keluar, atau menghapus data tamu, buka Layanan Admin Keamanan.
+                </p>
+              </div>
+              <Link
+                href="/admin/keamanan/kelola"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold whitespace-nowrap transition-all shadow-sm self-start sm:self-auto"
+              >
+                Buka Layanan Admin <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
+          <GuestBookTab
+            entries={guestEntries}
+            canInput={false}
+            allUsers={allUsers}
+          />
         </div>
       )}
     </div>

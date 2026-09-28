@@ -155,7 +155,7 @@ export default function NotificationBell({
       {/* Dropdown Card */}
       <AnimatePresence>
         {isOpen && (
-          <div className={`absolute ${align === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'} mt-3 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-white shadow-xl z-50`}>
+          <div className={`absolute ${align === 'left' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'} mt-3 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-border bg-white shadow-2xl ring-1 ring-black/10 z-[100]`}>
             {/* Dropdown Header */}
             <div className="flex items-center justify-between border-b border-border bg-slate-50 px-4 py-3">
               <span className="font-bold text-foreground text-sm flex items-center gap-1.5">

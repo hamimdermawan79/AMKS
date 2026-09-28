@@ -126,7 +126,7 @@ export default function UserDashboard({
     ) {
       isPiketToday = true;
       const hour = now.getHours();
-      if (hour >= 1 && hour < 11) {
+      if (hour >= 1 && hour < 17) {
         isPiketValidTime = true;
       }
     }

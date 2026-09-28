@@ -19,14 +19,30 @@ export default async function KebersihanKelolaPage() {
   }
 
   // Fetch users for Piket assignment (active only, excluding SUPERADMIN)
-  const warga = await db.user.findMany({
+  const rawWarga = await db.user.findMany({
     where: { 
       status: 'AKTIF',
       roles: { none: { role: { name: 'SUPERADMIN' } } },
     },
-    select: { id: true, fullName: true, username: true },
+    select: {
+      id: true,
+      fullName: true,
+      username: true,
+      roles: {
+        select: {
+          role: { select: { name: true } },
+        },
+      },
+    },
     orderBy: { fullName: 'asc' },
   });
+
+  const warga = rawWarga.map((w) => ({
+    id: w.id,
+    fullName: w.fullName,
+    username: w.username,
+    isCalonWarga: w.roles.some((r) => r.role.name === 'CALON_WARGA'),
+  }));
 
   // Current active period summary with assignments
   const activePeriod = await db.piketPeriod.findFirst({
@@ -36,7 +52,7 @@ export default async function KebersihanKelolaPage() {
       _count: { select: { assignments: true, kerjaBaktiDates: true } },
       assignments: {
         include: {
-          user: { select: { id: true, fullName: true } },
+          user: { select: { id: true, fullName: true, username: true } },
           attendance: { select: { id: true, status: true } },
         },
         orderBy: [{ date: 'asc' }, { sector: 'asc' }],
@@ -46,13 +62,40 @@ export default async function KebersihanKelolaPage() {
   });
 
   // Build schedule table data for active period
-  let scheduleData: { date: string; sectors: { sector: number; fullName: string }[] }[] = [];
+  let scheduleData: {
+    date: string;
+    sectors: {
+      sector: number;
+      assignmentId: string;
+      userId: string;
+      fullName: string;
+      hasAttendance: boolean;
+      attendanceStatus: string | null;
+    }[];
+  }[] = [];
   if (activePeriod) {
-    const map = new Map<string, { sector: number; fullName: string }[]>();
+    const map = new Map<
+      string,
+      {
+        sector: number;
+        assignmentId: string;
+        userId: string;
+        fullName: string;
+        hasAttendance: boolean;
+        attendanceStatus: string | null;
+      }[]
+    >();
     for (const a of activePeriod.assignments) {
       const key = a.date.toISOString().slice(0, 10);
       const list = map.get(key) ?? [];
-      list.push({ sector: a.sector, fullName: a.user.fullName });
+      list.push({
+        sector: a.sector,
+        assignmentId: a.id,
+        userId: a.userId,
+        fullName: a.user.fullName,
+        hasAttendance: !!a.attendance,
+        attendanceStatus: a.attendance?.status || null,
+      });
       map.set(key, list);
     }
     scheduleData = Array.from(map.entries())

@@ -913,6 +913,232 @@ export async function checkActivityReminders() {
   }
 }
 
+/**
+ * Broadcast reminders for security night duty (piket keamanan malam).
+ * - 20:00 WIB: Pengingat kepada petugas besok piket (H-1)
+ * - 21:00, 22:00, 23:00 WIB: Pengingat jam piket mulai, sampai presensi dilakukan
+ * - 00:00 WIB: Pengingat terakhir jam 12 malam
+ */
+export async function checkSecurityDutyReminders() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const currentHour = nowWib.getHours();
+
+    // Valid jam pengiriman: 20, 21, 22, 23, 0
+    const validHours = [20, 21, 22, 23, 0];
+    if (!validHours.includes(currentHour)) return;
+
+    const startOfToday = new Date(nowWib);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(nowWib);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    // ---------------------------------------------------------------
+    // Jam 20:00 → kirim pengingat kepada petugas BESOK piket (H-1)
+    // ---------------------------------------------------------------
+    if (currentHour === 20) {
+      const startOfTomorrow = new Date(startOfToday);
+      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+      const endOfTomorrow = new Date(endOfToday);
+      endOfTomorrow.setDate(endOfTomorrow.getDate() + 1);
+
+      const tomorrowAssignments = await db.securityDutyAssignment.findMany({
+        where: {
+          date: { gte: startOfTomorrow, lte: endOfTomorrow },
+          period: { isActive: true },
+        },
+        include: { user: true, attendance: true },
+      });
+
+      for (const assign of tomorrowAssignments) {
+        if (assign.attendance) continue;
+
+        const dateStr = new Date(assign.date).toLocaleDateString('id-ID', {
+          weekday: 'long', day: 'numeric', month: 'long',
+        });
+        const refId = `SEC_DUTY_H1:${assign.id}`;
+        const exists = await db.notification.findFirst({ where: { referenceId: refId } });
+        if (exists) continue;
+
+        await createNotification({
+          userId: assign.userId,
+          title: '🔐 Pengingat: Piket Keamanan Malam Besok',
+          message: `Halo ${assign.user.fullName}, kamu terjadwal piket keamanan malam *BESOK* (${dateStr}) mulai pukul 21:00 WIB.\n\n📋 Tugas piket:\n• Cek pintu luar asrama\n• Cek garasi (tutup & kunci)\n• Pastikan motor di luar terkunci stang\n• Konfirmasi jika ada warga yang keluar malam\n\nPresensi dilakukan melalui aplikasi AMKS.`,
+          type: 'PIKET_REMINDER',
+          referenceId: refId,
+        });
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Jam 21, 22, 23, 0 → kirim pengingat kepada petugas HARI INI yang belum presensi
+    // ---------------------------------------------------------------
+    const todayAssignments = await db.securityDutyAssignment.findMany({
+      where: {
+        date: { gte: startOfToday, lte: endOfToday },
+        period: { isActive: true },
+        attendance: null, // belum presensi
+      },
+      include: { user: true },
+    });
+
+    for (const assign of todayAssignments) {
+      const dateStr = new Date(assign.date).toLocaleDateString('id-ID', {
+        weekday: 'long', day: 'numeric', month: 'long',
+      });
+
+      const hourLabel = currentHour === 0 ? '00:00 (12 malam)' : `${String(currentHour).padStart(2, '0')}:00`;
+      const refId = `SEC_DUTY_HOUR_${currentHour}:${assign.id}`;
+      const exists = await db.notification.findFirst({ where: { referenceId: refId } });
+      if (exists) continue;
+
+      let urgencyEmoji = '🔔';
+      if (currentHour === 23) urgencyEmoji = '⚠️';
+      if (currentHour === 0) urgencyEmoji = '🚨';
+
+      await createNotification({
+        userId: assign.userId,
+        title: `${urgencyEmoji} Piket Keamanan Malam — Pukul ${hourLabel}`,
+        message: `${urgencyEmoji} Halo ${assign.user.fullName}, kamu bertugas piket keamanan malam hari ini (${dateStr}).\n\n📋 Tugas saat ini:\n• Cek kondisi pintu luar asrama\n• Cek garasi (sudah ditutup?)\n• Cek motor di luar (sudah kunci stang?)\n• Konfirmasi warga yang keluar malam\n\nSetelah selesai, harap isi presensi di aplikasi AMKS segera.`,
+        type: 'PIKET_REMINDER',
+        referenceId: refId,
+      });
+    }
+
+    if (todayAssignments.length > 0) {
+      processNotificationQueue().catch(console.error);
+    }
+
+  } catch (error) {
+    console.error('Failed to run checkSecurityDutyReminders:', error);
+  }
+}
+
+/**
+ * Check CCTV status and send reminders/broadcasts:
+ * 1. Auto-deactivate if >= 5 days without verification
+ * 2. If inactive: hourly reminder to KEAMANAN + KETUA
+ * 3. H-1 before auto-deactivation (day 4): pre-warning
+ * 4. Monthly memory cleaning reminder (>= 30 days)
+ */
+export async function checkCctvReminders() {
+  try {
+    let cctvStatus = await db.cctvStatus.findFirst();
+    if (!cctvStatus) {
+      cctvStatus = await db.cctvStatus.create({ data: { isActive: true } });
+    }
+
+    const now = new Date();
+    const daysSinceVerified = Math.floor(
+      (now.getTime() - cctvStatus.lastVerifiedAt.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Auto-deactivate if >= 5 days
+    if (daysSinceVerified >= 5 && cctvStatus.isActive) {
+      cctvStatus = await db.cctvStatus.update({
+        where: { id: cctvStatus.id },
+        data: { isActive: false },
+      });
+      console.log('🔴 CCTV auto-deactivated (5+ days without verification)');
+    }
+
+    const keamananUsers = await db.user.findMany({
+      where: {
+        status: 'AKTIF',
+        roles: {
+          some: {
+            role: {
+              name: { in: ['KEAMANAN', 'KETUA'] },
+            },
+          },
+        },
+      },
+      select: { id: true, fullName: true },
+    });
+
+    if (keamananUsers.length === 0) return;
+
+    let notificationsCreated = false;
+
+    // 1. Inactive CCTV broadcast (every hour until activated)
+    if (!cctvStatus.isActive) {
+      const refId = `CCTV_INACTIVE:${now.toISOString().slice(0, 13)}`;
+      const alreadySent = await db.notification.findFirst({
+        where: { referenceId: refId },
+      });
+
+      if (!alreadySent) {
+        for (const user of keamananUsers) {
+          await createNotification({
+            userId: user.id,
+            title: '🚨 CCTV NONAKTIF — Segera Cek!',
+            message: `Halo ${user.fullName}, status CCTV asrama saat ini *NONAKTIF* karena sudah ${daysSinceVerified} hari tidak diverifikasi.\n\n⚠️ Segera cek kondisi CCTV:\n• Apakah kamera masih merekam?\n• Apakah DVR/NVR menyala?\n• Apakah ada gangguan listrik?\n\n🔧 Setelah memastikan CCTV aktif, segera update status di sistem AMKS → Divisi Keamanan → Tab Info CCTV → Ubah Status ke "Aktif".\n\n⏰ Pesan ini akan terus dikirim setiap 1 jam sampai status CCTV diperbarui.`,
+            type: 'CCTV_CHECK',
+            referenceId: refId,
+          });
+        }
+        notificationsCreated = true;
+      }
+    }
+
+    // 2. Pre-check reminder (day 4)
+    if (cctvStatus.isActive && daysSinceVerified >= 4) {
+      const refId = `CCTV_PRECHECK:${now.toISOString().slice(0, 10)}`;
+      const alreadySent = await db.notification.findFirst({
+        where: { referenceId: refId },
+      });
+
+      if (!alreadySent) {
+        for (const user of keamananUsers) {
+          await createNotification({
+            userId: user.id,
+            title: '📹 Reminder Cek CCTV (H-1 Nonaktif Otomatis)',
+            message: `Halo ${user.fullName}, status CCTV sudah ${daysSinceVerified} hari tidak diverifikasi.\n\n⏳ Jika tidak diupdate dalam 1 hari lagi, status akan otomatis menjadi *NONAKTIF*.\n\n✅ Segera cek dan konfirmasi di AMKS → Keamanan → Info CCTV → "Konfirmasi CCTV Aktif".`,
+            type: 'CCTV_CHECK',
+            referenceId: refId,
+          });
+        }
+        notificationsCreated = true;
+      }
+    }
+
+    // 3. Monthly memory clean reminder (>= 30 days)
+    const daysSinceMemoryCleaned = cctvStatus.lastMemoryCleanedAt
+      ? Math.floor((now.getTime() - cctvStatus.lastMemoryCleanedAt.getTime()) / (1000 * 60 * 60 * 24))
+      : 999;
+
+    if (daysSinceMemoryCleaned >= 30) {
+      const refId = `CCTV_MEMORY:${now.toISOString().slice(0, 10)}`;
+      const alreadySent = await db.notification.findFirst({
+        where: { referenceId: refId },
+      });
+
+      if (!alreadySent) {
+        const memMsg = cctvStatus.lastMemoryCleanedAt
+          ? `Terakhir dibersihkan: ${cctvStatus.lastMemoryCleanedAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} (${daysSinceMemoryCleaned} hari lalu).`
+          : 'Belum pernah ada catatan pembersihan memori.';
+
+        for (const user of keamananUsers) {
+          await createNotification({
+            userId: user.id,
+            title: '💾 Reminder Bersihkan Memori CCTV',
+            message: `Halo ${user.fullName}, sudah waktunya membersihkan memori/storage CCTV asrama.\n\n${memMsg}\n\n📋 Yang perlu dilakukan:\n• Backup rekaman penting jika ada\n• Format / bersihkan storage DVR/NVR\n• Pastikan rekaman berjalan normal setelahnya\n\n✅ Setelah selesai, konfirmasi di AMKS → Keamanan → Info CCTV → "Konfirmasi Memori Dibersihkan".`,
+            type: 'CCTV_CHECK',
+            referenceId: refId,
+          });
+        }
+        notificationsCreated = true;
+      }
+    }
+
+    if (notificationsCreated) {
+      processNotificationQueue().catch(console.error);
+    }
+  } catch (error) {
+    console.error('Failed to run checkCctvReminders:', error);
+  }
+}
+
 let cronInterval: NodeJS.Timeout | null = null;
 
 export function startCronJobs() {
@@ -928,6 +1154,8 @@ export function startCronJobs() {
   checkRohaniReminders();
   checkMeetingReminders();
   checkActivityReminders();
+  checkSecurityDutyReminders();
+  checkCctvReminders();
 
   // Run checks every 15 minutes so specific reminder hours are caught accurately
   cronInterval = setInterval(() => {
@@ -938,6 +1166,8 @@ export function startCronJobs() {
     checkRohaniReminders();
     checkMeetingReminders();
     checkActivityReminders();
+    checkSecurityDutyReminders();
+    checkCctvReminders();
   }, 1000 * 60 * 15); // 15 minutes
 }
 

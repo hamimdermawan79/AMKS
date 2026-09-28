@@ -456,3 +456,248 @@ export async function recordFinePayment(data: {
     settled: paidNow >= fine.amount,
   };
 }
+
+/**
+ * Mengambil calon pengganti piket untuk satu assignment tertentu.
+ * Menghindari warga yang sudah bertugas di tanggal yang sama dan Super Admin.
+ * Mengurutkan kandidat dengan prioritas CALON_WARGA, lalu jumlah tugas terendah.
+ */
+export async function getSwapCandidates(assignmentId: string) {
+  await authorizeManage();
+
+  const assignment = await db.piketAssignment.findUnique({
+    where: { id: assignmentId },
+    select: {
+      id: true,
+      periodId: true,
+      date: true,
+      sector: true,
+      userId: true,
+      user: { select: { id: true, fullName: true, username: true } },
+      attendance: { select: { id: true, status: true } },
+      period: { select: { isActive: true } },
+    },
+  });
+
+  if (!assignment) {
+    throw new Error('Jadwal piket tidak ditemukan');
+  }
+
+  // Cari warga yang sudah punya tugas di tanggal yang sama
+  const assignedOnDate = await db.piketAssignment.findMany({
+    where: {
+      periodId: assignment.periodId,
+      date: assignment.date,
+    },
+    select: { userId: true },
+  });
+  const busyUserIds = new Set(assignedOnDate.map((a) => a.userId));
+
+  // Ambil seluruh user AKTIF selain SUPERADMIN dan yang belum piket di hari itu
+  const candidates = await db.user.findMany({
+    where: {
+      status: 'AKTIF',
+      roles: { none: { role: { name: 'SUPERADMIN' } } },
+      id: { notIn: Array.from(busyUserIds) },
+    },
+    select: {
+      id: true,
+      fullName: true,
+      username: true,
+      roles: {
+        select: {
+          role: { select: { name: true } },
+        },
+      },
+      piketAssignments: {
+        where: { periodId: assignment.periodId },
+        select: { id: true },
+      },
+    },
+    orderBy: { fullName: 'asc' },
+  });
+
+  const formattedCandidates = candidates.map((u) => {
+    const isCalonWarga = u.roles.some((r) => r.role.name === 'CALON_WARGA');
+    return {
+      id: u.id,
+      fullName: u.fullName,
+      username: u.username,
+      isCalonWarga,
+      dutyCountInPeriod: u.piketAssignments.length,
+    };
+  });
+
+  // Prioritas urutan: Calon Warga lebih dulu, kemudian jumlah piket tersedikit
+  formattedCandidates.sort((a, b) => {
+    if (a.isCalonWarga && !b.isCalonWarga) return -1;
+    if (!a.isCalonWarga && b.isCalonWarga) return 1;
+    if (a.dutyCountInPeriod !== b.dutyCountInPeriod) return a.dutyCountInPeriod - b.dutyCountInPeriod;
+    return a.fullName.localeCompare(b.fullName);
+  });
+
+  return {
+    assignment: {
+      id: assignment.id,
+      date: assignment.date.toISOString(),
+      sector: assignment.sector,
+      currentOfficer: assignment.user,
+      hasAttendance: !!assignment.attendance,
+      attendanceStatus: assignment.attendance?.status || null,
+      isPeriodActive: assignment.period.isActive,
+    },
+    candidates: formattedCandidates,
+  };
+}
+
+const swapPiketSchema = z.object({
+  assignmentId: z.string().min(1, 'Assignment tidak valid'),
+  newUserId: z.string().min(1, 'Pengganti wajib dipilih'),
+});
+
+/**
+ * Menukar petugas piket pada suatu jadwal assignment.
+ * Jika denda Tahap 1 sempat terbit untuk warga lama (karena lewat pukul 11:00), denda dan tagihan dibatalkan.
+ * Notifikasi dikirimkan ke warga yang diganti dan warga pengganti.
+ */
+export async function swapPiketAssignment(data: {
+  assignmentId: string;
+  newUserId: string;
+}) {
+  await authorizeManage();
+  const v = swapPiketSchema.parse(data);
+
+  const assignment = await db.piketAssignment.findUnique({
+    where: { id: v.assignmentId },
+    include: {
+      period: true,
+      user: true,
+      attendance: true,
+    },
+  });
+
+  if (!assignment) {
+    throw new Error('Jadwal piket tidak ditemukan');
+  }
+
+  if (!assignment.period.isActive) {
+    throw new Error('Periode piket sudah tidak aktif, jadwal tidak dapat ditukar');
+  }
+
+  if (assignment.attendance) {
+    throw new Error(
+      'Jadwal ini sudah memiliki catatan presensi atau telah melewati batas akhir presensi, sehingga tidak dapat ditukar lagi'
+    );
+  }
+
+  if (assignment.userId === v.newUserId) {
+    throw new Error('Pengganti tidak boleh sama dengan petugas saat ini');
+  }
+
+  if (await isUserSuperAdminById(v.newUserId)) {
+    throw new Error('Super Admin tidak dapat ditugaskan piket');
+  }
+
+  const existingOnDate = await db.piketAssignment.findFirst({
+    where: {
+      periodId: assignment.periodId,
+      date: assignment.date,
+      userId: v.newUserId,
+    },
+  });
+
+  if (existingOnDate) {
+    throw new Error('Warga pengganti sudah memiliki jadwal piket pada tanggal ini');
+  }
+
+  const newUser = await db.user.findUnique({
+    where: { id: v.newUserId },
+    select: { id: true, fullName: true },
+  });
+
+  if (!newUser) {
+    throw new Error('Warga pengganti tidak ditemukan');
+  }
+
+  const stage1RefId = `DENDA_PIKET_STAGE1:${assignment.id}`;
+  const legacyRefId = `DENDA_PIKET:${assignment.id}`;
+
+  const oldUserId = assignment.userId;
+  const oldUserName = assignment.user.fullName;
+  const dateStr = new Date(assignment.date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const shortDateStr = new Date(assignment.date).toLocaleDateString('id-ID');
+  const sectorLabel = String.fromCharCode(65 + assignment.sector);
+
+  await db.$transaction(async (tx) => {
+    // Jika denda Tahap 1 sempat terbit untuk user lama pada assignment ini, bersihkan denda + bill
+    const stage1Fines = await tx.fine.findMany({
+      where: {
+        userId: oldUserId,
+        periodId: assignment.periodId,
+        bill: {
+          title: { contains: shortDateStr },
+          type: 'DENDA_PIKET',
+        },
+      },
+      include: { bill: true },
+    });
+
+    for (const f of stage1Fines) {
+      if (f.billId) {
+        await tx.fine.update({
+          where: { id: f.id },
+          data: { billId: null },
+        });
+        await tx.bill.delete({
+          where: { id: f.billId },
+        });
+      }
+      await tx.fine.delete({
+        where: { id: f.id },
+      });
+    }
+
+    await tx.notification.deleteMany({
+      where: { referenceId: { in: [stage1RefId, legacyRefId] } },
+    });
+
+    // Pindahkan assignment ke user pengganti
+    await tx.piketAssignment.update({
+      where: { id: assignment.id },
+      data: { userId: v.newUserId },
+    });
+  });
+
+  // Kirim notifikasi ke kedua warga
+  await createNotification({
+    userId: oldUserId,
+    title: 'Jadwal Piket Dialihkan',
+    message: `Jadwal piket Anda pada ${dateStr} (Sektor ${sectorLabel}) telah dialihkan ke ${newUser.fullName}. Anda dibebaskan dari kewajiban piket pada tanggal tersebut.`,
+    type: 'PIKET_REMINDER',
+  });
+
+  await createNotification({
+    userId: newUser.id,
+    title: 'Penugasan Pengganti Piket',
+    message: `Anda ditugaskan menggantikan piket kebersihan pada ${dateStr} (Sektor ${sectorLabel}) menggantikan ${oldUserName}. Harap bertugas dan melakukan presensi sebelum batas waktu.`,
+    type: 'PIKET_REMINDER',
+  });
+
+  revalidatePath('/admin/kebersihan');
+  revalidatePath('/admin/kebersihan/kelola');
+  revalidatePath('/user');
+  revalidatePath('/');
+
+  return {
+    success: true,
+    oldUserName,
+    newUserName: newUser.fullName,
+    date: dateStr,
+    sector: sectorLabel,
+  };
+}
+

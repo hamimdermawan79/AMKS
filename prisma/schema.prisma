@@ -150,6 +150,14 @@ model User {
   meetingAttendances   MeetingAttendance[]
   actionItems          ActionItem[]        @relation("ActionItemPIC")
 
+  // Keamanan
+  generatedSecurityPeriods SecurityDutyPeriod[]   @relation("SecurityPeriodGenerator")
+  securityAssignments      SecurityDutyAssignment[]
+  securityAttendances      SecurityDutyAttendance[] @relation("SecurityAttendanceMark")
+  createdGuestBooks        GuestBook[]            @relation("GuestBookCreator")
+  knownByGuests            GuestBook[]            @relation("GuestKnownBy")
+  cctvVerifications        CctvStatus[]           @relation("CctvVerifier")
+
   @@map("users")
 }
 
@@ -528,6 +536,7 @@ enum NotificationType {
   SYSTEM
   RAPAT_REMINDER
   KEGIATAN_REMINDER
+  CCTV_CHECK
 }
 
 model SportsActivity {
@@ -780,4 +789,99 @@ model ActionItem {
   pic         User?     @relation("ActionItemPIC", fields: [picId], references: [id], onDelete: SetNull)
 
   @@map("action_items")
+}
+
+// ==================== KEAMANAN: PIKET MALAM ====================
+
+model SecurityDutyPeriod {
+  id            String   @id @default(cuid())
+  month         Int      // 1-12
+  year          Int
+  startDate     DateTime? // tanggal mulai periode piket
+  endDate       DateTime? // tanggal selesai periode piket
+  isActive      Boolean  @default(true)
+  generatedById String
+  generatedBy   User     @relation("SecurityPeriodGenerator", fields: [generatedById], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  assignments   SecurityDutyAssignment[]
+
+  @@unique([month, year])
+  @@map("security_duty_periods")
+}
+
+model SecurityDutyAssignment {
+  id       String              @id @default(cuid())
+  periodId String
+  userId   String
+  date     DateTime            // tanggal piket
+  period   SecurityDutyPeriod  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  attendance SecurityDutyAttendance?
+
+  @@unique([periodId, date])
+  @@map("security_duty_assignments")
+}
+
+model SecurityDutyAttendance {
+  id           String                  @id @default(cuid())
+  assignmentId String                  @unique
+  status       AttendanceStatus        // HADIR / TIDAK_HADIR / IZIN
+  note         String?                 // catatan kondisi (pintu, garasi, motor)
+  doorsLocked  Boolean                 @default(false)
+  garagesClosed Boolean                @default(false)
+  bikesSecured Boolean                 @default(false)
+  markedAt     DateTime                @default(now())
+  markedById   String?
+  assignment   SecurityDutyAssignment  @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  markedBy     User?                   @relation("SecurityAttendanceMark", fields: [markedById], references: [id], onDelete: SetNull)
+
+  @@map("security_duty_attendances")
+}
+
+// ==================== KEAMANAN: BUKU TAMU ====================
+
+model GuestBook {
+  id           String   @id @default(cuid())
+  visitorName  String
+  originCity   String   // Asal daerah
+  institution  String?  // Asal institusi / kampus (opsional)
+  purpose      String   // Tujuan berkunjung
+  knownById    String?  // Kenal dengan siapa (warga asrama)
+  knownByOther String?  // Jika tidak ada di sistem (tamu kenal dengan orang di luar sistem)
+  entryTime    DateTime // Waktu masuk
+  exitTime     DateTime? // Waktu keluar (diisi saat pulang)
+  isStaying    Boolean  @default(false) // Menginap atau tidak
+  stayDuration Int?     // Jumlah hari menginap (jika menginap)
+  note         String?  // Catatan tambahan
+  month        Int      // bulan kunjungan (untuk filter)
+  year         Int      // tahun kunjungan
+
+  createdById  String?
+  createdBy    User?    @relation("GuestBookCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  knownBy      User?    @relation("GuestKnownBy", fields: [knownById], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([month, year])
+  @@map("guest_books")
+}
+
+// ==================== KEAMANAN: STATUS CCTV ====================
+
+model CctvStatus {
+  id                  String   @id @default(cuid())
+  isActive            Boolean  @default(true)   // Status CCTV (aktif / nonaktif)
+  lastVerifiedAt      DateTime @default(now())   // Terakhir dikonfirmasi aktif oleh role keamanan
+  lastMemoryCleanedAt DateTime?                  // Terakhir memori CCTV dibersihkan
+  verifiedById        String?                    // Siapa yang terakhir verifikasi
+  verifiedBy          User?    @relation("CctvVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  note                String?                    // Catatan dari petugas
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("cctv_status")
 }

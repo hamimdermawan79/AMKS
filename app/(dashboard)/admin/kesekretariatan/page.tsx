@@ -19,9 +19,12 @@ export default async function KesekretariatanPage() {
 
   const canManage = canManageMeeting || canUpdateMeeting || canManageSekretaris || isSuper;
 
-  // Fetch all warga for dropdowns
+  // Fetch all warga for dropdowns (exclude SUPERADMIN)
   const wargaList = await prisma.user.findMany({
-    where: { status: "AKTIF" },
+    where: {
+      status: "AKTIF",
+      roles: { none: { role: { name: "SUPERADMIN" } } },
+    },
     select: { id: true, fullName: true, username: true },
     orderBy: { fullName: "asc" },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,10 +15,34 @@ import {
   Users,
   Wand2,
   X,
+  Dices,
+  CheckCircle2,
+  AlertCircle,
+  Edit3,
+  Loader2,
+  Info,
+  UserCheck,
+  ShieldAlert,
 } from "lucide-react";
-import { createSchedule, addPemberitahuan, deletePemberitahuan, deletePiketPeriod } from "../actions";
+import {
+  createSchedule,
+  addPemberitahuan,
+  deletePemberitahuan,
+  deletePiketPeriod,
+  getSwapCandidates,
+  swapPiketAssignment,
+} from "../actions";
 
-type Warga = { id: string; fullName: string; username: string };
+type Warga = { id: string; fullName: string; username: string; isCalonWarga?: boolean };
+
+export type ScheduleSectorItem = {
+  sector: number;
+  assignmentId: string;
+  userId: string;
+  fullName: string;
+  hasAttendance?: boolean;
+  attendanceStatus?: string | null;
+};
 
 type Props = {
   warga: Warga[];
@@ -40,7 +64,7 @@ type Props = {
   }[];
   scheduleData: {
     date: string;
-    sectors: { sector: number; fullName: string }[];
+    sectors: ScheduleSectorItem[];
   }[];
   sectorCount: number;
 };
@@ -55,20 +79,33 @@ const WEEKDAYS = [
   { value: 6, label: "Sabtu" },
 ];
 
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+];
+const DAY_NAMES = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+
+function parseLocalDate(dateStr: string): { year: number; month: number; day: number } {
+  const clean = dateStr.slice(0, 10);
+  const [y, m, d] = clean.split("-").map(Number);
+  return { year: y || 2026, month: m || 1, day: d || 1 };
+}
+
+function formatLocalDate(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const { year, month, day } = parseLocalDate(iso);
+  return `${day} ${MONTH_NAMES[month - 1] || ""} ${year}`;
 }
 
 function fmtShortDate(iso: string) {
-  const d = new Date(iso);
-  const dayNames = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+  const { year, month, day } = parseLocalDate(iso);
+  const d = new Date(year, month - 1, day);
   return {
-    dayLabel: dayNames[d.getDay()],
-    dateStr: `${d.getDate()} ${d.toLocaleDateString("id-ID", { month: "short" })}`,
+    dayLabel: DAY_NAMES[d.getDay()] || "",
+    dateStr: `${day} ${MONTH_NAMES[month - 1] || ""}`,
   };
 }
 
@@ -82,40 +119,44 @@ function shortName(fullName: string): string {
 
 function groupScheduleWeeks(
   data: Props["scheduleData"],
-): { label: string; days: string[]; cellMap: Record<string, string> }[] {
+): { label: string; days: string[]; cellMap: Record<string, ScheduleSectorItem> }[] {
   const buckets: string[][] = [];
   let cur: string[] = [];
   let lastWs = -1;
 
   for (const item of data) {
-    const d = new Date(item.date);
-    const monday = new Date(d);
-    monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const { year, month, day } = parseLocalDate(item.date);
+    const d = new Date(year, month - 1, day);
+    const dayOfWeek = (d.getDay() + 6) % 7; // Monday = 0
+    const monday = new Date(year, month - 1, day - dayOfWeek);
     const ws = monday.getTime();
-    if (ws !== lastWs && cur.length > 0) { buckets.push(cur); cur = []; }
+    if (ws !== lastWs && cur.length > 0) {
+      buckets.push(cur);
+      cur = [];
+    }
     lastWs = ws;
     cur.push(item.date);
   }
   if (cur.length > 0) buckets.push(cur);
 
-  const cellMap: Record<string, string> = {};
+  const cellMap: Record<string, ScheduleSectorItem> = {};
   for (const item of data) {
+    const cleanDate = item.date.slice(0, 10);
     for (const s of item.sectors) {
-      cellMap[`${item.date}|${s.sector}`] = s.fullName;
+      cellMap[`${cleanDate}|${s.sector}`] = s;
     }
   }
 
-  const dateSet = new Set(data.map((x) => x.date));
-
   return buckets.map((bucket) => {
-    const first = new Date(bucket[0]);
-    const monday = new Date(first);
-    monday.setDate(first.getDate() - ((first.getDay() + 6) % 7));
+    const { year, month, day } = parseLocalDate(bucket[0]);
+    const d = new Date(year, month - 1, day);
+    const dayOfWeek = (d.getDay() + 6) % 7;
+    const monday = new Date(year, month - 1, day - dayOfWeek);
+
     const days: string[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      days.push(d.toISOString().slice(0, 10));
+      const cur = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      days.push(formatLocalDate(cur.getFullYear(), cur.getMonth() + 1, cur.getDate()));
     }
     const fd = fmtShortDate(days[0]);
     const ld = fmtShortDate(days[6]);
@@ -151,6 +192,47 @@ export default function KebersihanAdminClient({
   const [annBody, setAnnBody] = useState("");
   const [annPinned, setAnnPinned] = useState(false);
   const [annError, setAnnError] = useState("");
+
+  // ----- Swap piket modal state -----
+  const [mounted, setMounted] = useState(false);
+  const [localSchedule, setLocalSchedule] = useState(scheduleData);
+  const [selectedSlot, setSelectedSlot] = useState<{
+    assignmentId: string;
+    date: string;
+    sector: number;
+    fullName: string;
+    userId: string;
+  } | null>(null);
+  const [swapSuccessMsg, setSwapSuccessMsg] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setLocalSchedule(scheduleData);
+  }, [scheduleData]);
+
+  const handleSwapSuccess = (
+    assignmentId: string,
+    newUserId: string,
+    newUserName: string,
+    msg: string
+  ) => {
+    setLocalSchedule((prev) =>
+      prev.map((day) => ({
+        ...day,
+        sectors: day.sectors.map((s) =>
+          s.assignmentId === assignmentId
+            ? { ...s, userId: newUserId, fullName: newUserName }
+            : s
+        ),
+      }))
+    );
+    setSelectedSlot(null);
+    setSwapSuccessMsg(msg);
+    router.refresh();
+  };
 
   // ----- Delete active period state -----
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -352,9 +434,41 @@ export default function KebersihanAdminClient({
           </p>
         </div>
       )}
+      {/* Swap success banner */}
+      {swapSuccessMsg && (
+        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+            <span className="font-medium">{swapSuccessMsg}</span>
+          </div>
+          <button
+            onClick={() => setSwapSuccessMsg("")}
+            className="rounded-lg p-1 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-900 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* ===== SCHEDULE TABLE ===== */}
-      {activePeriod && scheduleData.length > 0 && (
-        <ScheduleTable data={scheduleData} sectorCount={sectorCount} />
+      {activePeriod && localSchedule.length > 0 && (
+        <ScheduleTable
+          data={localSchedule}
+          sectorCount={sectorCount}
+          onSelectSlot={(slot) => {
+            setSwapSuccessMsg("");
+            setSelectedSlot(slot);
+          }}
+        />
+      )}
+
+      {/* ===== SWAP MODAL ===== */}
+      {mounted && selectedSlot && (
+        <SwapPiketModal
+          slot={selectedSlot}
+          onClose={() => setSelectedSlot(null)}
+          onSuccess={handleSwapSuccess}
+        />
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -636,15 +750,34 @@ const SECTOR_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
 function ScheduleTable({
   data,
   sectorCount,
+  onSelectSlot,
 }: {
-  data: { date: string; sectors: { sector: number; fullName: string }[] }[];
+  data: Props["scheduleData"];
   sectorCount: number;
+  onSelectSlot: (slot: {
+    assignmentId: string;
+    date: string;
+    sector: number;
+    fullName: string;
+    userId: string;
+  }) => void;
 }) {
   const weeks = useMemo(() => groupScheduleWeeks(data), [data]);
   const sectorIndexes = useMemo(() => Array.from({ length: sectorCount }, (_, i) => i), [sectorCount]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" suppressHydrationWarning>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+          <CalendarRange className="h-4 w-4 text-primary" />
+          Tabel Jadwal Piket Aktif
+        </h2>
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-slate-100 px-3 py-1 rounded-full w-fit">
+          <Edit3 className="h-3 w-3 text-emerald-600" />
+          Klik nama petugas untuk mengganti / acak pengganti piket
+        </span>
+      </div>
+
       {weeks.map((week, wi) => (
         <div key={wi}>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -653,51 +786,404 @@ function ScheduleTable({
 
           {/* overflow-x-auto agar tidak overflow di mobile */}
           <div className="overflow-x-auto rounded-2xl border border-border">
-          {/* Grid: 1 col for labels + 7 cols for days */}
-          <div
-            className="grid bg-white min-w-[480px]"
-            style={{ gridTemplateColumns: `60px repeat(7, 1fr)` }}
-          >
-            {/* Header row */}
-            <div className="border-b border-r border-border bg-slate-50 px-2 py-2.5 text-[10px] font-semibold text-muted-foreground">
-              Sektor
-            </div>
-            {week.days.map((date) => {
-              const s = fmtShortDate(date);
-              return (
-                <div
-                  key={date}
-                  className="border-b border-r border-border bg-slate-50 px-1 py-2.5 text-center text-[10px] font-semibold text-muted-foreground last:border-r-0"
-                >
-                  <div>{s.dayLabel}</div>
-                  <div className="mt-0.5 text-[9px] font-normal opacity-75">{s.dateStr}</div>
-                </div>
-              );
-            })}
-
-            {/* Data rows */}
-            {sectorIndexes.map((si) => (
-              <div key={si} className="contents">
-                <div className="border-b border-r border-border bg-white px-2 py-2 text-center text-xs font-bold text-muted-foreground">
-                  {SECTOR_LABELS[si] ?? si + 1}
-                </div>
-                {week.days.map((date) => {
-                  const name = week.cellMap[`${date}|${si}`];
-                  return (
-                    <div
-                      key={`${date}|${si}`}
-                      className="border-b border-r border-border bg-white px-1 py-2 text-center text-xs text-foreground last:border-r-0"
-                    >
-                      {name ? shortName(name) : <span className="text-muted-foreground/30">—</span>}
-                    </div>
-                  );
-                })}
+            {/* Grid: 1 col for labels + 7 cols for days */}
+            <div
+              className="grid bg-white min-w-[520px]"
+              style={{ gridTemplateColumns: `60px repeat(7, 1fr)` }}
+            >
+              {/* Header row */}
+              <div className="border-b border-r border-border bg-slate-50 px-2 py-2.5 text-[10px] font-semibold text-muted-foreground">
+                Sektor
               </div>
-            ))}
-          </div>
+              {week.days.map((date) => {
+                const s = fmtShortDate(date);
+                return (
+                  <div
+                    key={date}
+                    className="border-b border-r border-border bg-slate-50 px-1 py-2.5 text-center text-[10px] font-semibold text-muted-foreground last:border-r-0"
+                  >
+                    <div>{s.dayLabel}</div>
+                    <div className="mt-0.5 text-[9px] font-normal opacity-75">{s.dateStr}</div>
+                  </div>
+                );
+              })}
+
+              {/* Data rows */}
+              {sectorIndexes.map((si) => (
+                <div key={si} className="contents">
+                  <div className="border-b border-r border-border bg-white px-2 py-2 text-center text-xs font-bold text-muted-foreground flex items-center justify-center">
+                    {SECTOR_LABELS[si] ?? si + 1}
+                  </div>
+                  {week.days.map((date) => {
+                    const cell = week.cellMap[`${date}|${si}`];
+                    if (!cell) {
+                      return (
+                        <div
+                          key={`${date}|${si}`}
+                          className="border-b border-r border-border bg-white px-1 py-2 text-center text-xs text-muted-foreground/30 last:border-r-0 flex items-center justify-center min-h-[52px]"
+                        >
+                          —
+                        </div>
+                      );
+                    }
+
+                    if (cell.hasAttendance) {
+                      const isHadir = cell.attendanceStatus === "HADIR";
+                      return (
+                        <div
+                          key={`${date}|${si}`}
+                          className="border-b border-r border-border bg-slate-50/50 px-1 py-1.5 text-center text-xs text-foreground last:border-r-0 flex flex-col items-center justify-center min-h-[52px]"
+                          title={`${cell.fullName} — Sudah tercatat kehadiran (${isHadir ? "Hadir" : "Tidak Hadir"})`}
+                        >
+                          <span className="font-medium text-slate-600 line-through opacity-80 text-[11px]">
+                            {shortName(cell.fullName)}
+                          </span>
+                          {isHadir ? (
+                            <span className="mt-0.5 inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-full">
+                              <CheckCircle2 className="h-2.5 w-2.5" /> Hadir
+                            </span>
+                          ) : (
+                            <span className="mt-0.5 inline-flex items-center gap-0.5 text-[9px] font-semibold text-rose-700 bg-rose-100/70 px-1.5 py-0.5 rounded-full">
+                              <AlertCircle className="h-2.5 w-2.5" /> Alpha
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={`${date}|${si}`}
+                        className="border-b border-r border-border bg-white p-1 text-center last:border-r-0 flex items-center justify-center min-h-[52px]"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSelectSlot({
+                              assignmentId: cell.assignmentId,
+                              date,
+                              sector: si,
+                              fullName: cell.fullName,
+                              userId: cell.userId,
+                            });
+                          }}
+                          className="group relative flex w-full flex-col items-center justify-center rounded-lg p-1.5 transition-all hover:bg-emerald-50 hover:border-emerald-300 border border-transparent active:scale-95 cursor-pointer shadow-2xs hover:shadow-xs"
+                          title={`Klik untuk ganti / acak petugas piket: ${cell.fullName}`}
+                        >
+                          <span className="text-xs font-semibold text-slate-800 group-hover:text-emerald-700 pointer-events-none">
+                            {shortName(cell.fullName)}
+                          </span>
+                          <span className="mt-0.5 inline-flex items-center gap-0.5 text-[9px] font-medium text-muted-foreground group-hover:text-emerald-600 transition-colors pointer-events-none">
+                            <Edit3 className="h-2.5 w-2.5" /> Ganti
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ))}
     </div>
   );
 }
+
+type Candidate = {
+  id: string;
+  fullName: string;
+  username: string;
+  isCalonWarga: boolean;
+  dutyCountInPeriod: number;
+};
+
+function SwapPiketModal({
+  slot,
+  onClose,
+  onSuccess,
+}: {
+  slot: {
+    assignmentId: string;
+    date: string;
+    sector: number;
+    fullName: string;
+    userId: string;
+  };
+  onClose: () => void;
+  onSuccess: (
+    assignmentId: string,
+    newUserId: string,
+    newUserName: string,
+    msg: string
+  ) => void;
+}) {
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [randomNotice, setRandomNotice] = useState<string>("");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+    setLoadingCandidates(true);
+    setError("");
+    getSwapCandidates(slot.assignmentId)
+      .then((res) => {
+        if (!active) return;
+        setCandidates(res.candidates);
+        setLoadingCandidates(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(err?.message || "Gagal memuat daftar warga pengganti");
+        setLoadingCandidates(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [slot.assignmentId]);
+
+  const calonWargaCount = candidates.filter((c) => c.isCalonWarga).length;
+  const wargaCount = candidates.filter((c) => !c.isCalonWarga).length;
+
+  const handleRandomize = () => {
+    if (candidates.length === 0) return;
+    setError("");
+    const calonWargaList = candidates.filter((c) => c.isCalonWarga);
+    if (calonWargaList.length > 0) {
+      const idx = Math.floor(Math.random() * calonWargaList.length);
+      const picked = calonWargaList[idx];
+      setSelectedUserId(picked.id);
+      setRandomNotice(`⭐ Terpilih secara acak dari Calon Warga: ${picked.fullName}`);
+    } else {
+      const idx = Math.floor(Math.random() * candidates.length);
+      const picked = candidates[idx];
+      setSelectedUserId(picked.id);
+      setRandomNotice(`🎲 Calon warga tidak tersedia. Terpilih secara acak dari Warga Asrama: ${picked.fullName}`);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (!selectedUserId) {
+      setError("Silakan pilih warga pengganti terlebih dahulu");
+      return;
+    }
+    setError("");
+    startTransition(async () => {
+      try {
+        const res = await swapPiketAssignment({
+          assignmentId: slot.assignmentId,
+          newUserId: selectedUserId,
+        });
+        onSuccess(
+          slot.assignmentId,
+          selectedUserId,
+          res.newUserName,
+          `Jadwal berhasil ditukar! ${res.oldUserName} digantikan oleh ${res.newUserName} pada ${res.date} (Sektor ${res.sector}).`
+        );
+      } catch (err: any) {
+        setError(err?.message || "Gagal menukar jadwal piket");
+      }
+    });
+  };
+
+  const selectedCandidate = candidates.find((c) => c.id === selectedUserId);
+  const formattedDate = useMemo(() => {
+    const { year, month, day } = parseLocalDate(slot.date);
+    const d = new Date(year, month - 1, day);
+    const FULL_DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const FULL_MONTHS = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    return `${FULL_DAYS[d.getDay()] || ""}, ${day} ${FULL_MONTHS[month - 1] || ""} ${year}`;
+  }, [slot.date]);
+  const sectorLabel = SECTOR_LABELS[slot.sector] ?? slot.sector + 1;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-white p-6 shadow-xl animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-border pb-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-100 p-2.5 text-emerald-700">
+              <Edit3 className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">
+                Ganti Petugas Piket
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Pilih atau acak pengganti piket jika warga berhalangan
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-slate-100 hover:text-foreground transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Current info box */}
+        <div className="my-5 rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2 text-xs">
+          <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+            <span className="text-muted-foreground">Tanggal Piket:</span>
+            <span className="font-semibold text-slate-800">{formattedDate}</span>
+          </div>
+          <div className="flex justify-between items-center py-0.5 border-b border-slate-200/60">
+            <span className="text-muted-foreground">Sektor Tugas:</span>
+            <span className="font-semibold text-primary">Sektor {sectorLabel}</span>
+          </div>
+          <div className="flex justify-between items-center py-0.5">
+            <span className="text-muted-foreground">Petugas Saat Ini:</span>
+            <span className="font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+              {slot.fullName}
+            </span>
+          </div>
+        </div>
+
+        {/* Loading state */}
+        {loadingCandidates ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+            <p className="text-sm">Memeriksa ketersediaan warga & calon warga...</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Quick stats & Random button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+              <div className="text-xs text-indigo-900">
+                <span className="font-semibold">{calonWargaCount}</span> Calon Warga &{" "}
+                <span className="font-semibold">{wargaCount}</span> Warga Asrama siap piket.
+              </div>
+              <button
+                type="button"
+                onClick={handleRandomize}
+                disabled={isPending || candidates.length === 0}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-60"
+              >
+                <Dices className="h-3.5 w-3.5" />
+                Acak Pengganti
+              </button>
+            </div>
+
+            {/* Random Notice message */}
+            {randomNotice && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 animate-in fade-in">
+                {randomNotice}
+              </div>
+            )}
+
+            {/* Selection Dropdown */}
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-foreground">
+                Pilih Warga Pengganti:
+              </label>
+              <select
+                value={selectedUserId}
+                onChange={(e) => {
+                  setSelectedUserId(e.target.value);
+                  setRandomNotice("");
+                }}
+                disabled={isPending}
+                className="w-full rounded-xl border border-border bg-white px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60"
+              >
+                <option value="">-- Pilih Warga Pengganti --</option>
+                {candidates.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.isCalonWarga ? "⭐ [CALON WARGA] " : ""}{c.fullName} (@{c.username}) — {c.dutyCountInPeriod}x tugas
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selected preview card */}
+            {selectedCandidate && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5 flex items-center justify-between animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-200/70 text-emerald-800 font-bold text-sm">
+                    {selectedCandidate.fullName.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold text-slate-800">
+                        {selectedCandidate.fullName}
+                      </span>
+                      {selectedCandidate.isCalonWarga ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-300">
+                          Calon Warga
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-800 border border-blue-200">
+                          Warga
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      @{selectedCandidate.username} • Sudah {selectedCandidate.dutyCountInPeriod}x piket di periode ini
+                    </span>
+                  </div>
+                </div>
+                <UserCheck className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+              </div>
+            )}
+
+            {/* Note alert */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-muted-foreground flex gap-2 items-start">
+              <Info className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <span>
+                Warga lama (<strong>{slot.fullName}</strong>) akan dibebaskan dari denda piket pada tanggal ini. Jika denda keterlambatan sempat terbit hari ini, denda akan dibatalkan otomatis. Petugas pengganti akan menerima notifikasi penugasan baru.
+              </span>
+            </div>
+
+            {/* Error banner */}
+            {error && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Modal actions */}
+        <div className="mt-6 flex items-center justify-end gap-2 border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-xl border border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground hover:bg-slate-100 transition-colors disabled:opacity-60"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isPending || loadingCandidates || !selectedUserId}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Menyimpan...
+              </>
+            ) : (
+              <>
+                <UserCheck className="h-3.5 w-3.5" />
+                Konfirmasi Penggantian
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
