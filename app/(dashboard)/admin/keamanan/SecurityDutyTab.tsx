@@ -574,9 +574,34 @@ export default function SecurityDutyTab({
   const [swapping, startSwap] = useTransition();
   const [swapError, setSwapError] = useState('');
 
-  const currentPeriod = periods.find(
-    (p) => p.month === selectedMonth && p.year === selectedYear
-  );
+  // Filter assignments for the selected month & year across all periods
+  const assignments = useMemo(() => {
+    const result: AssignmentWithAttendance[] = [];
+    for (const p of periods) {
+      for (const a of p.assignments) {
+        const dateKey = a.date.slice(0, 10);
+        const [yStr, mStr] = dateKey.split('-');
+        if (Number(mStr) === selectedMonth && Number(yStr) === selectedYear) {
+          result.push(a);
+        }
+      }
+    }
+    return result.sort((a, b) => a.date.localeCompare(b.date));
+  }, [periods, selectedMonth, selectedYear]);
+
+  // Find period associated with selected month or containing assignments in selected month
+  const currentPeriod = useMemo(() => {
+    return (
+      periods.find((p) => p.month === selectedMonth && p.year === selectedYear) ||
+      periods.find((p) =>
+        p.assignments.some((a) => {
+          const [yStr, mStr] = a.date.slice(0, 10).split('-');
+          return Number(mStr) === selectedMonth && Number(yStr) === selectedYear;
+        })
+      ) ||
+      null
+    );
+  }, [periods, selectedMonth, selectedYear]);
 
   const goMonth = (dir: -1 | 1) => {
     let m = selectedMonth + dir;
@@ -596,8 +621,6 @@ export default function SecurityDutyTab({
       } catch {}
     });
   };
-
-  const assignments = currentPeriod?.assignments ?? [];
   const weeks = useMemo(() => splitWeeks(assignments), [assignments]);
 
   const totalDays = assignments.length;

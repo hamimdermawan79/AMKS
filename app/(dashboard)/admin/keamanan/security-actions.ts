@@ -70,12 +70,21 @@ export async function generateSecurityDutyPeriod(params: {
 
   if (users.length === 0) throw new Error('Warga peserta piket tidak ditemukan atau tidak aktif.');
 
-  // Jika periode pada bulan & tahun ini sudah ada, timpa / hapus yang lama
-  const existing = await db.securityDutyPeriod.findUnique({
-    where: { month_year: { month: sMonth, year: sYear } },
+  // Hapus periode lama yang tumpang tindih dengan rentang tanggal baru
+  const overlappingPeriods = await db.securityDutyPeriod.findMany({
+    where: {
+      OR: [
+        { month: sMonth, year: sYear },
+        { month: eMonth, year: eYear },
+        {
+          startDate: { lte: end },
+          endDate: { gte: start },
+        },
+      ],
+    },
   });
-  if (existing) {
-    await db.securityDutyPeriod.delete({ where: { id: existing.id } });
+  for (const ep of overlappingPeriods) {
+    await db.securityDutyPeriod.delete({ where: { id: ep.id } });
   }
 
   // Buat period baru
