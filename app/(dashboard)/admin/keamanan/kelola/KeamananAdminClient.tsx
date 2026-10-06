@@ -146,7 +146,7 @@ export default function KeamananAdminClient({
   allUsers,
 }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'cctv' | 'piket_malam' | 'buku_tamu' | 'pengumuman'>('cctv');
+  const [activeTab, setActiveTab] = useState<'piket_malam' | 'cctv' | 'buku_tamu' | 'pengumuman'>('piket_malam');
   const [isPending, startTransition] = useTransition();
   const [cctvNote, setCctvNote] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -189,19 +189,6 @@ export default function KeamananAdminClient({
       {/* Tabs */}
       <div className="flex border-b border-border overflow-x-auto">
         <button
-          onClick={() => setActiveTab('cctv')}
-          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'cctv'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <Camera className="h-4 w-4" />
-            Kelola Status CCTV
-          </span>
-        </button>
-        <button
           onClick={() => setActiveTab('piket_malam')}
           className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'piket_malam'
@@ -212,6 +199,19 @@ export default function KeamananAdminClient({
           <span className="flex items-center gap-2">
             <Moon className="h-4 w-4" />
             Kelola Piket Malam
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('cctv')}
+          className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'cctv'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <Camera className="h-4 w-4" />
+            Kelola Status CCTV
           </span>
         </button>
         <button
