@@ -205,6 +205,14 @@ export async function updateSecurityDutyAssignee(assignmentId: string, newUserId
   if (!assignment) throw new Error('Penugasan tidak ditemukan.');
   if (assignment.attendance) throw new Error('Tidak bisa mengubah jadwal yang sudah diisi presensinya.');
 
+  const assignmentDate = new Date(assignment.date);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfAssignmentDate = new Date(assignmentDate.getFullYear(), assignmentDate.getMonth(), assignmentDate.getDate());
+  if (startOfAssignmentDate < startOfToday) {
+    throw new Error('Tidak bisa mengubah nama warga untuk tanggal piket yang sudah berlalu.');
+  }
+
   await db.securityDutyAssignment.update({
     where: { id: assignmentId },
     data: { userId: newUserId },

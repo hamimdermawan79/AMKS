@@ -153,7 +153,7 @@ export default function KeamananManager({
   guestEntries,
   allUsers,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'cctv' | 'kegiatan' | 'piket_malam' | 'buku_tamu'>('cctv');
+  const [activeTab, setActiveTab] = useState<'piket_malam' | 'cctv' | 'kegiatan' | 'buku_tamu'>('piket_malam');
   const [showPassword, setShowPassword] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -288,6 +288,19 @@ export default function KeamananManager({
       {/* TABS */}
       <div className="flex border-b border-border overflow-x-auto">
         <button
+          onClick={() => setActiveTab('piket_malam')}
+          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'piket_malam'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+        >
+          <span className="flex items-center gap-2">
+            <Moon className="h-4 w-4" />
+            Piket Malam
+          </span>
+        </button>
+        <button
           onClick={() => setActiveTab('cctv')}
           className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'cctv'
@@ -314,19 +327,6 @@ export default function KeamananManager({
           </span>
         </button>
         <button
-          onClick={() => setActiveTab('piket_malam')}
-          className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-            activeTab === 'piket_malam'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-        >
-          <span className="flex items-center gap-2">
-            <Moon className="h-4 w-4" />
-            Piket Malam
-          </span>
-        </button>
-        <button
           onClick={() => setActiveTab('buku_tamu')}
           className={`px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'buku_tamu'
@@ -340,6 +340,34 @@ export default function KeamananManager({
           </span>
         </button>
       </div>
+
+      {/* TAB: PIKET MALAM (Default — paling penting, langsung tampil) */}
+      {activeTab === 'piket_malam' && (
+        <div className="space-y-4">
+          {canManage && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 shadow-xs">
+              <div className="flex items-center gap-3">
+                <Moon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                <p className="text-xs text-blue-900 font-medium">
+                  Anda sedang di <strong>Tampilan Warga (Preview)</strong>. Untuk membuat jadwal piket baru atau mengedit giliran piket, buka Layanan Admin Keamanan.
+                </p>
+              </div>
+              <Link
+                href="/admin/keamanan/kelola"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold whitespace-nowrap transition-all shadow-sm self-start sm:self-auto"
+              >
+                Buka Layanan Admin <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          )}
+          <SecurityDutyTab
+            periods={securityPeriods}
+            currentUserId={currentUserId}
+            canManage={false}
+            allUsers={allUsers}
+          />
+        </div>
+      )}
 
       {/* TAB: INFO CCTV */}
       {activeTab === 'cctv' && (
@@ -635,33 +663,6 @@ export default function KeamananManager({
               )}
             </div>
           </div>
-        </div>
-      )}
-      {/* TAB: PIKET MALAM */}
-      {activeTab === 'piket_malam' && (
-        <div className="space-y-4">
-          {canManage && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-200 bg-blue-50/70 p-4 shadow-xs">
-              <div className="flex items-center gap-3">
-                <Moon className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                <p className="text-xs text-blue-900 font-medium">
-                  Anda sedang di <strong>Tampilan Warga (Preview)</strong>. Untuk membuat jadwal piket baru atau mengedit giliran piket, buka Layanan Admin Keamanan.
-                </p>
-              </div>
-              <Link
-                href="/admin/keamanan/kelola"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold whitespace-nowrap transition-all shadow-sm self-start sm:self-auto"
-              >
-                Buka Layanan Admin <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          )}
-          <SecurityDutyTab
-            periods={securityPeriods}
-            currentUserId={currentUserId}
-            canManage={false}
-            allUsers={allUsers}
-          />
         </div>
       )}
 

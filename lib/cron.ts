@@ -915,17 +915,16 @@ export async function checkActivityReminders() {
 
 /**
  * Broadcast reminders for security night duty (piket keamanan malam).
- * - 20:00 WIB: Pengingat kepada petugas besok piket (H-1)
- * - 21:00, 22:00, 23:00 WIB: Pengingat jam piket mulai, sampai presensi dilakukan
- * - 00:00 WIB: Pengingat terakhir jam 12 malam
+ * - 18:00 - 20:00 WIB: Pengingat hari H bahwa ada piket malam jam 21:00 nanti malam
+ * - 21:00 - 00:00 WIB: Pengingat jam operasional piket sampai presensi diisi atau ditutup jam 12 malam
  */
 export async function checkSecurityDutyReminders() {
   try {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
 
-    // Valid jam pengiriman: 20, 21, 22, 23, 0
-    const validHours = [20, 21, 22, 23, 0];
+    // Valid jam pengiriman: 18, 19, 20, 21, 22, 23, 0
+    const validHours = [18, 19, 20, 21, 22, 23, 0];
     if (!validHours.includes(currentHour)) return;
 
     const startOfToday = new Date(nowWib);
@@ -933,46 +932,6 @@ export async function checkSecurityDutyReminders() {
     const endOfToday = new Date(nowWib);
     endOfToday.setHours(23, 59, 59, 999);
 
-    // ---------------------------------------------------------------
-    // Jam 20:00 → kirim pengingat kepada petugas BESOK piket (H-1)
-    // ---------------------------------------------------------------
-    if (currentHour === 20) {
-      const startOfTomorrow = new Date(startOfToday);
-      startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-      const endOfTomorrow = new Date(endOfToday);
-      endOfTomorrow.setDate(endOfTomorrow.getDate() + 1);
-
-      const tomorrowAssignments = await db.securityDutyAssignment.findMany({
-        where: {
-          date: { gte: startOfTomorrow, lte: endOfTomorrow },
-          period: { isActive: true },
-        },
-        include: { user: true, attendance: true },
-      });
-
-      for (const assign of tomorrowAssignments) {
-        if (assign.attendance) continue;
-
-        const dateStr = new Date(assign.date).toLocaleDateString('id-ID', {
-          weekday: 'long', day: 'numeric', month: 'long',
-        });
-        const refId = `SEC_DUTY_H1:${assign.id}`;
-        const exists = await db.notification.findFirst({ where: { referenceId: refId } });
-        if (exists) continue;
-
-        await createNotification({
-          userId: assign.userId,
-          title: '🔐 Pengingat: Piket Keamanan Malam Besok',
-          message: `Halo ${assign.user.fullName}, kamu terjadwal piket keamanan malam *BESOK* (${dateStr}) mulai pukul 21:00 WIB.\n\n📋 Tugas piket:\n• Cek pintu luar asrama\n• Cek garasi (tutup & kunci)\n• Pastikan motor di luar terkunci stang\n• Konfirmasi jika ada warga yang keluar malam\n\nPresensi dilakukan melalui aplikasi AMKS.`,
-          type: 'PIKET_REMINDER',
-          referenceId: refId,
-        });
-      }
-    }
-
-    // ---------------------------------------------------------------
-    // Jam 21, 22, 23, 0 → kirim pengingat kepada petugas HARI INI yang belum presensi
-    // ---------------------------------------------------------------
     const todayAssignments = await db.securityDutyAssignment.findMany({
       where: {
         date: { gte: startOfToday, lte: endOfToday },
@@ -982,33 +941,44 @@ export async function checkSecurityDutyReminders() {
       include: { user: true },
     });
 
+    if (todayAssignments.length === 0) return;
+
     for (const assign of todayAssignments) {
       const dateStr = new Date(assign.date).toLocaleDateString('id-ID', {
-        weekday: 'long', day: 'numeric', month: 'long',
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       });
 
-      const hourLabel = currentHour === 0 ? '00:00 (12 malam)' : `${String(currentHour).padStart(2, '0')}:00`;
       const refId = `SEC_DUTY_HOUR_${currentHour}:${assign.id}`;
       const exists = await db.notification.findFirst({ where: { referenceId: refId } });
       if (exists) continue;
 
-      let urgencyEmoji = '🔔';
-      if (currentHour === 23) urgencyEmoji = '⚠️';
-      if (currentHour === 0) urgencyEmoji = '🚨';
+      if (currentHour >= 18 && currentHour < 21) {
+        // Pengingat sore hari H (18:00 - 20:00 WIB)
+        await createNotification({
+          userId: assign.userId,
+          title: '🌙 Pengingat: Piket Keamanan Malam Ini',
+          message: `Halo ${assign.user.fullName}, mengingatkan bahwa kamu bertugas piket keamanan malam HARI INI (${dateStr}) mulai pukul 21:00 WIB. Mohon bersiap melaksanakan tugas piket malam.`,
+          type: 'PIKET_REMINDER',
+          referenceId: refId,
+        });
+      } else {
+        // Jam piket berjalan & presensi (21:00 - 00:00 WIB)
+        const hourLabel = currentHour === 0 ? '00:00 (12 malam)' : `${String(currentHour).padStart(2, '0')}:00`;
+        let urgencyEmoji = '🔔';
+        if (currentHour === 23) urgencyEmoji = '⚠️';
+        if (currentHour === 0) urgencyEmoji = '🚨';
 
-      await createNotification({
-        userId: assign.userId,
-        title: `${urgencyEmoji} Piket Keamanan Malam — Pukul ${hourLabel}`,
-        message: `${urgencyEmoji} Halo ${assign.user.fullName}, kamu bertugas piket keamanan malam hari ini (${dateStr}).\n\n📋 Tugas saat ini:\n• Cek kondisi pintu luar asrama\n• Cek garasi (sudah ditutup?)\n• Cek motor di luar (sudah kunci stang?)\n• Konfirmasi warga yang keluar malam\n\nSetelah selesai, harap isi presensi di aplikasi AMKS segera.`,
-        type: 'PIKET_REMINDER',
-        referenceId: refId,
-      });
+        await createNotification({
+          userId: assign.userId,
+          title: `${urgencyEmoji} Jangan Lupa Cek & Jaga Keamanan Asrama Sambas`,
+          message: `${urgencyEmoji} Halo ${assign.user.fullName}, jangan lupa cek dan jaga keamanan Asrama Sambas dengan menyelesaikan piket malam Anda hari ini (${dateStr}).\n\n📋 Tugas piket malam (21:00 – 00:00 WIB):\n• Cek kondisi pintu luar asrama (terkunci rapat)\n• Cek garasi (sudah ditutup & dikunci)\n• Cek motor di luar (pastikan terkunci stang)\n• Konfirmasi warga yang keluar malam\n\nSetelah selesai, harap segera isi presensi piket di aplikasi AMKS.`,
+          type: 'PIKET_REMINDER',
+          referenceId: refId,
+        });
+      }
     }
 
-    if (todayAssignments.length > 0) {
-      processNotificationQueue().catch(console.error);
-    }
-
+    processNotificationQueue().catch(console.error);
   } catch (error) {
     console.error('Failed to run checkSecurityDutyReminders:', error);
   }

@@ -87,6 +87,14 @@ function fmtShortDate(iso: string) {
   };
 }
 
+function isPastDay(dateIsoOrStr: string): boolean {
+  const d = new Date(dateIsoOrStr);
+  const now = new Date();
+  const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return targetDate < todayDate;
+}
+
 // Split assignments into Mon-Sun week blocks (like Kebersihan)
 function splitWeeks(assignments: AssignmentWithAttendance[]) {
   if (assignments.length === 0) return [];
@@ -840,7 +848,7 @@ export default function SecurityDutyTab({
                             </div>
 
                             {/* Admin Swap selector */}
-                            {canManage && !hasAttendance && (
+                            {canManage && !hasAttendance && !isPastDay(dateStr) && (
                               <div className="mt-1 pt-1 border-t border-slate-100">
                                 <select
                                   className="w-full text-[10px] text-slate-500 bg-transparent border-0 focus:ring-0 cursor-pointer text-center"
@@ -961,7 +969,7 @@ export default function SecurityDutyTab({
                   )}
 
                   {/* Admin swap */}
-                  {canManage && !hasAttendance && (
+                  {canManage && !hasAttendance && !isPastDay(a.date) && (
                     <select
                       className="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-300"
                       value={a.userId}
