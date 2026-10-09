@@ -435,3 +435,62 @@ export async function confirmCctvMemoryCleaned(note?: string) {
   revalidatePath('/admin/keamanan');
   return { success: true };
 }
+
+/**
+ * Siarkan ulang notifikasi jadwal via WhatsApp ke seluruh petugas keamanan pada periode terpilih
+ */
+export async function broadcastSecurityDutyReminderAction(periodId?: string) {
+  const session = await requireSession();
+  const canManage =
+    (await canFromSession('division:manage:keamanan', 'KEAMANAN')) ||
+    (await canFromSession('security:duty:manage'));
+  if (!canManage) throw new Error('Tidak memiliki akses.');
+
+  const period = periodId
+    ? await db.securityDutyPeriod.findUnique({
+        where: { id: periodId },
+        include: { assignments: { include: { user: true } } },
+      })
+    : await db.securityDutyPeriod.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+        include: { assignments: { include: { user: true } } },
+      });
+
+  if (!period || period.assignments.length === 0) {
+    throw new Error('Jadwal piket keamanan tidak ditemukan.');
+  }
+
+  const monthName = period.startDate
+    ? new Date(period.startDate).toLocaleDateString('id-ID', { month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })
+    : `${period.month}/${period.year}`;
+
+  const userIds = [...new Set(period.assignments.map((a) => a.userId))];
+  const users = await db.user.findMany({
+    where: { id: { in: userIds }, status: 'AKTIF' },
+    select: { id: true, fullName: true, phone: true },
+  });
+
+  let sentCount = 0;
+  for (const user of users) {
+    const userDays = period.assignments
+      .filter((a) => a.userId === user.id)
+      .map((a) => new Date(a.date).getDate());
+
+    if (userDays.length === 0) continue;
+    const dayList = userDays.join(', ');
+
+    await createNotification({
+      userId: user.id,
+      title: `📋 Jadwal Piket Keamanan (${monthName})`,
+      message: `Halo ${user.fullName}, mengingatkan kembali bahwa Anda terjadwal piket keamanan malam pada tanggal: ${dayList} (${monthName}).\n\n📋 Tugas piket malam (21:00–00:00 WIB):\n• Cek pintu luar asrama (terkunci rapat)\n• Cek garasi (sudah ditutup & dikunci)\n• Cek motor di luar (pastikan terkunci stang)\n• Konfirmasi warga yang keluar malam\n\nPresensi dilakukan melalui aplikasi AMKS.`,
+      type: 'PIKET_REMINDER',
+      referenceId: `SEC_DUTY_BROADCAST:${user.id}:${period.id}:${Date.now()}`,
+    });
+    sentCount++;
+  }
+
+  processNotificationQueue().catch(console.error);
+  return { success: true, count: sentCount };
+}
+

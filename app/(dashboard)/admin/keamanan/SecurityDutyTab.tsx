@@ -8,13 +8,14 @@ import {
   ChevronLeft, ChevronRight, AlertTriangle, ClipboardList,
   DoorOpen, Car, Bike, UserCheck, Loader2, Plus, Trash2,
   Table as TableIcon, List, Search, CheckSquare, Square,
-  Check, ArrowRight, X, Users,
+  Check, ArrowRight, X, Users, Send,
 } from 'lucide-react';
 import {
   generateSecurityDutyPeriod,
   submitSecurityAttendance,
   deleteSecurityDutyPeriod,
   updateSecurityDutyAssignee,
+  broadcastSecurityDutyReminderAction,
 } from './security-actions';
 
 // ---------- Types ----------
@@ -572,7 +573,9 @@ export default function SecurityDutyTab({
   const [activePresent, setActivePresent] = useState<AssignmentWithAttendance | null>(null);
   const [deleting, startDelete] = useTransition();
   const [swapping, startSwap] = useTransition();
+  const [broadcasting, startBroadcast] = useTransition();
   const [swapError, setSwapError] = useState('');
+  const [broadcastMsg, setBroadcastMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Filter assignments for the selected month & year across all periods
   const assignments = useMemo(() => {
@@ -621,6 +624,27 @@ export default function SecurityDutyTab({
       } catch {}
     });
   };
+
+  const handleBroadcastWA = (periodId: string) => {
+    if (!confirm('Kirim notifikasi jadwal & pengingat via WhatsApp ke seluruh petugas keamanan pada periode ini?')) return;
+    setBroadcastMsg(null);
+    startBroadcast(async () => {
+      try {
+        const res = await broadcastSecurityDutyReminderAction(periodId);
+        setBroadcastMsg({
+          type: 'success',
+          text: `Berhasil mengirim notifikasi WhatsApp ke ${res.count} petugas keamanan!`,
+        });
+        setTimeout(() => setBroadcastMsg(null), 6000);
+      } catch (err: unknown) {
+        setBroadcastMsg({
+          type: 'error',
+          text: err instanceof Error ? err.message : 'Gagal mengirim notifikasi WhatsApp.',
+        });
+      }
+    });
+  };
+
   const weeks = useMemo(() => splitWeeks(assignments), [assignments]);
 
   const totalDays = assignments.length;
@@ -694,6 +718,17 @@ export default function SecurityDutyTab({
               </button>
               {currentPeriod && (
                 <button
+                  onClick={() => handleBroadcastWA(currentPeriod.id)}
+                  disabled={broadcasting}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-60 transition-colors shadow-xs"
+                  title="Siarkan ulang jadwal ke WhatsApp seluruh petugas"
+                >
+                  {broadcasting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  Siarkan WA
+                </button>
+              )}
+              {currentPeriod && (
+                <button
                   onClick={() => handleDelete(currentPeriod.id)}
                   disabled={deleting}
                   className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 disabled:opacity-60 transition-colors"
@@ -706,6 +741,22 @@ export default function SecurityDutyTab({
           )}
         </div>
       </div>
+
+      {/* Broadcast feedback banner */}
+      {broadcastMsg && (
+        <div
+          className={`p-3.5 rounded-2xl text-xs font-medium border flex items-center justify-between animate-in fade-in duration-200 ${
+            broadcastMsg.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-red-50 text-red-800 border-red-200'
+          }`}
+        >
+          <span>{broadcastMsg.text}</span>
+          <button onClick={() => setBroadcastMsg(null)} className="text-slate-400 hover:text-slate-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Stats summary */}
       {currentPeriod && (

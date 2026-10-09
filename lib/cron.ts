@@ -915,63 +915,135 @@ export async function checkActivityReminders() {
 
 /**
  * Broadcast reminders for security night duty (piket keamanan malam).
- * - 18:00 - 20:00 WIB: Pengingat hari H bahwa ada piket malam jam 21:00 nanti malam
- * - 21:00 - 00:00 WIB: Pengingat jam operasional piket sampai presensi diisi atau ditutup jam 12 malam
+ * - 08:00 & 13:00 WIB: Pengingat hari H (pagi & siang) agar warga bersiap
+ * - 18:00 - 20:00 WIB: Pengingat sore hari H bahwa piket malam dimulai jam 21:00 WIB
+ * - 21:00 - 23:00 WIB: Pengingat operasional piket berjalan & pengisian presensi
+ * - 00:00 WIB: Peringatan batas akhir pengisian presensi piket malam
+ * - 19:00 WIB: Pengingat H-1 bagi petugas keamanan besok malam
  */
 export async function checkSecurityDutyReminders() {
   try {
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
 
-    // Valid jam pengiriman: 18, 19, 20, 21, 22, 23, 0
-    const validHours = [18, 19, 20, 21, 22, 23, 0];
+    // Valid jam pengiriman: 8 (pagi), 13 (siang), 18, 19, 20 (sore), 21, 22, 23 (malam), 0 (tengah malam)
+    const validHours = [8, 13, 18, 19, 20, 21, 22, 23, 0];
     if (!validHours.includes(currentHour)) return;
 
-    const startOfToday = new Date(nowWib);
-    startOfToday.setHours(0, 0, 0, 0);
-    const endOfToday = new Date(nowWib);
-    endOfToday.setHours(23, 59, 59, 999);
+    const todayDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+    
+    // Yesterday date string in WIB (for midnight 00:00 check of duty that just completed)
+    const yesterdayDate = new Date(nowWib);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayDateStr = yesterdayDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
 
-    const todayAssignments = await db.securityDutyAssignment.findMany({
+    // Tomorrow date string in WIB (for H-1 reminder)
+    const tomorrowDate = new Date(nowWib);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowDateStr = tomorrowDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+
+    // Wide window to eliminate any UTC vs WIB offset mismatch
+    const windowStart = new Date(nowWib.getTime() - 48 * 60 * 60 * 1000);
+    const windowEnd = new Date(nowWib.getTime() + 48 * 60 * 60 * 1000);
+
+    const candidates = await db.securityDutyAssignment.findMany({
       where: {
-        date: { gte: startOfToday, lte: endOfToday },
+        date: { gte: windowStart, lte: windowEnd },
         period: { isActive: true },
         attendance: null, // belum presensi
       },
       include: { user: true },
     });
 
-    if (todayAssignments.length === 0) return;
+    if (candidates.length === 0) return;
+
+    // 1. Process H-1 Reminder (dikirim jam 19:00 WIB kepada petugas besok malam)
+    if (currentHour === 19) {
+      const tomorrowAssignments = candidates.filter((a) => {
+        const aDateStr = new Date(a.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        return aDateStr === tomorrowDateStr;
+      });
+
+      for (const assign of tomorrowAssignments) {
+        const dateStr = new Date(assign.date).toLocaleDateString('id-ID', {
+          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta',
+        });
+        const refId = `SEC_DUTY_H1:${assign.id}`;
+        const exists = await db.notification.findFirst({ where: { referenceId: refId } });
+        if (exists) continue;
+
+        await createNotification({
+          userId: assign.userId,
+          title: '📅 Pengingat H-1: Piket Keamanan Besok Malam',
+          message: `Halo ${assign.user.fullName}, mengingatkan bahwa BESOK MALAM (${dateStr}) Anda memiliki jadwal piket keamanan asrama mulai pukul 21:00 WIB.\n\nMohon bersiap untuk menjalankan tugas piket malam besok. Terima kasih!`,
+          type: 'PIKET_REMINDER',
+          referenceId: refId,
+        });
+      }
+    }
+
+    // 2. Process Hari-H Reminders
+    // Jika jam 00:00 (tengah malam), target adalah piket malam hari kemarin (yang berakhir jam 00:00 hari ini)
+    const targetDateStr = currentHour === 0 ? yesterdayDateStr : todayDateStr;
+    const todayAssignments = candidates.filter((a) => {
+      const aDateStr = new Date(a.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+      return aDateStr === targetDateStr;
+    });
 
     for (const assign of todayAssignments) {
       const dateStr = new Date(assign.date).toLocaleDateString('id-ID', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta',
       });
 
       const refId = `SEC_DUTY_HOUR_${currentHour}:${assign.id}`;
       const exists = await db.notification.findFirst({ where: { referenceId: refId } });
       if (exists) continue;
 
-      if (currentHour >= 18 && currentHour < 21) {
-        // Pengingat sore hari H (18:00 - 20:00 WIB)
+      if (currentHour === 8) {
+        // Pagi (08:00 WIB)
         await createNotification({
           userId: assign.userId,
-          title: '🌙 Pengingat: Piket Keamanan Malam Ini',
+          title: '☀️ Pengingat Pagi: Piket Keamanan Malam Ini',
+          message: `Selamat pagi ${assign.user.fullName}, mengingatkan bahwa HARI INI (${dateStr}) Anda memiliki jadwal piket keamanan malam mulai pukul 21:00 WIB.\n\nHarap mengatur jadwal Anda agar dapat melaksanakan tugas pengecekan keamanan malam nanti.`,
+          type: 'PIKET_REMINDER',
+          referenceId: refId,
+        });
+      } else if (currentHour === 13) {
+        // Siang (13:00 WIB)
+        await createNotification({
+          userId: assign.userId,
+          title: '📢 Pengingat Siang: Piket Keamanan Malam Ini',
+          message: `Halo ${assign.user.fullName}, jangan lupa malam nanti (${dateStr}) adalah jadwal piket keamanan Anda mulai pukul 21:00 WIB.\n\nPastikan Anda bersiap melaksanakan pengecekan pintu, garasi, dan motor warga asrama.`,
+          type: 'PIKET_REMINDER',
+          referenceId: refId,
+        });
+      } else if (currentHour >= 18 && currentHour < 21) {
+        // Sore (18:00 - 20:00 WIB)
+        await createNotification({
+          userId: assign.userId,
+          title: '🌙 Pengingat Sore: Piket Keamanan Malam Ini',
           message: `Halo ${assign.user.fullName}, mengingatkan bahwa kamu bertugas piket keamanan malam HARI INI (${dateStr}) mulai pukul 21:00 WIB. Mohon bersiap melaksanakan tugas piket malam.`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
         });
-      } else {
-        // Jam piket berjalan & presensi (21:00 - 00:00 WIB)
-        const hourLabel = currentHour === 0 ? '00:00 (12 malam)' : `${String(currentHour).padStart(2, '0')}:00`;
-        let urgencyEmoji = '🔔';
-        if (currentHour === 23) urgencyEmoji = '⚠️';
-        if (currentHour === 0) urgencyEmoji = '🚨';
+      } else if (currentHour >= 21 && currentHour <= 23) {
+        // Jam piket berjalan & presensi (21:00 - 23:00 WIB)
+        const hourLabel = `${String(currentHour).padStart(2, '0')}:00 WIB`;
+        let urgencyEmoji = currentHour === 23 ? '⚠️' : '🔔';
 
         await createNotification({
           userId: assign.userId,
-          title: `${urgencyEmoji} Jangan Lupa Cek & Jaga Keamanan Asrama Sambas`,
+          title: `${urgencyEmoji} Jangan Lupa Cek & Jaga Keamanan Asrama Sambas (${hourLabel})`,
           message: `${urgencyEmoji} Halo ${assign.user.fullName}, jangan lupa cek dan jaga keamanan Asrama Sambas dengan menyelesaikan piket malam Anda hari ini (${dateStr}).\n\n📋 Tugas piket malam (21:00 – 00:00 WIB):\n• Cek kondisi pintu luar asrama (terkunci rapat)\n• Cek garasi (sudah ditutup & dikunci)\n• Cek motor di luar (pastikan terkunci stang)\n• Konfirmasi warga yang keluar malam\n\nSetelah selesai, harap segera isi presensi piket di aplikasi AMKS.`,
+          type: 'PIKET_REMINDER',
+          referenceId: refId,
+        });
+      } else if (currentHour === 0) {
+        // Jam 00:00 (Tengah malam)
+        await createNotification({
+          userId: assign.userId,
+          title: '🚨 Peringatan Batas Akhir Presensi Piket Keamanan Malam',
+          message: `🚨 Halo ${assign.user.fullName}, waktu operasional piket keamanan malam untuk ${dateStr} telah mencapai batas akhir (00:00 WIB).\n\nJika sudah selesai melaksanakan tugas pengecekan keamanan asrama, segera isi dan selesaikan presensi sekarang di aplikasi AMKS.`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
         });

@@ -180,11 +180,19 @@ export async function processNotificationQueue() {
 
 function formatWaMessage(title: string, message: string, type: NotificationType): string {
   let emoji = '🔔';
-  if (type === 'PIKET_REMINDER') emoji = '🧹';
+  if (type === 'PIKET_REMINDER') {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('keamanan') || titleLower.includes('malam') || titleLower.includes('security')) {
+      emoji = '🛡️';
+    } else {
+      emoji = '🧹';
+    }
+  }
   else if (type === 'TAGIHAN_REMINDER') emoji = '💵';
   else if (type === 'PENGUMUMAN') emoji = '📢';
   else if (type === 'RAPAT_REMINDER') emoji = '📅';
   else if (type === 'KEGIATAN_REMINDER') emoji = '🎯';
+  else if (type === 'CCTV_CHECK') emoji = '📹';
   else if (type === 'SYSTEM') emoji = '📚';
   
   return `*${emoji} ${title.toUpperCase()} ${emoji}*
