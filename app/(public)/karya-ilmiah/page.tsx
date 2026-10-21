@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { db } from '@/lib/db';
 import KaryaIlmiahList from './KaryaIlmiahList';
-import HeroSection from '@/components/HeroSection';
 
 export const metadata: Metadata = {
   title: 'Repositori Karya Ilmiah',
@@ -43,25 +42,5 @@ export default async function KaryaIlmiahPage() {
     .sort((a, b) => b - a)
     .map((year) => ({ year, works: byYear.get(year)! }));
 
-  return (
-    <div className="min-h-screen bg-white">
-      <HeroSection title="Repositori Karya Ilmiah" subtitle="Karya tulis ilmiah warga asrama — skripsi, tesis, jurnal, dan artikel" />
-
-      {/* Content */}
-      <section className="pb-24">
-        <div className="container mx-auto max-w-4xl px-6">
-          {works.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-slate-50/60 p-12 text-center">
-              <p className="text-lg font-semibold text-foreground">Belum ada karya ilmiah</p>
-              <p className="mt-1 text-muted-foreground">
-                Karya tulis ilmiah warga asrama akan ditampilkan di sini setelah ditambahkan oleh pengurus.
-              </p>
-            </div>
-          ) : (
-            <KaryaIlmiahList worksByYear={worksByYear} />
-          )}
-        </div>
-      </section>
-    </div>
-  );
+  return <KaryaIlmiahList worksByYear={worksByYear} />;
 }

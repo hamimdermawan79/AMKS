@@ -276,7 +276,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           </div>
 
           {/* Desktop Static Nav (Tanpa Garis / Borderless & Pure Transparent di Hero) */}
-          <nav className="pointer-events-auto hidden lg:flex items-center gap-2 xl:gap-4 2xl:gap-6 px-5 xl:px-7 py-2 bg-transparent border-0 shadow-none absolute left-1/2 -translate-x-1/2">
+          <nav className="pointer-events-auto hidden lg:flex items-center gap-2 xl:gap-4 2xl:gap-6 py-2 bg-transparent border-0 shadow-none">
             {/* Arsip dan Dokumen Dropdown */}
             <div className="relative group">
               <span className="text-[11px] xl:text-xs 2xl:text-sm font-semibold text-slate-900 cursor-pointer hover:text-primary smooth-transition flex items-center gap-1 whitespace-nowrap py-1">
@@ -331,6 +331,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
             <Link href="/hubungi-kami" className="text-[11px] xl:text-xs 2xl:text-sm font-semibold text-slate-900 hover:text-primary smooth-transition whitespace-nowrap py-1">
               Hubungi Kami
+            </Link>
+            <Link href="/login" className="whitespace-nowrap py-2 text-[11px] font-semibold text-primary transition-colors hover:text-blue-800 focus-visible:outline-none focus-visible:underline focus-visible:underline-offset-4 xl:text-xs 2xl:text-sm">
+              Akses Warga Asrama
             </Link>
           </nav>
 
@@ -432,9 +435,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 Hubungi Kami
               </Link>
 
-              {/* Button Daftar jadi Warga: Muncul saat melayang (biru 10% opacity) */}
-              <Link href="/daftar-warga" className="text-[11px] xl:text-xs 2xl:text-sm font-semibold text-primary bg-primary/10 hover:bg-primary/20 backdrop-blur-2xl border border-primary/25 px-3.5 xl:px-4 py-1.5 rounded-full smooth-transition shadow-sm whitespace-nowrap ml-1 active:scale-95">
-                Daftar jadi Warga
+              <Link href="/login" className="whitespace-nowrap py-2 text-[11px] font-semibold text-primary transition-colors hover:text-blue-800 focus-visible:outline-none focus-visible:underline focus-visible:underline-offset-4 xl:text-xs 2xl:text-sm">
+                Akses Warga Asrama
               </Link>
             </nav>
 
@@ -459,12 +461,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-400">
-        <div className="container mx-auto px-4 md:px-6 pt-12 md:pt-14 pb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 mb-12">
+        <div className="container mx-auto px-4 md:px-6 pt-8 md:pt-9 pb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 mb-6">
 
             {/* Kolom 1 — Brand */}
             <div>
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-3">
                 <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="w-9 h-9 rounded-xl object-contain shadow-sm" />
                 <div className="flex flex-col leading-none">
                   <span className="text-base font-bold text-white">SIMAS-KS</span>
@@ -472,10 +474,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 </div>
               </div>
               <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
-                Platform digital resmi Asrama Mahasiswa Kabupaten Sambas Yogyakarta — wadah warga, pengurus, dan calon warga asrama.
+                Platform digital resmi Asrama Mahasiswa Kabupaten Sambas Yogyakarta untuk warga, pengurus, dan calon warga asrama.
               </p>
               {/* Sosmed */}
-              <div className="mt-5 flex items-center gap-3">
+              <div className="mt-3 flex items-center gap-3">
                 <a
                   href="https://www.instagram.com/amks.yogyakarta?igsh=Mm03OHc5NWR4NWU2"
                   target="_blank"
@@ -499,8 +501,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
             {/* Kolom 2 — Tautan Cepat */}
             <div>
-              <h3 className="mb-5 text-sm font-bold uppercase tracking-widest text-slate-300">Tautan Cepat</h3>
-              <ul className="space-y-3 text-sm">
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-slate-300">Tautan Cepat</h3>
+              <ul className="space-y-2 text-sm">
                 {[
                   { label: 'Tentang Kami', href: '/tentang-kami' },
                   { label: 'Galeri Kegiatan', href: '/tentang-kami/galeri' },
@@ -520,11 +522,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
             {/* Kolom 3 — Kontak */}
             <div>
-              <h3 className="mb-5 text-sm font-bold uppercase tracking-widest text-slate-300">Kontak</h3>
-              <ul className="space-y-4 text-sm">
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-slate-300">Kontak</h3>
+              <ul className="space-y-3 text-sm">
                 <li className="flex items-start gap-3">
                   <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <a href="mailto:asramasambas20006@gmail.com" className="text-slate-400 transition hover:text-primary">
+                  <a href="mailto:asramasambas20006@gmail.com" className="min-w-0 break-words text-slate-400 transition hover:text-primary">
                     asramasambas20006@gmail.com
                   </a>
                 </li>
@@ -546,17 +548,17 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
               </ul>
               <Link
                 href="/hubungi-kami"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-primary transition hover:bg-primary/20"
+                className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-blue-400/50 bg-blue-500/10 px-4 py-2 text-xs font-semibold text-blue-300 transition-colors hover:border-blue-300 hover:bg-blue-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
               >
-                Kirim Pesan →
+                Kirim Pesan
               </Link>
             </div>
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
+          <div className="border-t border-white/5 pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
             <p>© {new Date().getFullYear()} Asrama Mahasiswa Kabupaten Sambas Yogyakarta. Hak cipta dilindungi.</p>
-            <p>Dibuat dengan ❤️ untuk warga Sambas di Yogyakarta</p>
+            <p>Untuk warga Sambas di Yogyakarta</p>
           </div>
         </div>
       </footer>

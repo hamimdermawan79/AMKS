@@ -1,314 +1,310 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
+import { ChevronDown, Download, ImageOff, Search, X } from 'lucide-react';
 import { submitLoanRequest } from '@/app/(dashboard)/admin/sekretaris/inventaris/actions';
-import ImageLightbox from '@/components/ImageLightbox';
+import styles from './inventory.module.css';
 
-export default function InventarisPublicClient({ items, templates }: { items: any[], templates: any[] }) {
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string>('Semua');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: string | null;
+  quantity: number;
+  condition: string | null;
+  location: string | null;
+  description: string | null;
+  photoUrl: string | null;
+  loans: { status: string; quantity: number }[];
+}
 
-  const categories = ['Semua', ...Array.from(new Set(items.map(item => item.category || 'Lainnya')))].sort();
+interface LetterTemplate {
+  id: string;
+  name: string;
+  fileUrl: string;
+  fileName: string;
+}
 
-  const filteredItems = items.filter(item => 
-    activeCategory === 'Semua' ? true : (item.category || 'Lainnya') === activeCategory
+const fieldClass = 'min-h-11 w-full rounded-lg border border-input bg-white px-3.5 py-2.5 text-base text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/15 sm:text-sm';
+const filterClass = 'min-h-11 w-full rounded-lg border border-slate-300/70 bg-transparent px-3.5 py-2.5 text-base text-slate-900 outline-none transition-colors placeholder:text-slate-500 hover:border-slate-400 focus:border-slate-500 focus:ring-1 focus:ring-slate-400/30 sm:text-sm';
+const buttonClass = `${styles.loanButton} inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50`;
+
+function availableQuantity(item: InventoryItem) {
+  const borrowed = item.loans.filter(loan => loan.status === 'APPROVED').reduce((sum, loan) => sum + loan.quantity, 0);
+  return Math.max(0, item.quantity - borrowed);
+}
+
+function InventoryDialog({ title, onClose, children, busy = false }: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  busy?: boolean;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog?.close();
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return (
+    <dialog ref={dialogRef} aria-labelledby="inventory-dialog-title"
+      onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}
+      onClick={event => { if (event.target === event.currentTarget && !busy) onClose(); }}
+      className={`${styles.modal} m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto p-0 text-slate-900`}>
+      <div className={`${styles.modalHeader} sticky top-0 z-10 flex items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5`}>
+        <h2 id="inventory-dialog-title" className="text-lg font-semibold leading-7 sm:text-xl">{title}</h2>
+        <button type="button" aria-label="Tutup dialog" onClick={onClose} disabled={busy} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white/60 text-slate-500 shadow-sm transition-colors hover:bg-white hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50">
+          <X aria-hidden="true" className="h-5 w-5" />
+        </button>
+      </div>
+      {children}
+    </dialog>
   );
+}
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+function InventoryPhoto({ item }: { item: InventoryItem }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  if (!item.photoUrl || failedUrl === item.photoUrl) {
+    return (
+      <div className="flex aspect-[16/10] items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <ImageOff aria-hidden="true" className="h-7 w-7 text-slate-400" strokeWidth={1.25} />
+          <span className="text-xs">Foto belum tersedia</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="relative block aspect-[16/10] w-full overflow-hidden bg-slate-100">
+      <Image src={item.photoUrl} alt={item.name} fill sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw" onError={() => setFailedUrl(item.photoUrl)} className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-[1.03]" />
+    </div>
+  );
+}
+
+function LoanForm({ item, templates, onClose, onSuccess }: {
+  item: InventoryItem;
+  templates: LetterTemplate[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [startDate, setStartDate] = useState('');
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSubmitting) return;
+    const formData = new FormData(event.currentTarget);
+    formData.append('inventoryId', item.id);
     setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    formData.append('inventoryId', selectedItem.id);
-
+    setError('');
     try {
       await submitLoanRequest(formData);
-      setSelectedItem(null);
-      setShowSuccessModal(true);
-    } catch (error: any) {
-      alert(error.message || 'Terjadi kesalahan saat meminjam barang.');
-    } finally {
+      onSuccess();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Pengajuan belum terkirim. Silakan coba kembali.');
       setIsSubmitting(false);
     }
   }
 
   return (
-    <>
-      {categories.length > 1 && (
-        <div className="flex flex-wrap gap-2 mb-8 justify-center">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat as string)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                activeCategory === cat
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {cat as string}
-            </button>
-          ))}
+    <InventoryDialog title="Ajukan peminjaman" onClose={onClose} busy={isSubmitting}>
+      <form onSubmit={handleSubmit} className="space-y-5 px-5 pb-6 sm:px-6 sm:pb-7">
+        <div className="rounded-xl border border-slate-200/80 px-4 py-4">
+          <h3 className="text-base font-semibold">{item.name}</h3>
+          <p className="mt-1 text-sm text-slate-600">{availableQuantity(item)} dari {item.quantity} unit tersedia</p>
         </div>
-      )}
+        {templates.length > 0 && (
+          <section aria-label="Surat peminjaman" className="rounded-lg border border-border bg-muted p-4">
+            <p className="text-sm font-semibold">Siapkan surat peminjaman</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">Unduh format surat, lengkapi dan tandatangani, lalu unggah pada formulir ini.</p>
+            <div className="mt-3 space-y-1">
+              {templates.map(template => (
+                <a key={template.id} href={template.fileUrl} download={template.fileName} className="inline-flex min-h-11 w-full items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+                  <Download aria-hidden="true" className="h-4 w-4 shrink-0" />{template.name}
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+        <p className="text-xs text-slate-500">Semua kolom wajib diisi kecuali yang ditandai opsional.</p>
+        <div>
+          <label htmlFor="borrower-name" className="mb-2 block text-sm font-medium">Nama peminjam</label>
+          <input id="borrower-name" required name="borrowerName" autoComplete="name" className={fieldClass} placeholder="Nama lengkap Anda" />
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="borrower-phone" className="mb-2 block text-sm font-medium">Nomor WhatsApp</label>
+            <input id="borrower-phone" required name="phone" type="tel" autoComplete="tel" className={fieldClass} placeholder="08xxxxxxxxxx" />
+          </div>
+          <div>
+            <label htmlFor="borrower-institution" className="mb-2 block text-sm font-medium">Instansi <span className="font-normal text-slate-500">(opsional)</span></label>
+            <input id="borrower-institution" name="institution" autoComplete="organization" className={fieldClass} placeholder="Sekolah, kampus, atau organisasi" />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="loan-purpose" className="mb-2 block text-sm font-medium">Keperluan <span className="font-normal text-slate-500">(opsional)</span></label>
+          <textarea id="loan-purpose" name="purpose" rows={3} className={fieldClass} placeholder="Ceritakan keperluan peminjaman Anda" />
+        </div>
+        <div>
+          <label htmlFor="loan-quantity" className="mb-2 block text-sm font-medium">Jumlah barang</label>
+          <input id="loan-quantity" required name="quantity" type="number" min={1} max={availableQuantity(item)} defaultValue={1} className={fieldClass} />
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <label htmlFor="loan-start" className="mb-2 block text-sm font-medium">Tanggal pinjam</label>
+            <input id="loan-start" required name="startDate" type="date" onInput={event => setStartDate(event.currentTarget.value)} className={fieldClass} />
+          </div>
+          <div>
+            <label htmlFor="loan-end" className="mb-2 block text-sm font-medium">Tanggal kembali</label>
+            <input id="loan-end" required name="endDate" type="date" min={startDate || undefined} className={fieldClass} />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="loan-letter" className="mb-2 block text-sm font-medium">Surat peminjaman</label>
+          <input id="loan-letter" required name="letterFile" type="file" aria-describedby="loan-letter-help" className={`${fieldClass} p-2 text-sm file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200`} />
+          <p id="loan-letter-help" className="mt-2 text-xs leading-5 text-slate-500">Unggah surat yang sudah diisi dan ditandatangani.</p>
+        </div>
+        {error && <p role="alert" className="border-l-2 border-destructive pl-3 text-sm leading-6 text-red-700">{error}</p>}
+        <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
+          <button type="button" disabled={isSubmitting} onClick={onClose} className="min-h-11 rounded-lg border border-border px-5 text-sm font-medium text-slate-600 transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50">Batal</button>
+          <button type="submit" disabled={isSubmitting} className={buttonClass}>{isSubmitting ? 'Mengirim pengajuan...' : 'Kirim pengajuan'}</button>
+        </div>
+      </form>
+    </InventoryDialog>
+  );
+}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-        {filteredItems.map((item, i) => {
-          const approvedLoans = item.loans?.filter((l: any) => l.status === 'APPROVED') || [];
-          const borrowedQuantity = approvedLoans.reduce((sum: number, l: any) => sum + l.quantity, 0);
-          const availableQuantity = Math.max(0, item.quantity - borrowedQuantity);
-          const isAvailable = availableQuantity > 0;
+export default function InventarisPublicClient({ items, templates }: { items: InventoryItem[]; templates: LetterTemplate[] }) {
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [activeCategory, setActiveCategory] = useState('');
+  const [query, setQuery] = useState('');
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [previewItem, setPreviewItem] = useState<InventoryItem | null>(null);
 
-          return (
-            <div 
-              key={item.id} 
-              className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-slate-100 flex flex-col animate-in fade-in slide-in-from-bottom-4"
-              style={{ animationDelay: `${i * 100}ms`, animationFillMode: 'both' }}
-            >
-              <div 
-                className="aspect-[4/3] bg-slate-100 relative group overflow-hidden cursor-pointer"
-                onClick={() => { if (item.photoUrl) setLightboxImage(item.photoUrl); }}
-              >
-                {item.photoUrl ? (
-                  <>
-                    <Image
-                      src={item.photoUrl}
-                      alt={item.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center z-10 pointer-events-none">
-                      <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                      </svg>
-                    </div>
-                  </>
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-2">
-                    <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm font-medium">Tanpa Foto</span>
-                  </div>
-                )}
-                
-                {/* Condition Badge */}
-                {item.condition && (
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
-                    <span className={`px-2.5 py-1 text-xs font-bold rounded-full shadow-sm backdrop-blur-md ${
-                      item.condition.toLowerCase() === 'baik' ? 'bg-green-500/90 text-white' : 
-                      item.condition.toLowerCase() === 'rusak' ? 'bg-red-500/90 text-white' : 
-                      'bg-slate-800/90 text-white'
-                    }`}>
-                      {item.condition}
-                    </span>
-                    <span className="px-2.5 py-1 text-[10px] font-bold rounded-full shadow-sm backdrop-blur-md bg-blue-500/90 text-white uppercase tracking-wider">
-                      {item.category || 'Lainnya'}
-                    </span>
-                  </div>
-                )}
-                {!item.condition && (
-                  <div className="absolute top-4 right-4">
-                    <span className="px-2.5 py-1 text-[10px] font-bold rounded-full shadow-sm backdrop-blur-md bg-blue-500/90 text-white uppercase tracking-wider">
-                      {item.category || 'Lainnya'}
-                    </span>
-                  </div>
-                )}
-                
-                {/* Status Badge */}
-                <div className="absolute top-4 left-4">
-                  <span className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full shadow-sm backdrop-blur-md ${
-                    isAvailable ? 'bg-blue-600/90 text-white' : 'bg-red-600/90 text-white'
-                  }`}>
-                    {isAvailable ? 'TERSEDIA' : 'DIPINJAM'}
-                  </span>
-                </div>
-              </div>
+  const categories = Array.from(new Set(items.map(item => item.category || 'Lainnya'))).sort((a, b) => a.localeCompare(b, 'id'));
+  const normalizedQuery = query.trim().toLocaleLowerCase('id');
+  const filteredItems = items.filter(item =>
+    (!activeCategory || (item.category || 'Lainnya') === activeCategory) &&
+    (!onlyAvailable || availableQuantity(item) > 0) &&
+    (!normalizedQuery || [item.name, item.category, item.location].some(value => value?.toLocaleLowerCase('id').includes(normalizedQuery)))
+  );
+  const isFiltered = Boolean(activeCategory || query || onlyAvailable);
 
-              <div className="p-6 flex-1 flex flex-col">
-                <h3 className="text-xl font-bold text-slate-900 mb-2 line-clamp-1">{item.name}</h3>
-                
-                {item.description && (
-                  <p className="text-slate-600 text-sm mb-4 line-clamp-2 flex-1">
-                    {item.description}
-                  </p>
-                )}
+  function resetFilters() {
+    setActiveCategory('');
+    setQuery('');
+    setOnlyAvailable(false);
+  }
 
-                <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col gap-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center text-slate-600 gap-1.5">
-                      <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                      </svg>
-                      <span className="font-medium text-slate-900">{availableQuantity}</span> / {item.quantity} tersedia
-                    </div>
-                    
-                    {item.location && (
-                      <div className="flex items-center text-slate-500 gap-1.5">
-                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.242-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="truncate max-w-[120px]">{item.location}</span>
-                      </div>
-                    )}
+  return (
+    <section aria-labelledby="inventory-catalog-title">
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="inventory-catalog-title" className="text-base font-semibold text-slate-900">Daftar inventaris</h2>
+        <p role="status" className="text-sm text-slate-500">{isFiltered ? `${filteredItems.length} dari ${items.length} barang` : `${items.length} barang`}</p>
+      </div>
+      <div className="mb-8 flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start lg:gap-5">
+        <div className="relative min-w-0 flex-1 sm:min-w-48">
+          <label htmlFor="inventory-search" className="sr-only">Cari inventaris</label>
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input id="inventory-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari barang atau lokasi..." className={`${filterClass} pl-10`} />
+        </div>
+        <div className="flex flex-col sm:shrink-0">
+        <div className="flex items-center gap-4">
+        <div className="relative min-w-0 flex-1 sm:w-44">
+          <label htmlFor="inventory-category" className="sr-only">Kategori inventaris</label>
+          <select id="inventory-category" value={activeCategory} onChange={event => setActiveCategory(event.target.value)} className={`${filterClass} cursor-pointer appearance-none pr-10`}>
+            <option value="">Semua kategori</option>
+            {categories.map(category => <option key={category} value={category}>{category}</option>)}
+          </select>
+          <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        </div>
+        <label className="flex min-h-11 shrink-0 cursor-pointer items-center gap-2.5 text-sm text-slate-700">
+          <input type="checkbox" checked={onlyAvailable} onChange={event => setOnlyAvailable(event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />
+          Tersedia saja
+        </label>
+        </div>
+        <Link href="/fasilitas/format-surat" className="mt-2 self-end rounded-sm text-xs leading-5 text-primary underline underline-offset-4 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400">
+          Unduh format surat peminjaman
+        </Link>
+        </div>
+      </div>
+      {filteredItems.length > 0 ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredItems.map(item => {
+            const available = availableQuantity(item);
+            return (
+              <article key={item.id} className={`${styles.glassCard} flex min-w-0 flex-col overflow-hidden rounded-2xl`}>
+                <button type="button" onClick={() => setPreviewItem(item)} aria-label={`Lihat detail ${item.name}`} className="group flex flex-1 flex-col text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-primary">
+                  <InventoryPhoto item={item} />
+                  <div className="flex w-full items-baseline justify-between gap-3 px-5 pb-4 pt-5">
+                    <h3 className="min-w-0 break-words text-base font-semibold leading-6 text-slate-900">{item.name}</h3>
+                    <span className="shrink-0 text-xs text-slate-600">{item.category || 'Lainnya'}</span>
                   </div>
-                  
-                  <button
-                    onClick={() => setSelectedItem(item)}
-                    disabled={!isAvailable}
-                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-colors bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed"
-                  >
-                    Pinjam Barang
+                </button>
+                <div className="px-5 pb-5">
+                  <button type="button" onClick={() => setSelectedItem(item)} disabled={available === 0} className={`${styles.loanButton} min-h-11 w-full rounded-lg px-4 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed`}>
+                    {available > 0 ? 'Pinjam barang' : 'Tidak tersedia'}
                   </button>
                 </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Modal Peminjaman */}
-      {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-slate-900">Pinjam {selectedItem.name}</h3>
-              <button 
-                onClick={() => setSelectedItem(null)}
-                className="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
-              {templates.length > 0 && (
-                <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm border border-blue-100">
-                  <p className="font-semibold mb-2">Persyaratan Peminjaman:</p>
-                  <p className="mb-3">Mohon unduh, isi, dan tandatangani surat peminjaman berikut, lalu unggah kembali di bawah.</p>
-                  <div className="flex flex-col gap-2">
-                    {templates.map(t => (
-                      <a key={t.id} href={t.fileUrl} download={t.fileName} className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        {t.name}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Peminjam</label>
-                <input required name="borrowerName" type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Masukkan nama Anda" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">No. WhatsApp</label>
-                  <input required name="phone" type="tel" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="08xxxxxxxxxx" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Asal Instansi</label>
-                  <input name="institution" type="text" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Nama sekolah/univ/umum" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Keperluan Peminjaman</label>
-                <textarea name="purpose" rows={2} className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: Kegiatan bakti sosial atau rapat warga" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Jumlah Barang</label>
-                <input required name="quantity" type="number" min="1" max={Math.max(0, selectedItem.quantity - (selectedItem.loans?.filter((l: any) => l.status === 'APPROVED').reduce((sum: number, l: any) => sum + l.quantity, 0) || 0))} defaultValue="1" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tgl Pinjam</label>
-                  <input required name="startDate" type="date" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tgl Kembali</label>
-                  <input required name="endDate" type="date" className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Surat Peminjaman (Sudah ditandatangan)</label>
-                <input required name="letterFile" type="file" className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setSelectedItem(null)}
-                  className="px-5 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition-colors"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="px-5 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Mengirim...' : 'Ajukan Peminjaman'}
-                </button>
-              </div>
-            </form>
-          </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+          <h3 className="text-lg font-semibold text-slate-900">{items.length === 0 ? 'Inventaris sedang didata' : 'Barang tidak ditemukan'}</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-600">{items.length === 0 ? 'Daftar barang akan ditampilkan setelah pengurus melengkapi pendataan inventaris.' : 'Coba kata kunci lain atau ubah filter untuk melihat barang yang tersedia.'}</p>
+          {isFiltered && <button type="button" onClick={resetFilters} className={`${buttonClass} mt-5`}>Reset pencarian</button>}
         </div>
       )}
-
-      {/* Modern Success Modal */}
-      <AnimatePresence>
-        {showSuccessModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8 text-center border border-slate-100 flex flex-col items-center"
-            >
-              {/* Animated Icon Container */}
-              <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-6 animate-pulse shadow-inner shadow-emerald-500/10">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-
-              <h3 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">Pengajuan Terkirim!</h3>
-              <p className="text-slate-600 text-sm leading-relaxed mb-8">
-                Terima kasih sudah mengisi form peminjaman asrama. Untuk informasi selanjutnya akan diinformasikan melalui WhatsApp dengan nomor yang sudah diisi tadi.
-              </p>
-
-              <button
-                onClick={() => setShowSuccessModal(false)}
-                className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all active:scale-[0.98]"
-              >
-                Saya Mengerti
-              </button>
-            </motion.div>
+      {selectedItem && <LoanForm item={selectedItem} templates={templates} onClose={() => setSelectedItem(null)} onSuccess={() => { setSelectedItem(null); setShowSuccess(true); }} />}
+      {showSuccess && (
+        <InventoryDialog title="Pengajuan terkirim" onClose={() => setShowSuccess(false)}>
+          <div className="p-6 sm:p-7">
+            <p className="text-sm leading-7 text-slate-600">Pengurus akan meninjau pengajuan peminjaman Anda. Informasi selanjutnya akan disampaikan melalui nomor WhatsApp yang telah Anda cantumkan.</p>
+            <button type="button" onClick={() => setShowSuccess(false)} className={`${buttonClass} mt-6 w-full`}>Kembali ke inventaris</button>
           </div>
-        )}
-      </AnimatePresence>
-
-      <ImageLightbox
-        src={lightboxImage || ''}
-        alt="Preview Inventaris"
-        isOpen={!!lightboxImage}
-        onClose={() => setLightboxImage(null)}
-      />
-    </>
+        </InventoryDialog>
+      )}
+      {previewItem && (
+        <InventoryDialog title={previewItem.name} onClose={() => setPreviewItem(null)}>
+          <div className="space-y-4 px-5 pb-5 sm:px-6 sm:pb-6">
+            <div className="overflow-hidden rounded-xl">
+              <InventoryPhoto item={previewItem} />
+            </div>
+            <div className="flex flex-col">
+            <p className="mb-4 text-sm text-slate-600">{previewItem.category || 'Lainnya'}</p>
+            <dl className="space-y-2.5 text-sm">
+              <div className="flex justify-between gap-5">
+                <dt className="text-slate-500">Tersedia</dt>
+                <dd className="text-right font-medium tabular-nums text-slate-900">{availableQuantity(previewItem)} dari {previewItem.quantity} unit</dd>
+              </div>
+              <div className="flex justify-between gap-5 border-t border-slate-200/60 pt-2.5">
+                <dt className="text-slate-500">Kondisi</dt>
+                <dd className="min-w-0 break-words text-right capitalize text-slate-900">{previewItem.condition?.toLocaleLowerCase('id') || 'Belum dicatat'}</dd>
+              </div>
+              <div className="flex justify-between gap-5 border-t border-slate-200/60 pt-2.5">
+                <dt className="text-slate-500">Lokasi</dt>
+                <dd className="min-w-0 break-words text-right text-slate-900">{previewItem.location || 'Belum dicatat'}</dd>
+              </div>
+            </dl>
+            <button type="button" disabled={availableQuantity(previewItem) === 0} onClick={() => { setSelectedItem(previewItem); setPreviewItem(null); }} className={`${styles.loanButton} mt-4 min-h-11 w-full rounded-xl px-4 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed`}>
+              {availableQuantity(previewItem) > 0 ? 'Pinjam barang' : 'Tidak tersedia'}
+            </button>
+            </div>
+          </div>
+        </InventoryDialog>
+      )}
+    </section>
   );
 }

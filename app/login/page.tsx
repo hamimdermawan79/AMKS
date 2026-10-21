@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useIsLowEndDevice } from '@/lib/animation-utils';
+import styles from './login.module.css';
 
 // Abstract Orbs for the left panel to give a unique branding feel (Soft White-Blue)
 function LeftPanelBackground() {
@@ -81,7 +82,7 @@ function FloatingModal({ children }: { children: React.ReactNode }) {
         filter: isLowEnd ? undefined : { duration: 0.5 },
       }}
       style={{ transformOrigin: 'center center' }}
-      className="relative z-10 flex w-full max-w-[720px] xl:max-w-[1000px] flex-col lg:flex-row bg-white rounded-2xl xl:rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_-15px_rgba(37,99,235,0.15)] h-[420px] lg:h-[480px] xl:h-[520px] border border-white/50"
+      className="relative z-10 flex w-full max-w-md lg:max-w-4xl xl:max-w-[1000px] flex-col lg:flex-row bg-white rounded-3xl xl:rounded-[2.5rem] overflow-hidden shadow-[0_20px_60px_-15px_rgba(37,99,235,0.15)] lg:min-h-[520px] border border-white/50"
     >
       {children}
     </motion.div>
@@ -124,21 +125,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative" style={{ perspective: '1200px' }}>
+    <div className="min-h-dvh w-full flex items-center justify-center px-4 py-8 sm:p-6 lg:p-8 relative" style={{ perspective: '1200px' }}>
       {mounted && <HeroBackgroundBlurred />}
       
       {/* The Floating Modal */}
       <FloatingModal>
         {/* Left Panel - Branding */}
-        <div className="relative hidden lg:flex w-[55%] items-center justify-center p-5 xl:p-12 overflow-hidden">
+        <div className="relative hidden lg:flex w-1/2 shrink-0 items-center p-10 pr-20 xl:p-12 xl:pr-24 overflow-hidden">
           {mounted && <LeftPanelBackground />}
 
-          <div className="relative z-20 w-full pl-6 xl:pl-10">
+          <div className="relative z-20 w-full min-w-0 max-w-xs">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-              className="mb-3 flex h-24 w-24 items-center justify-center"
+              className="mb-5 flex h-20 w-20 items-center justify-center xl:h-24 xl:w-24"
             >
               <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="h-full w-full object-contain" />
             </motion.div>
@@ -147,7 +148,7 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="text-2xl xl:text-4xl font-black leading-none tracking-tight text-slate-800 w-fit"
+              className="text-3xl xl:text-4xl font-black leading-tight tracking-tight text-slate-800"
             >
               <span className="italic text-primary">SIMAS-KS</span>
             </motion.h1>
@@ -156,7 +157,7 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              className="mt-2 text-[10px] xl:text-xs font-semibold uppercase tracking-[0.15em] text-primary/70 leading-tight w-full max-w-sm xl:max-w-md"
+              className="mt-3 max-w-[28ch] text-xs font-medium leading-6 text-slate-600 xl:text-sm"
             >
               Sistem Informasi Manajemen Asrama Kabupaten Sambas
             </motion.p>
@@ -165,7 +166,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Panel - Login Form */}
-        <div className="flex w-full lg:w-[45%] flex-col justify-center px-8 py-8 sm:px-10 lg:px-8 xl:px-10 relative bg-white z-20">
+        <div className="flex min-w-0 w-full lg:w-1/2 flex-col justify-center px-6 py-8 sm:px-8 sm:py-10 lg:px-9 xl:px-10 relative bg-white z-20">
           {/* Subtle background element for mobile */}
           <div className="absolute top-0 right-0 -mr-32 -mt-32 h-96 w-96 rounded-full bg-blue-50 blur-[100px] lg:hidden" />
           
@@ -175,7 +176,7 @@ export default function LoginPage() {
             animate="animate"
             className="relative z-10 w-full max-w-md mx-auto"
           >
-            <motion.div variants={fadeInUp} className="mb-10 lg:hidden text-center">
+            <motion.div variants={fadeInUp} className="mb-7 lg:hidden text-center">
               <Link href="/" className="inline-flex items-center gap-3">
                 <img src="/images/2-simas-logo.webp" alt="SIMAS-KS" className="h-12 w-12 object-contain" />
                 <div className="flex flex-col leading-none text-left">
@@ -187,8 +188,8 @@ export default function LoginPage() {
             </motion.div>
 
             <motion.div variants={fadeInUp}>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-1">Selamat Datang</h2>
-              <p className="text-xs text-slate-500 mb-6">Silakan masuk ke akun Anda untuk melanjutkan.</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 mb-2">Selamat Datang</h2>
+              <p className="text-sm leading-6 text-slate-500 mb-6">Silakan masuk ke akun Anda untuk melanjutkan.</p>
             </motion.div>
 
             <motion.form variants={fadeInUp} onSubmit={handleSubmit} className="space-y-4">
@@ -204,16 +205,17 @@ export default function LoginPage() {
 
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="username" className="mb-1 block text-xs font-semibold text-slate-700">
+                  <label htmlFor="username" className="mb-2 block text-sm font-medium text-slate-700">
                     Username
                   </label>
                   <div className="relative">
                     <input
                       id="username"
                       type="text"
+                      autoComplete="username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 transition-all focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/10"
+                      className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-base text-slate-900 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 sm:text-sm"
                       placeholder="Masukkan username Anda"
                       required
                       disabled={loading}
@@ -222,16 +224,17 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="mb-1 block text-xs font-semibold text-slate-700">
+                  <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-700">
                     Password
                   </label>
                   <div className="relative">
                     <input
                       id="password"
                       type="password"
+                      autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 transition-all focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/10"
+                      className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-base text-slate-900 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 sm:text-sm"
                       placeholder="••••••••"
                       required
                       disabled={loading}
@@ -243,7 +246,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative w-full overflow-hidden rounded-lg bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/30 transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/40 disabled:cursor-not-allowed disabled:opacity-70"
+                className={`${styles.submitButton} min-h-11 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-70`}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -259,9 +262,9 @@ export default function LoginPage() {
             </motion.form>
 
             <motion.div variants={fadeInUp} className="mt-6 text-center">
-              <p className="text-[10px] font-medium text-slate-600">
+              <Link href="/daftar-warga" className="inline-block rounded-sm text-xs font-medium leading-6 text-black underline decoration-black/30 underline-offset-4 transition-colors hover:decoration-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-slate-400">
                 Gabung Bersama Kami Demi Mewujudkan Impian Anda di Masa Depan
-              </p>
+              </Link>
             </motion.div>
 
             <motion.div variants={fadeInUp} className="mt-4 text-center">

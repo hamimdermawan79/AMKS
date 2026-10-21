@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { ChevronDown, FileText, Search } from 'lucide-react';
 import { WORK_TYPE_LABELS } from '@/lib/karya-ilmiah';
+import ArchiveShell from '@/components/public/ArchiveShell';
+import ArchiveDialog from '@/components/public/ArchiveDialog';
+import styles from '@/components/public/archive.module.css';
 import { submitAccessRequest } from './actions';
 
 interface Work {
@@ -17,284 +20,186 @@ interface Work {
   tocFileUrl: string | null;
 }
 
-export default function KaryaIlmiahList({
-  worksByYear,
-}: {
-  worksByYear: { year: number; works: Work[] }[];
-}) {
+export default function KaryaIlmiahList({ worksByYear }: { worksByYear: { year: number; works: Work[] }[] }) {
+  const [query, setQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
   const [requestTarget, setRequestTarget] = useState<Work | null>(null);
+  const allWorks = useMemo(() => worksByYear.flatMap(group => group.works), [worksByYear]);
+  const normalizedQuery = query.trim().toLocaleLowerCase('id');
+  const availableTypes = Object.entries(WORK_TYPE_LABELS).filter(([type]) => allWorks.some(work => work.type === type));
+  const filteredGroups = worksByYear
+    .filter(group => !selectedYear || String(group.year) === selectedYear)
+    .map(group => ({
+      ...group,
+      works: group.works.filter(work =>
+        (!selectedType || work.type === selectedType) &&
+        (!normalizedQuery || [work.title, work.authorName, work.authorInstitution].some(value => value?.toLocaleLowerCase('id').includes(normalizedQuery)))),
+    }))
+    .filter(group => group.works.length > 0);
+  const resultCount = filteredGroups.reduce((sum, group) => sum + group.works.length, 0);
+  const isFiltered = Boolean(normalizedQuery || selectedType || selectedYear);
+
+  function resetFilters() {
+    setQuery('');
+    setSelectedType('');
+    setSelectedYear('');
+  }
 
   return (
-    <>
-      <div className="space-y-12">
-        {worksByYear.map(({ year, works }) => (
-          <section key={year}>
-            <div className="flex items-center gap-4 mb-5">
-              <h2 className="text-2xl font-bold text-foreground">{year}</h2>
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-sm text-muted-foreground">
-                {works.length} karya
-              </span>
+    <ArchiveShell title="Repositori Karya Ilmiah" patterned compactHeader
+      subtitle={<>Warga Asrama Mahasiswa Kabupaten Sambas<br />Yogyakarta</>}>
+        <div className="min-w-0">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row">
+            <div className="relative min-w-0 flex-1">
+              <label htmlFor="work-search" className="sr-only">Cari karya ilmiah</label>
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input id="work-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari judul atau penulis" className={styles.field + ' ' + styles.searchField} />
             </div>
+            <div className="grid grid-cols-2 gap-3 sm:contents">
+            <div className="relative min-w-0 sm:shrink-0">
+              <label htmlFor="work-year" className="sr-only">Tahun publikasi</label>
+              <span aria-hidden="true" className="invisible block min-h-11 whitespace-nowrap border border-transparent py-2.5 pl-3.5 pr-9 text-base sm:text-sm">{selectedYear || 'Semua'}</span>
+              <select id="work-year" value={selectedYear} onChange={event => setSelectedYear(event.target.value)} className={styles.field + ' ' + styles.selectField + ' absolute inset-0'}>
+                <option value="">Semua</option>
+                {worksByYear.map(group => <option key={group.year} value={String(group.year)}>{group.year}</option>)}
+              </select>
+              <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            </div>
+            <div className="relative min-w-0 sm:shrink-0">
+              <label htmlFor="work-type" className="sr-only">Jenis karya ilmiah</label>
+              <span aria-hidden="true" className="invisible block min-h-11 whitespace-nowrap border border-transparent py-2.5 pl-3.5 pr-9 text-base sm:text-sm">{availableTypes.find(([type]) => type === selectedType)?.[1] || 'Semua'}</span>
+              <select id="work-type" value={selectedType} onChange={event => setSelectedType(event.target.value)} className={styles.field + ' ' + styles.selectField + ' absolute inset-0'}>
+                <option value="">Semua</option>
+                {availableTypes.map(([type, label]) => <option key={type} value={type}>{label}</option>)}
+              </select>
+              <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            </div>
+            </div>
+          </div>
+          <div className={isFiltered ? 'mb-5 flex min-h-6 items-center justify-end gap-3' : 'sr-only'}>
+            <p role="status" className="sr-only">{resultCount} karya{isFiltered ? ' ditemukan' : ''}</p>
+            {isFiltered && <button type="button" onClick={resetFilters} className="rounded-sm text-xs text-slate-600 underline underline-offset-4 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400">Reset pencarian</button>}
+          </div>
 
-            <ol className="space-y-3">
-              {works.map((work) => (
-                <li
-                  key={work.id}
-                  className="group rounded-xl border border-border bg-white p-5 transition-all duration-200 hover:border-primary/40 hover:shadow-md"
-                >
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {work.title}
-                  </h3>
-
-                  {/* Detail: Penulis · Institusi · Jenis · Tahun */}
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      {work.authorName}
-                    </span>
-                    {work.authorInstitution && (
-                      <>
-                        <span aria-hidden>&middot;</span>
-                        <span>{work.authorInstitution}</span>
-                      </>
-                    )}
-                    <span aria-hidden>&middot;</span>
-                    <span className="badge badge-info text-xs">
-                      {WORK_TYPE_LABELS[work.type]}
-                    </span>
-                    <span aria-hidden>&middot;</span>
-                    <span>{work.year}</span>
+          {filteredGroups.length === 0 ? (
+            <div className={styles.surface + ' rounded-3xl px-6 py-14 text-center sm:py-20'}>
+              <div aria-hidden="true" className={styles.emptyArtwork}><FileText className="h-8 w-8" strokeWidth={1.25} /></div>
+              <h2 className="font-serif text-2xl text-slate-900 sm:text-3xl">{allWorks.length === 0 ? 'Belum ada karya ilmiah' : 'Karya belum ditemukan'}</h2>
+              {isFiltered && <p className="mx-auto mt-3 max-w-sm text-sm leading-7 text-slate-600">Coba kata kunci atau filter lain.</p>}
+              {isFiltered && <button type="button" onClick={resetFilters} className={styles.outlineButton + ' mt-6'}>Tampilkan semua karya</button>}
+            </div>
+          ) : (
+            <div className="space-y-7">
+              {filteredGroups.map(group => (
+                <section key={group.year} aria-labelledby={'publication-' + group.year} className={styles.reveal}>
+                  <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-border pb-3">
+                    <h2 id={'publication-' + group.year} className="font-serif text-2xl text-slate-900">{group.year}</h2>
                   </div>
-
-                  {/* Aksi: tautan teks — Abstrak · Halaman Judul · Daftar Isi · Request Access */}
-                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                    <FileLink url={work.abstractFileUrl} label="Abstrak" />
-                    <FileLink url={work.titlePageFileUrl} label="Halaman Judul" />
-                    <FileLink url={work.tocFileUrl} label="Daftar Isi" />
-                    <button
-                      onClick={() => setRequestTarget(work)}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      Request Access
-                    </button>
+                  <div className="space-y-4">
+                    {group.works.map(work => (
+                      <article key={work.id} className={styles.surface + ' rounded-2xl p-5 sm:p-6'}>
+                          <div className="min-w-0">
+                            <p className="mb-2 text-xs text-slate-500">{WORK_TYPE_LABELS[work.type]}</p>
+                            <h3 className="break-words text-lg font-semibold leading-7 text-slate-900">{work.title}</h3>
+                            <div className="mt-3 flex flex-col gap-1 text-sm sm:flex-row sm:flex-wrap sm:gap-x-4">
+                              <p className="font-medium text-slate-700">{work.authorName}</p>
+                              {work.authorInstitution && <p className="text-slate-500">{work.authorInstitution}</p>}
+                            </div>
+                          </div>
+                        <div className="mt-4 flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div aria-label="Berkas pengantar" className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs sm:text-sm">
+                            <FileLink url={work.abstractFileUrl} label="Abstrak" />
+                            <FileLink url={work.titlePageFileUrl} label="Halaman judul" />
+                            <FileLink url={work.tocFileUrl} label="Daftar isi" />
+                          </div>
+                          <button type="button" onClick={() => setRequestTarget(work)} className={styles.outlineButton + ' shrink-0 self-start'}>Ajukan akses</button>
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                </li>
+                </section>
               ))}
-            </ol>
-          </section>
-        ))}
-      </div>
-
-      {requestTarget && (
-        <RequestAccessModal
-          work={requestTarget}
-          onClose={() => setRequestTarget(null)}
-        />
-      )}
-    </>
+            </div>
+          )}
+        </div>
+      {requestTarget && <RequestAccessModal key={requestTarget.id} work={requestTarget} onClose={() => setRequestTarget(null)} />}
+    </ArchiveShell>
   );
 }
 
-function RequestAccessModal({
-  work,
-  onClose,
-}: {
-  work: Work;
-  onClose: () => void;
-}) {
+function RequestAccessModal({ work, onClose }: { work: Work; onClose: () => void }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white border border-border rounded-xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto"
-      >
-        <h2 className="text-xl font-bold text-foreground mb-1">
-          Permintaan Akses Karya
-        </h2>
-        <p className="text-sm text-muted-foreground mb-1">
-          Karya:{' '}
-          <span className="font-medium text-foreground">{work.title}</span>
-        </p>
-        <p className="text-xs text-muted-foreground mb-4">
-          {work.authorName} · {work.year}
-        </p>
-
-        <RequestForm workId={work.id} onCancel={onClose} />
-      </motion.div>
-    </div>
+    <ArchiveDialog title="Permintaan akses karya" onClose={onClose} busy={isSubmitting}>
+      <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+        <h3 className="text-sm font-semibold leading-6">{work.title}</h3>
+        <p className="mt-2 text-xs leading-5 text-slate-500">{work.authorName}, {work.year}</p>
+      </div>
+      <RequestForm workId={work.id} onCancel={onClose} isSubmitting={isSubmitting} onSubmittingChange={setIsSubmitting} />
+    </ArchiveDialog>
   );
 }
 
-function RequestForm({
-  workId,
-  onCancel,
-}: {
+function RequestForm({ workId, onCancel, isSubmitting, onSubmittingChange }: {
   workId: string;
   onCancel: () => void;
+  isSubmitting: boolean;
+  onSubmittingChange: (value: boolean) => void;
 }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    whatsapp: '',
-    email: '',
-    purpose: '',
-    institution: '',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({ name: '', whatsapp: '', email: '', purpose: '', institution: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSubmitting) return;
     setError('');
-    setIsSubmitting(true);
+    onSubmittingChange(true);
     try {
       await submitAccessRequest({ ...formData, workId });
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Gagal mengirim permintaan');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Gagal mengirim permintaan. Silakan coba kembali.');
     } finally {
-      setIsSubmitting(false);
+      onSubmittingChange(false);
     }
-  };
+  }
 
   if (success) {
     return (
-      <div className="text-center py-6">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600 text-xl">
-          &#10003;
-        </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">
-          Permintaan Terkirim
-        </h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Terima kasih. Permintaan Anda akan ditinjau oleh pengurus asrama. Kami
-          akan menghubungi Anda melalui WhatsApp/Email yang Anda berikan.
-        </p>
-        <button onClick={onCancel} className="btn btn-primary">
-          Tutup
-        </button>
+      <div className="py-5 text-center" role="status">
+        <h3 className="font-serif text-2xl text-slate-900">Permintaan terkirim</h3>
+        <p className="mt-3 text-sm leading-7 text-slate-600">Pengurus akan meninjau permintaan Anda dan menghubungi nomor WhatsApp atau email yang dicantumkan.</p>
+        <button type="button" onClick={onCancel} className={styles.outlineButton + ' mt-6 w-full'}>Tutup</button>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
-
-      <Field label="Nama">
-        <input
-          className="input"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-      </Field>
-
-      <Field label="No. WhatsApp">
-        <input
-          className="input"
-          placeholder="62812xxxxxxxx"
-          value={formData.whatsapp}
-          onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-          required
-        />
-      </Field>
-
-      <Field label="Email">
-        <input
-          type="email"
-          className="input"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          required
-        />
-      </Field>
-
-      <Field label="Keperluan">
-        <textarea
-          className="input min-h-[80px] resize-y"
-          placeholder="Untuk apa karya ini Anda butuhkan..."
-          value={formData.purpose}
-          onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-          required
-        />
-      </Field>
-
-      <Field label="Institusi / Kampus">
-        <input
-          className="input"
-          placeholder="Nama universitas / institusi"
-          value={formData.institution}
-          onChange={(e) =>
-            setFormData({ ...formData, institution: e.target.value })
-          }
-          required
-        />
-      </Field>
-
-      <div className="flex gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="btn btn-secondary flex-1"
-          disabled={isSubmitting}
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          className="btn btn-primary flex-1"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Mengirim...' : 'Kirim Permintaan'}
-        </button>
+      {error && <p role="alert" className="border-l-2 border-red-500 pl-3 text-sm leading-6 text-red-700">{error}</p>}
+      <fieldset disabled={isSubmitting} className="space-y-4 disabled:opacity-60">
+        <Field label="Nama lengkap"><input required minLength={2} name="name" autoComplete="name" className={styles.field} value={formData.name} onChange={event => setFormData({ ...formData, name: event.target.value })} /></Field>
+        <Field label="Nomor WhatsApp"><input required type="tel" name="whatsapp" autoComplete="tel" className={styles.field} placeholder="62812xxxxxxxx" value={formData.whatsapp} onChange={event => setFormData({ ...formData, whatsapp: event.target.value })} /></Field>
+        <Field label="Email"><input required type="email" name="email" autoComplete="email" className={styles.field} value={formData.email} onChange={event => setFormData({ ...formData, email: event.target.value })} /></Field>
+        <Field label="Keperluan"><textarea required minLength={5} name="purpose" rows={3} className={styles.field + ' resize-y'} placeholder="Jelaskan keperluan akses naskah lengkap" value={formData.purpose} onChange={event => setFormData({ ...formData, purpose: event.target.value })} /></Field>
+        <Field label="Institusi atau kampus"><input required minLength={2} name="institution" autoComplete="organization" className={styles.field} value={formData.institution} onChange={event => setFormData({ ...formData, institution: event.target.value })} /></Field>
+      </fieldset>
+      <div className="flex flex-col-reverse gap-3 border-t border-border pt-4 sm:flex-row">
+        <button type="button" onClick={onCancel} disabled={isSubmitting} className="min-h-11 flex-1 rounded-xl border border-border px-4 text-sm text-slate-600 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400 disabled:opacity-50">Batal</button>
+        <button type="submit" disabled={isSubmitting} className={styles.outlineButton + ' flex-1'}>{isSubmitting ? 'Mengirim...' : 'Kirim permintaan'}</button>
       </div>
     </form>
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-foreground mb-2">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return <label className="block"><span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>{children}</label>;
 }
 
-// Tautan teks ke berkas PDF; tampil non-aktif (abu-abu) bila berkas belum tersedia
 function FileLink({ url, label }: { url: string | null; label: string }) {
-  if (url) {
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-medium text-primary hover:underline"
-      >
-        {label}
-      </a>
-    );
-  }
-  return (
-    <span
-      className="text-muted-foreground/60 cursor-not-allowed"
-      title={`${label} belum tersedia`}
-    >
-      {label}
-    </span>
-  );
+  return url ?
+    <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center rounded-sm font-medium text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400">{label}</a> :
+    <span aria-disabled="true" title={label + ' belum tersedia'} className="inline-flex min-h-11 items-center text-slate-400">{label}</span>;
 }

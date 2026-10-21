@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import HeroSection from '@/components/HeroSection';
+import ArchiveShell from '@/components/public/ArchiveShell';
 import PeraturanClient from './PeraturanClient';
 
 export const metadata = {
@@ -15,15 +15,9 @@ export default async function PeraturanAsramaPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-24">
-      <HeroSection 
-        title="Peraturan Asrama & Arsip Dokumen" 
-        subtitle="Kumpulan dokumen resmi, Anggaran Dasar/Anggaran Rumah Tangga, dan peraturan asrama."
-      />
-
-      <div className="container mx-auto px-6 py-12 max-w-6xl">
-        <PeraturanClient documents={documents} />
-      </div>
-    </div>
+    <ArchiveShell title="Peraturan dan Arsip Dokumen Asrama" patterned compactHeader
+      subtitle="Kumpulan Dokumen Resmi, Anggaran Dasar/Anggaran Rumah Tangga, dan Peraturan Asrama">
+      <PeraturanClient documents={documents} />
+    </ArchiveShell>
   );
 }

@@ -1,0 +1,117 @@
+.page {
+  background:
+    radial-gradient(ellipse at 10% 0%, rgb(37 99 235 / 8%), transparent 48%),
+    radial-gradient(ellipse at 100% 65%, rgb(37 99 235 / 5%), transparent 44%),
+    linear-gradient(180deg, #f8faff, #f8fafc 55%, #f0f5ff);
+}
+
+.glassCard {
+  border: 1px solid rgb(255 255 255 / 85%);
+  background: rgb(255 255 255 / 62%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 28px rgb(30 64 175 / 6%), inset 0 1px 0 rgb(255 255 255 / 90%);
+}
+
+.modal {
+  border: 1px solid rgb(255 255 255 / 85%);
+  border-radius: 28px;
+  background: rgb(255 255 255 / 96%);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: 0 24px 80px rgb(15 23 42 / 22%), inset 0 1px 0 rgb(255 255 255 / 95%);
+  transform-origin: center;
+}
+
+.modal[open] {
+  animation: modalEnter 280ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.modal::backdrop {
+  background: rgb(15 23 42 / 32%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: backdropEnter 220ms ease-out both;
+}
+
+.modalHeader {
+  background: rgb(255 255 255 / 96%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.modal :is(input, textarea) {
+  border-color: rgb(148 163 184 / 35%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 80%);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 3%);
+}
+
+.modal :is(input, textarea):focus {
+  border-color: var(--primary);
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: translateY(16px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes backdropEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.loanButton {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(37 99 235 / 40%);
+  background: linear-gradient(110deg, rgb(37 99 235 / 3%), rgb(37 99 235 / 10%), rgb(37 99 235 / 3%));
+  color: var(--primary);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 90%), 0 3px 14px rgb(37 99 235 / 10%);
+  transition: border-color 200ms, box-shadow 200ms;
+}
+
+.loanButton::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 -70%;
+  width: 55%;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 85%), transparent);
+  transform: skewX(-20deg);
+  transition: transform 650ms ease;
+}
+
+.loanButton:hover:not(:disabled),
+.loanButton:focus-visible {
+  border-color: var(--primary);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 90%), 0 4px 20px rgb(37 99 235 / 20%);
+}
+
+.loanButton:hover:not(:disabled)::after,
+.loanButton:focus-visible::after {
+  transform: translateX(360%) skewX(-20deg);
+}
+
+.loanButton:disabled {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal[open],
+  .modal::backdrop {
+    animation: backdropEnter 120ms ease-out both;
+  }
+
+  .loanButton,
+  .loanButton::after {
+    transition: none;
+  }
+
+  .loanButton::after {
+    display: none;
+  }
+}
