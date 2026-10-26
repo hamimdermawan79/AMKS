@@ -44,8 +44,10 @@ export default async function KesekretariatanPage() {
       },
       attendances: {
         include: {
-          user: { select: { id: true, fullName: true, username: true } }
-        }
+          user: { select: { id: true, fullName: true, username: true } },
+          approvedBy: { select: { id: true, fullName: true } },
+        },
+        orderBy: { submittedAt: "desc" },
       },
     },
   });

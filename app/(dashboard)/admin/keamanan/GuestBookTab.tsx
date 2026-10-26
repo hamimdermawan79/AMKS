@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookUser, Plus, Trash2, Clock, MapPin, Target,
   Users, X, AlertTriangle, CheckCircle2, Loader2,
-  ChevronLeft, ChevronRight, PenLine, LogOut, Moon,
+  ChevronLeft, ChevronRight, PenLine, LogOut, Moon, Phone,
 } from 'lucide-react';
 import { createGuestBookEntry, deleteGuestBookEntry, updateGuestBookEntry } from './security-actions';
 
@@ -19,6 +19,7 @@ type GuestEntry = {
   visitorName: string;
   originCity: string;
   institution: string | null;
+  phone?: string | null;
   purpose: string;
   knownById: string | null;
   knownByOther: string | null;
@@ -68,6 +69,7 @@ function AddGuestModal({
     visitorName: '',
     originCity: '',
     institution: '',
+    phone: '',
     purpose: '',
     knownById: '',
     knownByOther: '',
@@ -102,6 +104,7 @@ function AddGuestModal({
           visitorName: form.visitorName.trim(),
           originCity: form.originCity.trim(),
           institution: form.institution.trim() || undefined,
+          phone: form.phone.trim() || undefined,
           purpose: form.purpose.trim(),
           knownById: form.knownById || undefined,
           knownByOther: form.knownByOther.trim() || undefined,
@@ -181,6 +184,17 @@ function AddGuestModal({
               value={form.purpose}
               onChange={(e) => set('purpose', e.target.value)}
               placeholder="Silaturahmi, urusan akademik, kunjungan keluarga, dsb."
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">No. WhatsApp Aktif</label>
+            <input
+              value={form.phone}
+              onChange={(e) => set('phone', e.target.value)}
+              placeholder="08xxxxxxxxxx"
+              type="tel"
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
@@ -378,6 +392,19 @@ function GuestCard({
           <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
           <span className="truncate">{formatDateTime(entry.entryTime)}</span>
         </div>
+        {entry.phone && (
+          <div className="col-span-2 flex items-center gap-1.5">
+            <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <a
+              href={`https://wa.me/${entry.phone.replace(/^0/, '62').replace(/[^0-9]/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 hover:text-emerald-800 font-medium underline underline-offset-2"
+            >
+              {entry.phone}
+            </a>
+          </div>
+        )}
         {entry.exitTime && (
           <div className="col-span-2 flex items-center gap-1.5">
             <LogOut className="h-3.5 w-3.5 text-slate-400 shrink-0" />

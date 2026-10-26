@@ -4,14 +4,16 @@ import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   BookOpen, Calendar, Users, FileText, CheckCircle, Clock, 
-  Trash2, Plus, Edit, CalendarClock, Target, UserCheck, X, Save
+  Trash2, Plus, Edit, CalendarClock, Target, UserCheck, X, Save,
+  CheckCheck, Lightbulb, MessageSquareQuote, Search, ThumbsUp, ThumbsDown
 } from "lucide-react";
 import { 
   createInternalMeeting, updateMeetingStatus, deleteMeeting, 
   generateRTSchedule, updateRTMeeting, setRTDelegates,
-  saveMeetingNote, saveActionItem, deleteActionItem, saveMeetingAttendances
+  saveMeetingNote, saveActionItem, deleteActionItem, saveMeetingAttendances,
+  approveMeetingAttendance, bulkApproveMeetingAttendances
 } from "./actions";
-import { MeetingStatus, Division, AttendanceStatus } from "@prisma/client";
+import { MeetingStatus, Division } from "@prisma/client";
 
 type Warga = { id: string; fullName: string; username: string };
 
@@ -69,6 +71,9 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
 
   // === SELECTED MEETING (detail view) ===
   const [selectedMeeting, setSelectedMeeting] = useState<InternalMeetingType | null>(null);
+  const [meetingSubTab, setMeetingSubTab] = useState<"notulensi" | "presensi">("notulensi");
+  const [attendanceFilter, setAttendanceFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [attendanceSearch, setAttendanceSearch] = useState("");
 
   // === NOTULENSI INPUT MODAL ===
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -244,6 +249,29 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
     });
   };
 
+  // --- Presensi Approval ---
+  const handleApproveAttendance = (attendanceId: string, isApproved: boolean) => {
+    startTransition(async () => {
+      try {
+        await approveMeetingAttendance({ attendanceId, isApproved });
+      } catch (err: any) {
+        alert(err.message || "Gagal memverifikasi presensi");
+      }
+    });
+  };
+
+  const handleBulkApprove = (attendanceIds: string[]) => {
+    if (!attendanceIds.length) return;
+    if (!confirm(`Setujui ${attendanceIds.length} presensi yang sedang menunggu verifikasi?`)) return;
+    startTransition(async () => {
+      try {
+        await bulkApproveMeetingAttendances({ attendanceIds, isApproved: true });
+      } catch (err: any) {
+        alert(err.message || "Gagal memproses approval massal");
+      }
+    });
+  };
+
   // ============================================================
   // RENDER
   // ============================================================
@@ -342,8 +370,32 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
       {/* ================================================================ */}
       {/* TAB 1: DETAIL RAPAT INTERNAL */}
       {/* ================================================================ */}
-      {activeTab === "internal" && selectedMeeting && (
-        <div className="space-y-6">
+      {activeTab === "internal" && selectedMeeting && (() => {
+        const activeMeeting = internalMeetings.find((m: any) => m.id === selectedMeeting.id) || selectedMeeting;
+        const attendances = activeMeeting.attendances || [];
+        const pendingAttendances = attendances.filter((a: any) => a.isApproved === null);
+        const approvedAttendances = attendances.filter((a: any) => a.isApproved === true);
+        const rejectedAttendances = attendances.filter((a: any) => a.isApproved === false);
+
+        const filteredAttendances = attendances.filter((a: any) => {
+          if (attendanceFilter === "pending") return a.isApproved === null;
+          if (attendanceFilter === "approved") return a.isApproved === true;
+          if (attendanceFilter === "rejected") return a.isApproved === false;
+          return true;
+        }).filter((a: any) => {
+          if (!attendanceSearch.trim()) return true;
+          const q = attendanceSearch.toLowerCase();
+          return (
+            a.user?.fullName?.toLowerCase().includes(q) ||
+            a.user?.username?.toLowerCase().includes(q) ||
+            a.attendAs?.toLowerCase().includes(q) ||
+            a.ideas?.toLowerCase().includes(q) ||
+            a.evaluation?.toLowerCase().includes(q)
+          );
+        });
+
+        return (
+          <div className="space-y-6">
           <button 
             onClick={() => setSelectedMeeting(null)}
             className="text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -387,7 +439,41 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Sub Navigation: Notulensi vs Presensi Mandiri Warga */}
+          <div className="flex border-b border-border gap-2">
+            <button
+              onClick={() => setMeetingSubTab("notulensi")}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                meetingSubTab === "notulensi"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FileText className="h-4 w-4" /> Notulensi & Action Items
+            </button>
+            <button
+              onClick={() => setMeetingSubTab("presensi")}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                meetingSubTab === "presensi"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <UserCheck className="h-4 w-4" /> Presensi & Verifikasi Warga
+              {pendingAttendances.length > 0 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 animate-pulse">
+                  {pendingAttendances.length} Menunggu
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
+                  {attendances.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {meetingSubTab === "notulensi" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* LEFT: Notulensi Per Divisi & Kebendaharaan */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white border border-border p-6 rounded-2xl shadow-sm">
@@ -516,8 +602,231 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
               </div>
             </div>
           </div>
+        )}
+
+          {/* SUB-VIEW 2: PRESENSI MANDIRI & VERIFIKASI WARGA */}
+          {meetingSubTab === "presensi" && (
+            <div className="space-y-6">
+              {/* Stats Summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <div className="bg-white border border-border p-4 rounded-2xl shadow-xs">
+                  <div className="text-xs font-semibold text-muted-foreground">Total Presensi</div>
+                  <div className="text-2xl font-bold text-foreground mt-1">{attendances.length}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Warga submit presensi</div>
+                </div>
+                <div className="bg-amber-50/70 border border-amber-200 p-4 rounded-2xl shadow-xs">
+                  <div className="text-xs font-semibold text-amber-800">Menunggu Verifikasi</div>
+                  <div className="text-2xl font-bold text-amber-900 mt-1">{pendingAttendances.length}</div>
+                  <div className="text-[11px] text-amber-700 mt-0.5">Perlu approval Sekretaris</div>
+                </div>
+                <div className="bg-emerald-50/70 border border-emerald-200 p-4 rounded-2xl shadow-xs">
+                  <div className="text-xs font-semibold text-emerald-800">Disetujui (Hadir)</div>
+                  <div className="text-2xl font-bold text-emerald-900 mt-1">{approvedAttendances.length}</div>
+                  <div className="text-[11px] text-emerald-700 mt-0.5">Kehadiran terverifikasi</div>
+                </div>
+                <div className="bg-rose-50/70 border border-rose-200 p-4 rounded-2xl shadow-xs">
+                  <div className="text-xs font-semibold text-rose-800">Ditolak</div>
+                  <div className="text-2xl font-bold text-rose-900 mt-1">{rejectedAttendances.length}</div>
+                  <div className="text-[11px] text-rose-700 mt-0.5">Tidak terkonfirmasi hadir</div>
+                </div>
+              </div>
+
+              {/* Filter & Search Bar */}
+              <div className="bg-white border border-border p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                  {([
+                    { key: "all" as const, label: `Semua (${attendances.length})` },
+                    { key: "pending" as const, label: `Menunggu (${pendingAttendances.length})` },
+                    { key: "approved" as const, label: `Disetujui (${approvedAttendances.length})` },
+                    { key: "rejected" as const, label: `Ditolak (${rejectedAttendances.length})` },
+                  ]).map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setAttendanceFilter(f.key)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                        attendanceFilter === f.key
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari warga, usulan, evaluasi..."
+                      value={attendanceSearch}
+                      onChange={(e) => setAttendanceSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-border text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  {canManage && pendingAttendances.length > 0 && (
+                    <button
+                      onClick={() => handleBulkApprove(pendingAttendances.map((a: any) => a.id))}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors shadow-xs shrink-0"
+                      title="Setujui semua presensi yang sedang menunggu"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      Setujui Semua ({pendingAttendances.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* List Presensi Warga */}
+              {filteredAttendances.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground bg-white border border-dashed rounded-2xl">
+                  <UserCheck className="h-10 w-10 mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm font-semibold text-slate-700">Belum Ada Presensi Warga</p>
+                  <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                    {attendances.length === 0
+                      ? "Warga aktif dan calon warga akan mengisi presensi mandiri saat rapat bulanan dibuka."
+                      : "Tidak ada data presensi yang sesuai dengan filter pencarian."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredAttendances.map((att: any) => {
+                    const isApproved = att.isApproved;
+                    const isPendingApprove = isApproved === null;
+
+                    return (
+                      <div
+                        key={att.id}
+                        className="bg-white border border-border rounded-2xl p-4 sm:p-5 shadow-xs hover:border-slate-300 transition-all space-y-3"
+                      >
+                        {/* Header row */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-2xl bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-sm border border-indigo-100">
+                              {att.user?.fullName?.slice(0, 2).toUpperCase() || "W"}
+                            </div>
+                            <div>
+                              <div className="font-bold text-foreground text-sm flex items-center gap-2">
+                                {att.user?.fullName}
+                                {att.attendAs && (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    {att.attendAs}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                @{att.user?.username} • Submit: {formatTanggal(att.submittedAt || att.createdAt, { withTime: true })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status Badge */}
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            {isPendingApprove ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                <Clock className="h-3 w-3" /> Menunggu Verifikasi
+                              </span>
+                            ) : isApproved ? (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <CheckCircle className="h-3 w-3" /> Disetujui
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
+                                <X className="h-3 w-3" /> Ditolak
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Ideas & Evaluation text boxes */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                          {att.ideas ? (
+                            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 text-xs">
+                              <div className="font-semibold text-amber-900 flex items-center gap-1.5 mb-1">
+                                <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
+                                Ide / Usulan Rapat:
+                              </div>
+                              <p className="text-slate-700 whitespace-pre-wrap">{att.ideas}</p>
+                            </div>
+                          ) : (
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-400 italic">
+                              Tidak ada ide/usulan tambahan.
+                            </div>
+                          )}
+
+                          {att.evaluation ? (
+                            <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-3 text-xs">
+                              <div className="font-semibold text-blue-900 flex items-center gap-1.5 mb-1">
+                                <MessageSquareQuote className="h-3.5 w-3.5 text-blue-600" />
+                                Evaluasi Rapat / Asrama:
+                              </div>
+                              <p className="text-slate-700 whitespace-pre-wrap">{att.evaluation}</p>
+                            </div>
+                          ) : (
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-400 italic">
+                              Tidak ada evaluasi tambahan.
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Footer with verification info & action buttons */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs border-t border-slate-100">
+                          <div className="text-slate-400">
+                            {att.approvedBy ? (
+                              <span>
+                                Diverifikasi oleh <span className="font-medium text-slate-600">{att.approvedBy.fullName}</span>
+                                {att.approvedAt && ` pada ${formatTanggal(att.approvedAt, { withTime: true })}`}
+                              </span>
+                            ) : (
+                              <span>Menunggu verifikasi Sekretaris</span>
+                            )}
+                          </div>
+
+                          {canManage && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleApproveAttendance(att.id, true)}
+                                disabled={isPending}
+                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-semibold transition-colors ${
+                                  isApproved
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                    : "bg-emerald-600 text-white hover:bg-emerald-700"
+                                }`}
+                                title="Setujui kehadiran warga"
+                              >
+                                <ThumbsUp className="h-3.5 w-3.5" />
+                                {isApproved ? "Sudah Disetujui" : "Setujui"}
+                              </button>
+
+                              <button
+                                onClick={() => handleApproveAttendance(att.id, false)}
+                                disabled={isPending}
+                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl font-semibold transition-colors ${
+                                  isApproved === false
+                                    ? "bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
+                                }`}
+                                title="Tolak kehadiran warga"
+                              >
+                                <ThumbsDown className="h-3.5 w-3.5" />
+                                {isApproved === false ? "Sudah Ditolak" : "Tolak"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
+      );
+    })()}
 
       {/* ================================================================ */}
       {/* TAB 2: JADWAL RAPAT RT */}

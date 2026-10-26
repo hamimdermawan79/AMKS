@@ -53,17 +53,19 @@ export async function GET(request: Request) {
       actions.push('CCTV auto-deactivated (5+ days without verification)');
     }
 
-    // 4. Ambil semua user dengan role KEAMANAN untuk broadcast
+    // 4. Ambil semua user dengan role Ketua Divisi Keamanan atau Ketua untuk broadcast
     const keamananUsers = await db.user.findMany({
       where: {
         status: 'AKTIF',
-        roles: {
-          some: {
-            role: {
-              name: { in: ['KEAMANAN', 'KETUA'] },
-            },
+        OR: [
+          // Ketua asrama
+          { roles: { some: { role: { name: 'KETUA' } } } },
+          // Ketua Divisi Keamanan (DIVISION_HEAD dengan divisionScope = KEAMANAN)
+          {
+            divisionScope: 'KEAMANAN',
+            roles: { some: { role: { name: 'DIVISION_HEAD' } } },
           },
-        },
+        ],
       },
       select: { id: true, fullName: true },
     });

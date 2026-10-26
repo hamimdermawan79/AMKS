@@ -74,6 +74,7 @@ type GuestEntry = {
   visitorName: string;
   originCity: string;
   institution: string | null;
+  phone?: string | null;
   purpose: string;
   knownById: string | null;
   knownByOther: string | null;

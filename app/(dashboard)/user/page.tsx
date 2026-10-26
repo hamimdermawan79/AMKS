@@ -134,6 +134,64 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  // Fetch monthly/internal meeting for user self-attendance
+  const monthlyMeeting = await db.meeting.findFirst({
+    where: {
+      type: 'INTERNAL',
+      OR: [
+        {
+          scheduledAt: {
+            gte: todayStart,
+            lte: todayEnd,
+          },
+        },
+        {
+          scheduledAt: {
+            gte: nowWib,
+            lte: new Date(nowWib.getTime() + 14 * 24 * 60 * 60 * 1000),
+          },
+        },
+      ],
+    },
+    include: {
+      leader: { select: { fullName: true } },
+      attendances: {
+        where: { userId: session?.user?.id },
+      },
+    },
+    orderBy: { scheduledAt: 'asc' },
+  });
+
+  let monthlyMeetingData = null;
+  if (monthlyMeeting) {
+    const scheduled = new Date(monthlyMeeting.scheduledAt);
+    const meetingDayEnd = new Date(scheduled);
+    meetingDayEnd.setHours(23, 59, 59, 999);
+
+    const isOpen = nowWib >= scheduled && nowWib <= meetingDayEnd;
+    const isPast = nowWib > meetingDayEnd;
+    const myAtt = monthlyMeeting.attendances?.[0] || null;
+
+    monthlyMeetingData = {
+      id: monthlyMeeting.id,
+      title: monthlyMeeting.title,
+      scheduledAt: scheduled.toISOString(),
+      leaderName: monthlyMeeting.leader?.fullName || null,
+      isOpen,
+      isPast,
+      myAttendance: myAtt ? {
+        id: myAtt.id,
+        status: myAtt.status,
+        attendAs: myAtt.attendAs,
+        ideas: myAtt.ideas,
+        evaluation: myAtt.evaluation,
+        submittedAt: myAtt.submittedAt?.toISOString() || null,
+        isApproved: myAtt.isApproved,
+        approvedAt: myAtt.approvedAt?.toISOString() || null,
+      } : null,
+    };
+  }
+
   let rohaniMessage = null;
   if (myUpcomingRohani && session?.user.id) {
     if (myUpcomingRohani.imamMaghribId === session.user.id) rohaniMessage = "Anda Bertugas Sebagai Imam Maghrib";
@@ -158,6 +216,7 @@ export default async function DashboardPage() {
     upcomingGeneralActivity: upcomingGeneralActivity ? { id: upcomingGeneralActivity.id, title: upcomingGeneralActivity.title, date: upcomingGeneralActivity.startAt?.toISOString() || null, division: upcomingGeneralActivity.division } : null,
     myUpcomingRohani: myUpcomingRohani ? { date: myUpcomingRohani.date.toISOString(), message: rohaniMessage } : null,
     pendingBills: pendingBills.map(b => ({ id: b.id, title: b.title, amount: b.amount, type: b.type, dueDate: b.dueDate ? b.dueDate.toISOString() : null })),
+    monthlyMeeting: monthlyMeetingData,
   };
 
   // SuperAdmin → full admin system overview

@@ -1087,15 +1087,17 @@ export async function checkCctvReminders() {
     const keamananUsers = await db.user.findMany({
       where: {
         status: 'AKTIF',
-        roles: {
-          some: {
-            role: {
-              name: { in: ['KEAMANAN', 'KETUA'] },
-            },
+        OR: [
+          // Ketua asrama
+          { roles: { some: { role: { name: 'KETUA' } } } },
+          // Ketua Divisi Keamanan
+          {
+            divisionScope: 'KEAMANAN',
+            roles: { some: { role: { name: 'DIVISION_HEAD' } } },
           },
-        },
+        ],
       },
-      select: { id: true, fullName: true },
+      select: { id: true, fullName: true, phone: true },
     });
 
     if (keamananUsers.length === 0) return;

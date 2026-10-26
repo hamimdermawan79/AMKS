@@ -126,6 +126,7 @@ export default async function KeamananPage() {
           visitorName: g.visitorName,
           originCity: g.originCity,
           institution: g.institution,
+          phone: g.phone,
           purpose: g.purpose,
           knownById: g.knownById,
           knownByOther: g.knownByOther,

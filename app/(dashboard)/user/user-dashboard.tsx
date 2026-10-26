@@ -1,6 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useTransition, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -17,8 +19,12 @@ import {
   Trophy,
   MapPin,
   ExternalLink,
+  BookOpen,
+  UserCheck,
+  X,
+  Loader2,
 } from "lucide-react";
-import { useMemo } from "react";
+import { submitMeetingSelfAttendance } from "@/app/(dashboard)/admin/kesekretariatan/actions";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("id-ID", {
@@ -82,6 +88,7 @@ export default function UserDashboard({
   myUpcomingRohani,
   pendingBills,
   announcements,
+  monthlyMeeting,
 }: {
   session: any;
   showAdminButton: boolean;
@@ -100,10 +107,67 @@ export default function UserDashboard({
   myUpcomingRohani?: { date: string; message: string | null } | null;
   pendingBills?: { id: string; title: string; amount: number; type: string; dueDate: string | null }[];
   announcements?: { id: string; title: string; message: string; createdAt: string }[];
+  monthlyMeeting?: {
+    id: string;
+    title: string;
+    scheduledAt: string;
+    leaderName?: string | null;
+    isOpen: boolean;
+    isPast: boolean;
+    myAttendance: {
+      id: string;
+      status?: string | null;
+      attendAs?: string | null;
+      ideas?: string | null;
+      evaluation?: string | null;
+      submittedAt?: string | null;
+      isApproved?: boolean | null;
+      approvedAt?: string | null;
+    } | null;
+  } | null;
 }) {
+  const router = useRouter();
   const greeting = useMemo(() => getGreeting(), []);
   const name = session?.user?.fullName ?? "Pengguna";
   const jabatan = (session?.user?.jabatan && session.user.jabatan !== 'WARGA') ? session.user.jabatan : 'Warga';
+
+  // Presensi Mandiri Rapat Bulanan State
+  const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [attendAs, setAttendAs] = useState(
+    monthlyMeeting?.myAttendance?.attendAs || 
+    (jabatan.toLowerCase().includes('calon') ? 'Calon Warga' : 'Warga Asrama')
+  );
+  const [ideas, setIdeas] = useState(monthlyMeeting?.myAttendance?.ideas || '');
+  const [evaluation, setEvaluation] = useState(monthlyMeeting?.myAttendance?.evaluation || '');
+  const [isAttending, setIsAttending] = useState(true);
+  const [submittingMeeting, startSubmitMeeting] = useTransition();
+  const [meetingError, setMeetingError] = useState('');
+  const [meetingSuccess, setMeetingSuccess] = useState('');
+
+  const handleSubmitAttendance = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!monthlyMeeting) return;
+    if (!isAttending) {
+      setMeetingError('Harap centang konfirmasi kehadiran rapat.');
+      return;
+    }
+    setMeetingError('');
+    startSubmitMeeting(async () => {
+      try {
+        const res = await submitMeetingSelfAttendance({
+          meetingId: monthlyMeeting.id,
+          attendAs,
+          ideas,
+          evaluation,
+        });
+        setMeetingSuccess(res.message || 'Presensi berhasil dikirim! Menunggu verifikasi Sekretaris.');
+        setShowMeetingModal(false);
+        router.refresh();
+      } catch (err: any) {
+        setMeetingError(err.message || 'Gagal mengirim presensi rapat.');
+      }
+    });
+  };
 
   const totalTagihan = pendingBills?.reduce((sum, b) => {
     const isLate = b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
@@ -208,6 +272,131 @@ export default function UserDashboard({
       <motion.div variants={item} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         {/* Main column */}
         <div className="space-y-5 lg:col-span-2">
+          {/* ===== RAPAT BULANAN ASRAMA (PRESENSI MANDIRI) ===== */}
+          {monthlyMeeting && (
+            <motion.div
+              whileHover={{ scale: 1.005 }}
+              transition={{ type: "spring", stiffness: 200, damping: 18 }}
+              className={`relative overflow-hidden rounded-3xl border-2 p-6 shadow-sm transition-all ${
+                monthlyMeeting.isOpen && !monthlyMeeting.myAttendance
+                  ? "border-indigo-400 bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/60 shadow-md"
+                  : monthlyMeeting.myAttendance?.isApproved === true
+                  ? "border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-slate-50"
+                  : monthlyMeeting.myAttendance?.isApproved === false
+                  ? "border-rose-200 bg-gradient-to-br from-rose-50/60 via-white to-slate-50"
+                  : monthlyMeeting.myAttendance
+                  ? "border-amber-200 bg-gradient-to-br from-amber-50/60 via-white to-slate-50"
+                  : "border-border bg-white"
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className={`p-3 rounded-2xl shrink-0 ${
+                    monthlyMeeting.isOpen && !monthlyMeeting.myAttendance
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : monthlyMeeting.myAttendance?.isApproved === true
+                      ? "bg-emerald-100 text-emerald-700"
+                      : monthlyMeeting.myAttendance?.isApproved === false
+                      ? "bg-rose-100 text-rose-700"
+                      : monthlyMeeting.myAttendance
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-slate-100 text-slate-700"
+                  }`}>
+                    <BookOpen className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                        Rapat Bulanan Asrama
+                      </span>
+                      {monthlyMeeting.isOpen && !monthlyMeeting.myAttendance && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 animate-pulse">
+                          Presensi Dibuka (s.d 23:59 WIB)
+                        </span>
+                      )}
+                      {monthlyMeeting.myAttendance && (
+                        monthlyMeeting.myAttendance.isApproved === null ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                            Menunggu Verifikasi Sekretaris
+                          </span>
+                        ) : monthlyMeeting.myAttendance.isApproved === true ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            ✓ Presensi Terverifikasi Hadir
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                            ✕ Presensi Ditolak
+                          </span>
+                        )
+                      )}
+                    </div>
+                    <h3 className="font-bold text-foreground text-base sm:text-lg">
+                      {monthlyMeeting.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-slate-400" />
+                      {fmtDate(monthlyMeeting.scheduledAt)} • Pukul {fmtTime(monthlyMeeting.scheduledAt)} WIB
+                      {monthlyMeeting.leaderName && ` • Pemimpin: ${monthlyMeeting.leaderName}`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action button */}
+                <div className="self-end sm:self-center shrink-0">
+                  {monthlyMeeting.myAttendance ? (
+                    monthlyMeeting.isOpen ? (
+                      <button
+                        onClick={() => setShowMeetingModal(true)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors shadow-xs"
+                      >
+                        <UserCheck className="h-4 w-4 text-indigo-600" />
+                        Edit Presensi
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-xl">
+                        Presensi Tersimpan
+                      </span>
+                    )
+                  ) : monthlyMeeting.isOpen ? (
+                    <button
+                      onClick={() => setShowMeetingModal(true)}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      Isi Presensi Sekarang
+                    </button>
+                  ) : monthlyMeeting.isPast ? (
+                    <span className="text-xs text-slate-400 font-medium bg-slate-100 px-3 py-1.5 rounded-xl">
+                      Presensi Ditutup (23:59 WIB)
+                    </span>
+                  ) : (
+                    <span className="text-xs text-indigo-600 font-semibold bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-xl">
+                      Presensi Dibuka {fmtTime(monthlyMeeting.scheduledAt)} WIB
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Attendance Details Preview if already submitted */}
+              {monthlyMeeting.myAttendance && (
+                <div className="mt-4 pt-3.5 border-t border-slate-200/60 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div className="bg-white/80 p-3 rounded-xl border border-slate-100">
+                    <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Sebagai</span>
+                    <span className="font-bold text-slate-800">{monthlyMeeting.myAttendance.attendAs || '-'}</span>
+                  </div>
+                  <div className="bg-white/80 p-3 rounded-xl border border-slate-100">
+                    <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Ide / Usulan Rapat</span>
+                    <span className="text-slate-700 italic line-clamp-2">{monthlyMeeting.myAttendance.ideas || 'Tidak ada ide tambahan.'}</span>
+                  </div>
+                  <div className="bg-white/80 p-3 rounded-xl border border-slate-100">
+                    <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Evaluasi Asrama</span>
+                    <span className="text-slate-700 italic line-clamp-2">{monthlyMeeting.myAttendance.evaluation || 'Tidak ada evaluasi tambahan.'}</span>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
           <motion.div
             whileHover={{ scale: 1.01 }}
             transition={{ type: "spring", stiffness: 200, damping: 18 }}
@@ -373,6 +562,147 @@ export default function UserDashboard({
           )}
         </div>
       </motion.div>
+
+      {/* ===== MODAL PRESENSI MANDIRI RAPAT BULANAN ===== */}
+      <AnimatePresence>
+        {showMeetingModal && monthlyMeeting && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-lg rounded-3xl bg-white shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="bg-gradient-to-r from-indigo-700 to-indigo-900 px-6 py-5 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/10 rounded-xl">
+                    <BookOpen className="h-5 w-5 text-indigo-200" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base">Presensi Rapat Bulanan Asrama</h3>
+                    <p className="text-xs text-indigo-200 mt-0.5">{monthlyMeeting.title}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowMeetingModal(false)}
+                  className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitAttendance} className="p-6 space-y-4 overflow-y-auto">
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Presensi mandiri dibuka mulai pukul {fmtTime(monthlyMeeting.scheduledAt)} WIB dan ditutup pukul 23:59 WIB.
+                  Presensi akan diverifikasi oleh Sekretaris.
+                </p>
+
+                {/* Konfirmasi Kehadiran */}
+                <label className="flex items-start gap-3 p-3.5 rounded-2xl border-2 border-indigo-100 bg-indigo-50/40 hover:bg-indigo-50 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isAttending}
+                    onChange={(e) => setIsAttending(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div className="text-xs">
+                    <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                      Konfirmasi Kehadiran Rapat
+                    </div>
+                    <div className="text-slate-500 mt-0.5">
+                      Saya menyatakan hadir mengikuti agenda rapat bulanan asrama hari ini.
+                    </div>
+                  </div>
+                </label>
+
+                {/* Sebagai Apa */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Hadir Sebagai Apa <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={attendAs}
+                    onChange={(e) => setAttendAs(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    required
+                  >
+                    <option value="Warga Asrama">Warga Asrama</option>
+                    <option value="Calon Warga">Calon Warga</option>
+                    <option value="Pengurus Asrama">Pengurus Asrama</option>
+                    <option value="Pemimpin Rapat">Pemimpin Rapat</option>
+                    <option value="Notulis">Notulis</option>
+                    <option value="Tamu Undangan">Tamu Undangan</option>
+                  </select>
+                </div>
+
+                {/* Ide / Usulan */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Ide / Usulan untuk Rapat Bulanan Ini
+                    </label>
+                    <span className="text-[10px] text-slate-400">Free text</span>
+                  </div>
+                  <textarea
+                    value={ideas}
+                    onChange={(e) => setIdeas(e.target.value)}
+                    placeholder="Tuliskan gagasan, ide kegiatan, atau usulan solusi untuk asrama..."
+                    rows={3}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Evaluasi */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Evaluasi untuk Rapat / Asrama
+                    </label>
+                    <span className="text-[10px] text-slate-400">Free text</span>
+                  </div>
+                  <textarea
+                    value={evaluation}
+                    onChange={(e) => setEvaluation(e.target.value)}
+                    placeholder="Tuliskan evaluasi mengenai lingkungan, fasilitas, kedisiplinan, atau kegiatan asrama..."
+                    rows={3}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {meetingError && (
+                  <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 rounded-xl p-3 border border-rose-200">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{meetingError}</span>
+                  </div>
+                )}
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowMeetingModal(false)}
+                    className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submittingMeeting}
+                    className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    {submittingMeeting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserCheck className="h-4 w-4" />
+                    )}
+                    {submittingMeeting ? "Menyimpan..." : "Kirim Presensi"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

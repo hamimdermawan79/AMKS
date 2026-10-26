@@ -148,6 +148,7 @@ model User {
   ledMeetings          Meeting[]           @relation("MeetingLeader")
   takenNotesMeetings   Meeting[]           @relation("MeetingNoteTaker")
   meetingAttendances   MeetingAttendance[]
+  approvedMeetingAttendances MeetingAttendance[] @relation("MeetingAttendanceApprover")
   actionItems          ActionItem[]        @relation("ActionItemPIC")
 
   // Keamanan
@@ -752,14 +753,25 @@ model Meeting {
 }
 
 model MeetingAttendance {
-  id          String           @id @default(cuid())
-  meetingId   String
-  userId      String
-  role        MeetingRole      @default(PESERTA)
-  status      AttendanceStatus? // null jika masih terjadwal
-  
-  meeting     Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String           @id @default(cuid())
+  meetingId        String
+  userId           String
+  role             MeetingRole      @default(PESERTA)
+  status           AttendanceStatus? // null jika masih terjadwal
+
+  // Self-attendance fields (presensi mandiri warga)
+  isSelfAttendance Boolean          @default(false)
+  attendAs         String?          // Sebagai apa (Warga Asrama, Calon Warga, Pengurus, dll)
+  ideas            String?          @db.Text // Ide/aspirasi untuk rapat bulanan
+  evaluation       String?          @db.Text // Evaluasi untuk asrama/rapat
+  submittedAt      DateTime?        // Waktu warga submit presensi mandiri
+  isApproved       Boolean?         // null: Menunggu, true: Disetujui, false: Ditolak
+  approvedById     String?          // Sekretaris yang memverifikasi
+  approvedAt       DateTime?        // Waktu approval
+
+  meeting      Meeting          @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  approvedBy   User?            @relation("MeetingAttendanceApprover", fields: [approvedById], references: [id], onDelete: SetNull)
 
   @@unique([meetingId, userId])
   @@map("meeting_attendances")
@@ -848,6 +860,7 @@ model GuestBook {
   visitorName  String
   originCity   String   // Asal daerah
   institution  String?  // Asal institusi / kampus (opsional)
+  phone        String?  // Nomor WhatsApp aktif tamu
   purpose      String   // Tujuan berkunjung
   knownById    String?  // Kenal dengan siapa (warga asrama)
   knownByOther String?  // Jika tidak ada di sistem (tamu kenal dengan orang di luar sistem)

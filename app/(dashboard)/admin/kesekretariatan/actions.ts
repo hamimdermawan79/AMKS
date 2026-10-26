@@ -361,3 +361,177 @@ export async function saveMeetingAttendances(meetingId: string, attendances: { u
   }
 }
 
+// ============================================================
+// PRESENSI MANDIRI RAPAT BULANAN (SELF ATTENDANCE & APPROVAL)
+// ============================================================
+
+export async function submitMeetingSelfAttendance(data: {
+  meetingId: string;
+  attendAs: string;
+  ideas?: string;
+  evaluation?: string;
+}) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error("Silakan login terlebih dahulu untuk melakukan presensi.");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, status: true, fullName: true },
+  });
+
+  if (!user || user.status !== "AKTIF") {
+    throw new Error("Hanya warga atau calon warga aktif yang dapat melakukan presensi.");
+  }
+
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: data.meetingId },
+  });
+
+  if (!meeting) {
+    throw new Error("Agenda rapat tidak ditemukan.");
+  }
+
+  // Validasi waktu presensi:
+  // Presensi dimulai mengikuti waktu rapat yang terdaftar dan selesai pada jam 12 malam (23:59:59 WIB)
+  const now = new Date();
+  const nowWib = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+  const meetingWib = new Date(new Date(meeting.scheduledAt).toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
+
+  const meetingDayEnd = new Date(meetingWib);
+  meetingDayEnd.setHours(23, 59, 59, 999);
+
+  if (nowWib < meetingWib) {
+    const timeStr = meetingWib.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    throw new Error(`Presensi belum dibuka. Presensi dibuka mulai pukul ${timeStr} WIB saat rapat dimulai.`);
+  }
+
+  if (nowWib > meetingDayEnd) {
+    throw new Error("Presensi telah ditutup. Batas waktu presensi berakhir pada pukul 23:59 WIB pada hari rapat.");
+  }
+
+  try {
+    const attendance = await prisma.meetingAttendance.upsert({
+      where: {
+        meetingId_userId: {
+          meetingId: data.meetingId,
+          userId: user.id,
+        },
+      },
+      update: {
+        isSelfAttendance: true,
+        attendAs: data.attendAs.trim(),
+        ideas: data.ideas?.trim() || null,
+        evaluation: data.evaluation?.trim() || null,
+        submittedAt: new Date(),
+        status: "HADIR",
+        isApproved: null, // Reset ke pending jika revisi
+      },
+      create: {
+        meetingId: data.meetingId,
+        userId: user.id,
+        role: "PESERTA",
+        status: "HADIR",
+        isSelfAttendance: true,
+        attendAs: data.attendAs.trim(),
+        ideas: data.ideas?.trim() || null,
+        evaluation: data.evaluation?.trim() || null,
+        submittedAt: new Date(),
+        isApproved: null,
+      },
+    });
+
+    revalidatePath("/admin/kesekretariatan");
+    revalidatePath("/user");
+    return {
+      success: true,
+      message: "Presensi berhasil dikirim. Menunggu verifikasi dari Sekretaris.",
+      attendanceId: attendance.id,
+    };
+  } catch (error: any) {
+    console.error("Failed to submit self attendance:", error);
+    throw new Error(error.message || "Gagal mengirim presensi rapat.");
+  }
+}
+
+export async function approveMeetingAttendance(data: {
+  attendanceId: string;
+  isApproved: boolean;
+}) {
+  const session = await authorizeManageKesekretariatan();
+
+  try {
+    const attendance = await prisma.meetingAttendance.update({
+      where: { id: data.attendanceId },
+      data: {
+        isApproved: data.isApproved,
+        status: data.isApproved ? "HADIR" : "TIDAK_HADIR",
+        approvedById: session.user.id,
+        approvedAt: new Date(),
+      },
+      include: {
+        meeting: { select: { title: true } },
+        user: { select: { id: true, fullName: true } },
+      },
+    });
+
+    // Beri notifikasi ke warga jika presensi disetujui / ditolak
+    try {
+      await createNotification({
+        userId: attendance.userId,
+        title: data.isApproved ? "Presensi Rapat Disetujui" : "Presensi Rapat Ditolak",
+        message: data.isApproved
+          ? `Presensi mandiri Anda pada agenda rapat "${attendance.meeting.title}" telah disetujui oleh Sekretaris.`
+          : `Presensi mandiri Anda pada agenda rapat "${attendance.meeting.title}" ditolak oleh Sekretaris. Silakan hubungi Sekretaris jika ada kekeliruan.`,
+        type: "RAPAT_REMINDER",
+        referenceId: `ATT_APPROVE:${attendance.id}`,
+      });
+    } catch (notifErr) {
+      console.error("Failed to notify user about attendance approval:", notifErr);
+    }
+
+    revalidatePath("/admin/kesekretariatan");
+    revalidatePath("/user");
+    return { success: true };
+  } catch (error: any) {
+    throw new Error(error.message || "Gagal memverifikasi presensi.");
+  }
+}
+
+export async function bulkApproveMeetingAttendances(data: {
+  attendanceIds: string[];
+  isApproved: boolean;
+}) {
+  const session = await authorizeManageKesekretariatan();
+
+  if (!data.attendanceIds || data.attendanceIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  try {
+    const now = new Date();
+    await prisma.meetingAttendance.updateMany({
+      where: {
+        id: { in: data.attendanceIds },
+      },
+      data: {
+        isApproved: data.isApproved,
+        status: data.isApproved ? "HADIR" : "TIDAK_HADIR",
+        approvedById: session.user.id,
+        approvedAt: now,
+      },
+    });
+
+    revalidatePath("/admin/kesekretariatan");
+    revalidatePath("/user");
+    return { success: true, count: data.attendanceIds.length };
+  } catch (error: any) {
+    throw new Error(error.message || "Gagal memproses approval massal.");
+  }
+}
+
+

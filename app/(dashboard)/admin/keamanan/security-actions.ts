@@ -239,6 +239,7 @@ export async function createGuestBookEntry(data: {
   visitorName: string;
   originCity: string;
   institution?: string;
+  phone?: string;
   purpose: string;
   knownById?: string;
   knownByOther?: string;
@@ -263,6 +264,7 @@ export async function createGuestBookEntry(data: {
       visitorName: data.visitorName,
       originCity: data.originCity,
       institution: data.institution || null,
+      phone: data.phone || null,
       purpose: data.purpose,
       knownById: data.knownById || null,
       knownByOther: data.knownByOther || null,
