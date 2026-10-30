@@ -3,7 +3,7 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { canFromSession } from '@/lib/rbac/can';
+import { canFromSession, isUserSuperAdminById } from '@/lib/rbac/can';
 import { AttendanceStatus } from '@prisma/client';
 import { createNotification, processNotificationQueue } from '@/lib/notifications';
 
@@ -232,8 +232,37 @@ export async function updateSecurityDutyAssignee(assignmentId: string, newUserId
 }
 
 // ============================================================
-// BUKU TAMU: TAMBAH
+// BUKU TAMU: HELPERS & ACTIONS
 // ============================================================
+
+async function canWriteGuestBook(userId: string): Promise<boolean> {
+  const isSuper = await isUserSuperAdminById(userId);
+  if (isSuper) return true;
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      divisionScope: true,
+      roles: { select: { role: { select: { name: true } } } },
+    },
+  });
+  const roleNames = user?.roles.map((r) => r.role.name) || [];
+
+  if (
+    roleNames.includes('SUPERADMIN') ||
+    roleNames.includes('KETUA') ||
+    roleNames.includes('SEKRETARIS') ||
+    (roleNames.includes('DIVISION_HEAD') && user?.divisionScope === 'KEAMANAN')
+  ) {
+    return true;
+  }
+
+  return (
+    (await canFromSession('guest:book:write')) ||
+    (await canFromSession('division:manage:keamanan', 'KEAMANAN')) ||
+    (await canFromSession('security:duty:manage'))
+  );
+}
 
 export async function createGuestBookEntry(data: {
   visitorName: string;
@@ -248,38 +277,78 @@ export async function createGuestBookEntry(data: {
   stayDuration?: number;
   note?: string;
 }) {
-  const session = await requireSession();
+  try {
+    const session = await requireSession();
 
-  // Hanya warga dengan permission guest:book:write yang bisa input (Ketua, Sekretaris, Keamanan)
-  const canWrite = await canFromSession('guest:book:write');
-  if (!canWrite) {
-    throw new Error('Tidak memiliki akses untuk menambah data buku tamu.');
+    const allowed = await canWriteGuestBook(session.user.id);
+    if (!allowed) {
+      return { success: false, error: 'Tidak memiliki akses untuk menambah data buku tamu.' };
+    }
+
+    if (!data.visitorName?.trim() || !data.originCity?.trim() || !data.purpose?.trim()) {
+      return { success: false, error: 'Nama tamu, asal daerah, dan tujuan wajib diisi.' };
+    }
+
+    const rawEntryTime = data.entryTime ? new Date(data.entryTime) : new Date();
+    const entryTime = isNaN(rawEntryTime.getTime()) ? new Date() : rawEntryTime;
+    const { month, year } = getMonthYear(entryTime);
+
+    let entry;
+    try {
+      entry = await db.guestBook.create({
+        data: {
+          visitorName: data.visitorName.trim(),
+          originCity: data.originCity.trim(),
+          institution: data.institution?.trim() || null,
+          phone: data.phone?.trim() || null,
+          purpose: data.purpose.trim(),
+          knownById: data.knownById || null,
+          knownByOther: data.knownByOther?.trim() || null,
+          entryTime,
+          isStaying: !!data.isStaying,
+          stayDuration: data.isStaying ? Number(data.stayDuration) || 1 : null,
+          note: data.note?.trim() || null,
+          month,
+          year,
+          createdById: session.user.id,
+        },
+      });
+    } catch (dbErr: any) {
+      // Fallback: jika di database production kolom phone belum dimigrate
+      if (dbErr?.message?.includes('phone') || dbErr?.code === 'P2021' || dbErr?.code === 'P2022') {
+        console.warn('⚠️ Kolom phone belum tersedia di database, menyimpan tamu tanpa nomor HP...');
+        entry = await db.guestBook.create({
+          data: {
+            visitorName: data.visitorName.trim(),
+            originCity: data.originCity.trim(),
+            institution: data.institution?.trim() || null,
+            purpose: data.purpose.trim(),
+            knownById: data.knownById || null,
+            knownByOther: data.knownByOther?.trim() || null,
+            entryTime,
+            isStaying: !!data.isStaying,
+            stayDuration: data.isStaying ? Number(data.stayDuration) || 1 : null,
+            note: data.note?.trim() || null,
+            month,
+            year,
+            createdById: session.user.id,
+          },
+        });
+      } else {
+        throw dbErr;
+      }
+    }
+
+    revalidatePath('/admin/keamanan');
+    revalidatePath('/admin/keamanan/kelola');
+    return { success: true, id: entry.id };
+  } catch (error: any) {
+    console.error('Failed to create guest book entry:', error);
+    return {
+      success: false,
+      error: error?.message || 'Gagal menyimpan data buku tamu.',
+    };
   }
-
-  const entryTime = new Date(data.entryTime);
-  const { month, year } = getMonthYear(entryTime);
-
-  const entry = await db.guestBook.create({
-    data: {
-      visitorName: data.visitorName,
-      originCity: data.originCity,
-      institution: data.institution || null,
-      phone: data.phone || null,
-      purpose: data.purpose,
-      knownById: data.knownById || null,
-      knownByOther: data.knownByOther || null,
-      entryTime,
-      isStaying: !!data.isStaying,
-      stayDuration: data.isStaying ? Number(data.stayDuration) || 1 : null,
-      note: data.note || null,
-      month,
-      year,
-      createdById: session.user.id,
-    },
-  });
-
-  revalidatePath('/admin/keamanan');
-  return { success: true, id: entry.id };
 }
 
 // ============================================================
@@ -297,20 +366,27 @@ export async function updateGuestBookEntry(
     stayDuration: number;
   }>
 ) {
-  const canWrite = await canFromSession('guest:book:write');
-  if (!canWrite) throw new Error('Tidak memiliki akses.');
+  try {
+    const session = await requireSession();
+    const allowed = await canWriteGuestBook(session.user.id);
+    if (!allowed) return { success: false, error: 'Tidak memiliki akses.' };
 
-  const updateData: Record<string, unknown> = {};
-  if (data.exitTime) updateData.exitTime = new Date(data.exitTime);
-  if (data.note !== undefined) updateData.note = data.note;
-  if (data.visitorName) updateData.visitorName = data.visitorName;
-  if (data.purpose) updateData.purpose = data.purpose;
-  if (data.isStaying !== undefined) updateData.isStaying = data.isStaying;
-  if (data.stayDuration !== undefined) updateData.stayDuration = data.stayDuration;
+    const updateData: Record<string, unknown> = {};
+    if (data.exitTime) updateData.exitTime = new Date(data.exitTime);
+    if (data.note !== undefined) updateData.note = data.note;
+    if (data.visitorName) updateData.visitorName = data.visitorName;
+    if (data.purpose) updateData.purpose = data.purpose;
+    if (data.isStaying !== undefined) updateData.isStaying = data.isStaying;
+    if (data.stayDuration !== undefined) updateData.stayDuration = data.stayDuration;
 
-  await db.guestBook.update({ where: { id }, data: updateData });
-  revalidatePath('/admin/keamanan');
-  return { success: true };
+    await db.guestBook.update({ where: { id }, data: updateData });
+    revalidatePath('/admin/keamanan');
+    revalidatePath('/admin/keamanan/kelola');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to update guest book entry:', error);
+    return { success: false, error: error?.message || 'Gagal memperbarui data tamu.' };
+  }
 }
 
 // ============================================================
@@ -318,12 +394,19 @@ export async function updateGuestBookEntry(
 // ============================================================
 
 export async function deleteGuestBookEntry(id: string) {
-  const canWrite = await canFromSession('guest:book:write');
-  if (!canWrite) throw new Error('Tidak memiliki akses.');
+  try {
+    const session = await requireSession();
+    const allowed = await canWriteGuestBook(session.user.id);
+    if (!allowed) return { success: false, error: 'Tidak memiliki akses.' };
 
-  await db.guestBook.delete({ where: { id } });
-  revalidatePath('/admin/keamanan');
-  return { success: true };
+    await db.guestBook.delete({ where: { id } });
+    revalidatePath('/admin/keamanan');
+    revalidatePath('/admin/keamanan/kelola');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to delete guest book entry:', error);
+    return { success: false, error: error?.message || 'Gagal menghapus data tamu.' };
+  }
 }
 
 // ============================================================

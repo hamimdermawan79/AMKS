@@ -1,4 +1,4 @@
-import { db } from '@/lib/db';
+﻿import { db } from '@/lib/db';
 import { createNotification, processNotificationQueue } from './notifications';
 import { isUserSuperAdminById } from '@/lib/rbac/can';
 
@@ -84,16 +84,16 @@ export async function checkTodayPiketReminders() {
         message = `Halo ${assign.user.fullName}, pengingat pagi untuk piket Anda di ${sectorName}. Harap segera menyelesaikan piket dan presensi sebelum pukul 11:00 WIB (tersisa 4 jam lagi).`;
       } else if (currentHour === 9 || currentHour === 10) {
         // Jam 9 & 10 Pagi (09:00, 10:00 WIB)
-        message = `⚠️ PENTING: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}! Waktu tersisa tinggal ${Math.max(1, 11 - currentHour)} jam sebelum batas tepat waktu pukul 11:00 WIB. Hindari denda keterlambatan Tahap 1 (Rp10.000) dengan segera melakukan piket dan presensi.`;
+        message = `âš ï¸ PENTING: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}! Waktu tersisa tinggal ${Math.max(1, 11 - currentHour)} jam sebelum batas tepat waktu pukul 11:00 WIB. Hindari denda keterlambatan Tahap 1 (Rp10.000) dengan segera melakukan piket dan presensi.`;
       } else if (currentHour === 11) {
         // Jam 11 Siang (11:00 WIB)
-        message = `⚠️ PERINGATAN TAHAP 1: Halo ${assign.user.fullName}, batas waktu presensi tepat waktu pukul 11:00 WIB telah lewat. Denda keterlambatan Tahap 1 sebesar Rp10.000 telah terbit. Namun presensi TETAP DIBUKA sampai pukul 17:00 WIB (5 sore). Anda masih diwajibkan membersihkan area ${sectorName}. Segera lakukan presensi sebelum jam 17:00 WIB agar TIDAK terkena denda tambahan Tahap 2 sebesar Rp10.000 lagi!`;
+        message = `âš ï¸ PERINGATAN TAHAP 1: Halo ${assign.user.fullName}, batas waktu presensi tepat waktu pukul 11:00 WIB telah lewat. Denda keterlambatan Tahap 1 sebesar Rp10.000 telah terbit. Namun presensi TETAP DIBUKA sampai pukul 17:00 WIB (5 sore). Anda masih diwajibkan membersihkan area ${sectorName}. Segera lakukan presensi sebelum jam 17:00 WIB agar TIDAK terkena denda tambahan Tahap 2 sebesar Rp10.000 lagi!`;
       } else if (currentHour === 13 || currentHour === 15) {
         // Jam 13 & 15 Sore (13:00, 15:00 WIB)
-        message = `📢 PENGINGAT SORE: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}. Presensi Tahap 2 akan ditutup pada pukul 17:00 WIB (tersisa ${17 - currentHour} jam lagi). Segera selesaikan piket dan presensi untuk menghindari total denda Rp20.000!`;
+        message = `ðŸ“¢ PENGINGAT SORE: Halo ${assign.user.fullName}, Anda belum melakukan presensi piket di ${sectorName}. Presensi Tahap 2 akan ditutup pada pukul 17:00 WIB (tersisa ${17 - currentHour} jam lagi). Segera selesaikan piket dan presensi untuk menghindari total denda Rp20.000!`;
       } else if (currentHour === 16) {
         // Jam 16 Sore (16:00 WIB - 1 Jam Terakhir)
-        message = `🚨 MENDESAK (1 JAM TERAKHIR): Halo ${assign.user.fullName}, waktu presensi piket di ${sectorName} tersisa kurang dari 1 jam (tutup tepat pukul 17:00 WIB)! Segera unggah bukti presensi sekarang. Jika lewat jam 17:00 WIB, presensi ditutup permanen dan Anda dikenakan denda tambahan Tahap 2 sebesar Rp10.000 (total denda Rp20.000)!`;
+        message = `ðŸš¨ MENDESAK (1 JAM TERAKHIR): Halo ${assign.user.fullName}, waktu presensi piket di ${sectorName} tersisa kurang dari 1 jam (tutup tepat pukul 17:00 WIB)! Segera unggah bukti presensi sekarang. Jika lewat jam 17:00 WIB, presensi ditutup permanen dan Anda dikenakan denda tambahan Tahap 2 sebesar Rp10.000 (total denda Rp20.000)!`;
       } else {
         message = `Halo ${assign.user.fullName}, mengingatkan bahwa HARI INI Anda memiliki jadwal piket di ${sectorName}. Harap segera melakukan presensi piket di dashboard sebelum pukul 17:00 WIB. Terima kasih!`;
       }
@@ -107,7 +107,7 @@ export async function checkTodayPiketReminders() {
         referenceId: refId,
       });
 
-      console.log(`✉️ Piket reminder (Jam ${currentHour}:00 WIB) queued for ${assign.user.fullName} (${sectorName})`);
+      console.log(`âœ‰ï¸ Piket reminder (Jam ${currentHour}:00 WIB) queued for ${assign.user.fullName} (${sectorName})`);
     }
   } catch (error) {
     console.error('Failed to run checkTodayPiketReminders:', error);
@@ -298,7 +298,7 @@ export async function checkMissedPikets() {
           referenceId: stage1RefId,
         });
 
-        console.log(`⚠️ Tahap 1 denda issued for ${assign.user.fullName} (${sectorName}) on date ${dateStr}`);
+        console.log(`âš ï¸ Tahap 1 denda issued for ${assign.user.fullName} (${sectorName}) on date ${dateStr}`);
       }
     }
 
@@ -425,7 +425,7 @@ export async function checkMissedPikets() {
           referenceId: stage2RefId,
         });
 
-        console.log(`⛔ Tahap 2 Denda (Final) issued for ${assign.user.fullName} on date ${dateStr}`);
+        console.log(`â›” Tahap 2 Denda (Final) issued for ${assign.user.fullName} on date ${dateStr}`);
       }
     }
   } catch (error) {
@@ -435,7 +435,7 @@ export async function checkMissedPikets() {
 
 /**
  * Broadcast pending announcements to all active users (excl. SUPERADMIN & ALUMNI).
- * Runs every hour via cron. Idempotent — checks for existing notifications
+ * Runs every hour via cron. Idempotent â€” checks for existing notifications
  * before creating new ones.
  */
 export async function checkAnnouncementBroadcast() {
@@ -494,7 +494,7 @@ export async function checkAnnouncementBroadcast() {
 
       const divLabel = divisionLabels[announcement.division] || announcement.division;
 
-      // Batch insert notifications — single query
+      // Batch insert notifications â€” single query
       await db.notification.createMany({
         data: targetUsers.map((u) => ({
           userId: u.id,
@@ -511,7 +511,7 @@ export async function checkAnnouncementBroadcast() {
         data: { broadcastComplete: true },
       });
 
-      console.log(`📢 Broadcast complete for announcement ${announcement.id} (${targetUsers.length} users).`);
+      console.log(`ðŸ“¢ Broadcast complete for announcement ${announcement.id} (${targetUsers.length} users).`);
     }
   } catch (error) {
     console.error('Failed to run checkAnnouncementBroadcast:', error);
@@ -611,7 +611,7 @@ export async function checkRohaniReminders() {
         })),
       });
 
-      console.log(`📢 Rohani H-${diffDays} reminder broadcast queued for ${targetUsers.length} users (Schedule: ${schedule.id}).`);
+      console.log(`ðŸ“¢ Rohani H-${diffDays} reminder broadcast queued for ${targetUsers.length} users (Schedule: ${schedule.id}).`);
     }
 
     // Trigger queue processing
@@ -716,7 +716,7 @@ export async function checkMeetingReminders() {
           })),
         });
 
-        console.log(`📢 Rapat Internal H-${diffDays} reminder queued for ${cachedActiveUsers.length} users (Meeting: ${meeting.title}).`);
+        console.log(`ðŸ“¢ Rapat Internal H-${diffDays} reminder queued for ${cachedActiveUsers.length} users (Meeting: ${meeting.title}).`);
       } else {
         // EKSTERNAL_RT: kirim ke seluruh delegasi RT
         const delegates = meeting.attendances;
@@ -752,7 +752,7 @@ export async function checkMeetingReminders() {
           })),
         });
 
-        console.log(`📢 Rapat RT 12 H-${diffDays} reminder queued for ${targetUserIds.length} recipients (Meeting: ${meeting.title}).`);
+        console.log(`ðŸ“¢ Rapat RT 12 H-${diffDays} reminder queued for ${targetUserIds.length} recipients (Meeting: ${meeting.title}).`);
       }
     }
 
@@ -860,7 +860,7 @@ export async function checkActivityReminders() {
         })),
       });
 
-      console.log(`📢 Kegiatan H-${diffDays} reminder queued for ${targetUsers.length} users (${act.title}).`);
+      console.log(`ðŸ“¢ Kegiatan H-${diffDays} reminder queued for ${targetUsers.length} users (${act.title}).`);
     }
 
     // Process Sports Activities
@@ -904,7 +904,7 @@ export async function checkActivityReminders() {
         })),
       });
 
-      console.log(`📢 Olahraga H-${diffDays} reminder queued for ${targetUserIds.length} users (${sport.title}).`);
+      console.log(`ðŸ“¢ Olahraga H-${diffDays} reminder queued for ${targetUserIds.length} users (${sport.title}).`);
     }
 
     processNotificationQueue().catch(console.error);
@@ -974,7 +974,7 @@ export async function checkSecurityDutyReminders() {
 
         await createNotification({
           userId: assign.userId,
-          title: '📅 Pengingat H-1: Piket Keamanan Besok Malam',
+          title: 'ðŸ“… Pengingat H-1: Piket Keamanan Besok Malam',
           message: `Halo ${assign.user.fullName}, mengingatkan bahwa BESOK MALAM (${dateStr}) Anda memiliki jadwal piket keamanan asrama mulai pukul 21:00 WIB.\n\nMohon bersiap untuk menjalankan tugas piket malam besok. Terima kasih!`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
@@ -1003,7 +1003,7 @@ export async function checkSecurityDutyReminders() {
         // Pagi (08:00 WIB)
         await createNotification({
           userId: assign.userId,
-          title: '☀️ Pengingat Pagi: Piket Keamanan Malam Ini',
+          title: 'â˜€ï¸ Pengingat Pagi: Piket Keamanan Malam Ini',
           message: `Selamat pagi ${assign.user.fullName}, mengingatkan bahwa HARI INI (${dateStr}) Anda memiliki jadwal piket keamanan malam mulai pukul 21:00 WIB.\n\nHarap mengatur jadwal Anda agar dapat melaksanakan tugas pengecekan keamanan malam nanti.`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
@@ -1012,7 +1012,7 @@ export async function checkSecurityDutyReminders() {
         // Siang (13:00 WIB)
         await createNotification({
           userId: assign.userId,
-          title: '📢 Pengingat Siang: Piket Keamanan Malam Ini',
+          title: 'ðŸ“¢ Pengingat Siang: Piket Keamanan Malam Ini',
           message: `Halo ${assign.user.fullName}, jangan lupa malam nanti (${dateStr}) adalah jadwal piket keamanan Anda mulai pukul 21:00 WIB.\n\nPastikan Anda bersiap melaksanakan pengecekan pintu, garasi, dan motor warga asrama.`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
@@ -1021,7 +1021,7 @@ export async function checkSecurityDutyReminders() {
         // Sore (18:00 - 20:00 WIB)
         await createNotification({
           userId: assign.userId,
-          title: '🌙 Pengingat Sore: Piket Keamanan Malam Ini',
+          title: 'ðŸŒ™ Pengingat Sore: Piket Keamanan Malam Ini',
           message: `Halo ${assign.user.fullName}, mengingatkan bahwa kamu bertugas piket keamanan malam HARI INI (${dateStr}) mulai pukul 21:00 WIB. Mohon bersiap melaksanakan tugas piket malam.`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
@@ -1029,12 +1029,12 @@ export async function checkSecurityDutyReminders() {
       } else if (currentHour >= 21 && currentHour <= 23) {
         // Jam piket berjalan & presensi (21:00 - 23:00 WIB)
         const hourLabel = `${String(currentHour).padStart(2, '0')}:00 WIB`;
-        let urgencyEmoji = currentHour === 23 ? '⚠️' : '🔔';
+        let urgencyEmoji = currentHour === 23 ? 'âš ï¸' : 'ðŸ””';
 
         await createNotification({
           userId: assign.userId,
           title: `${urgencyEmoji} Jangan Lupa Cek & Jaga Keamanan Asrama Sambas (${hourLabel})`,
-          message: `${urgencyEmoji} Halo ${assign.user.fullName}, jangan lupa cek dan jaga keamanan Asrama Sambas dengan menyelesaikan piket malam Anda hari ini (${dateStr}).\n\n📋 Tugas piket malam (21:00 – 00:00 WIB):\n• Cek kondisi pintu luar asrama (terkunci rapat)\n• Cek garasi (sudah ditutup & dikunci)\n• Cek motor di luar (pastikan terkunci stang)\n• Konfirmasi warga yang keluar malam\n\nSetelah selesai, harap segera isi presensi piket di aplikasi AMKS.`,
+          message: `${urgencyEmoji} Halo ${assign.user.fullName}, jangan lupa cek dan jaga keamanan Asrama Sambas dengan menyelesaikan piket malam Anda hari ini (${dateStr}).\n\nðŸ“‹ Tugas piket malam (21:00 â€“ 00:00 WIB):\nâ€¢ Cek kondisi pintu luar asrama (terkunci rapat)\nâ€¢ Cek garasi (sudah ditutup & dikunci)\nâ€¢ Cek motor di luar (pastikan terkunci stang)\nâ€¢ Konfirmasi warga yang keluar malam\n\nSetelah selesai, harap segera isi presensi piket di aplikasi AMKS.`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
         });
@@ -1042,8 +1042,8 @@ export async function checkSecurityDutyReminders() {
         // Jam 00:00 (Tengah malam)
         await createNotification({
           userId: assign.userId,
-          title: '🚨 Peringatan Batas Akhir Presensi Piket Keamanan Malam',
-          message: `🚨 Halo ${assign.user.fullName}, waktu operasional piket keamanan malam untuk ${dateStr} telah mencapai batas akhir (00:00 WIB).\n\nJika sudah selesai melaksanakan tugas pengecekan keamanan asrama, segera isi dan selesaikan presensi sekarang di aplikasi AMKS.`,
+          title: 'ðŸš¨ Peringatan Batas Akhir Presensi Piket Keamanan Malam',
+          message: `ðŸš¨ Halo ${assign.user.fullName}, waktu operasional piket keamanan malam untuk ${dateStr} telah mencapai batas akhir (00:00 WIB).\n\nJika sudah selesai melaksanakan tugas pengecekan keamanan asrama, segera isi dan selesaikan presensi sekarang di aplikasi AMKS.`,
           type: 'PIKET_REMINDER',
           referenceId: refId,
         });
@@ -1081,7 +1081,7 @@ export async function checkCctvReminders() {
         where: { id: cctvStatus.id },
         data: { isActive: false },
       });
-      console.log('🔴 CCTV auto-deactivated (5+ days without verification)');
+      console.log('ðŸ”´ CCTV auto-deactivated (5+ days without verification)');
     }
 
     const keamananUsers = await db.user.findMany({
@@ -1115,8 +1115,8 @@ export async function checkCctvReminders() {
         for (const user of keamananUsers) {
           await createNotification({
             userId: user.id,
-            title: '🚨 CCTV NONAKTIF — Segera Cek!',
-            message: `Halo ${user.fullName}, status CCTV asrama saat ini *NONAKTIF* karena sudah ${daysSinceVerified} hari tidak diverifikasi.\n\n⚠️ Segera cek kondisi CCTV:\n• Apakah kamera masih merekam?\n• Apakah DVR/NVR menyala?\n• Apakah ada gangguan listrik?\n\n🔧 Setelah memastikan CCTV aktif, segera update status di sistem AMKS → Divisi Keamanan → Tab Info CCTV → Ubah Status ke "Aktif".\n\n⏰ Pesan ini akan terus dikirim setiap 1 jam sampai status CCTV diperbarui.`,
+            title: 'ðŸš¨ CCTV NONAKTIF â€” Segera Cek!',
+            message: `Halo ${user.fullName}, status CCTV asrama saat ini *NONAKTIF* karena sudah ${daysSinceVerified} hari tidak diverifikasi.\n\nâš ï¸ Segera cek kondisi CCTV:\nâ€¢ Apakah kamera masih merekam?\nâ€¢ Apakah DVR/NVR menyala?\nâ€¢ Apakah ada gangguan listrik?\n\nðŸ”§ Setelah memastikan CCTV aktif, segera update status di sistem AMKS â†’ Divisi Keamanan â†’ Tab Info CCTV â†’ Ubah Status ke "Aktif".\n\nâ° Pesan ini akan terus dikirim setiap 1 jam sampai status CCTV diperbarui.`,
             type: 'CCTV_CHECK',
             referenceId: refId,
           });
@@ -1136,8 +1136,8 @@ export async function checkCctvReminders() {
         for (const user of keamananUsers) {
           await createNotification({
             userId: user.id,
-            title: '📹 Reminder Cek CCTV (H-1 Nonaktif Otomatis)',
-            message: `Halo ${user.fullName}, status CCTV sudah ${daysSinceVerified} hari tidak diverifikasi.\n\n⏳ Jika tidak diupdate dalam 1 hari lagi, status akan otomatis menjadi *NONAKTIF*.\n\n✅ Segera cek dan konfirmasi di AMKS → Keamanan → Info CCTV → "Konfirmasi CCTV Aktif".`,
+            title: 'ðŸ“¹ Reminder Cek CCTV (H-1 Nonaktif Otomatis)',
+            message: `Halo ${user.fullName}, status CCTV sudah ${daysSinceVerified} hari tidak diverifikasi.\n\nâ³ Jika tidak diupdate dalam 1 hari lagi, status akan otomatis menjadi *NONAKTIF*.\n\nâœ… Segera cek dan konfirmasi di AMKS â†’ Keamanan â†’ Info CCTV â†’ "Konfirmasi CCTV Aktif".`,
             type: 'CCTV_CHECK',
             referenceId: refId,
           });
@@ -1165,8 +1165,8 @@ export async function checkCctvReminders() {
         for (const user of keamananUsers) {
           await createNotification({
             userId: user.id,
-            title: '💾 Reminder Bersihkan Memori CCTV',
-            message: `Halo ${user.fullName}, sudah waktunya membersihkan memori/storage CCTV asrama.\n\n${memMsg}\n\n📋 Yang perlu dilakukan:\n• Backup rekaman penting jika ada\n• Format / bersihkan storage DVR/NVR\n• Pastikan rekaman berjalan normal setelahnya\n\n✅ Setelah selesai, konfirmasi di AMKS → Keamanan → Info CCTV → "Konfirmasi Memori Dibersihkan".`,
+            title: 'ðŸ’¾ Reminder Bersihkan Memori CCTV',
+            message: `Halo ${user.fullName}, sudah waktunya membersihkan memori/storage CCTV asrama.\n\n${memMsg}\n\nðŸ“‹ Yang perlu dilakukan:\nâ€¢ Backup rekaman penting jika ada\nâ€¢ Format / bersihkan storage DVR/NVR\nâ€¢ Pastikan rekaman berjalan normal setelahnya\n\nâœ… Setelah selesai, konfirmasi di AMKS â†’ Keamanan â†’ Info CCTV â†’ "Konfirmasi Memori Dibersihkan".`,
             type: 'CCTV_CHECK',
             referenceId: refId,
           });
@@ -1183,12 +1183,88 @@ export async function checkCctvReminders() {
   }
 }
 
+/**
+ * Monthly System Billing Reminder â€” runs on the 25th of every month.
+ * Sends a notification to Ketua, Sekretaris, and Bendahara reminding them
+ * to pay the SIMAS-KS system subscription fee before the system breaks.
+ */
+export async function checkSystemBillingReminder() {
+  try {
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const dateOfMonth = nowWib.getDate();
+    const currentHour  = nowWib.getHours();
+
+    // Only run on the 25th of the month, at 08:00, 13:00, or 20:00 WIB
+    if (dateOfMonth !== 25) return;
+    const validHours = [8, 13, 20];
+    if (!validHours.includes(currentHour)) return;
+
+    // Idempotency key: one reminder per hour on the 25th
+    const monthKey = `${nowWib.getFullYear()}-${String(nowWib.getMonth() + 1).padStart(2, '0')}`;
+    const refId = `SYSTEM_BILLING:${monthKey}:H${currentHour}`;
+    const alreadySent = await db.notification.findFirst({ where: { referenceId: refId } });
+    if (alreadySent) return;
+
+    // Target: Ketua, Sekretaris, Bendahara (aktif)
+    const targets = await db.user.findMany({
+      where: {
+        status: 'AKTIF',
+        roles: {
+          some: {
+            role: { name: { in: ['KETUA', 'SEKRETARIS', 'BENDAHARA'] } },
+          },
+        },
+      },
+      select: { id: true, fullName: true },
+    });
+
+    if (targets.length === 0) return;
+
+    const nextMonth = new Date(nowWib.getFullYear(), nowWib.getMonth() + 1, 1)
+      .toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+    const urgencyMap: Record<number, { emoji: string; prefix: string }> = {
+      8:  { emoji: '🔔', prefix: 'Pengingat Tagihan Server' },
+      13: { emoji: '⚠️', prefix: 'PENGINGAT PENTING — Tagihan Server' },
+      20: { emoji: '🚨', prefix: 'MENDESAK — Segera Bayar Server!' },
+    };
+    const { emoji, prefix } = urgencyMap[currentHour]!;
+
+    const title = `${emoji} ${prefix}: Server SIMAS-KS (SUMOPOD)`;
+    const message =
+      `${emoji} *${prefix}*\n\n` +
+      `📅 Tanggal 25 — Tagihan server bulanan *SIMAS-KS* di *SUMOPOD* untuk periode *${nextMonth}* sudah jatuh tempo hari ini.\n\n` +
+      `🖥️ *Segera lakukan pembayaran server SIMAS-KS di SUMOPOD!*\n\n` +
+      `⚠️ Jika tagihan tidak dibayar, layanan hosting SUMOPOD akan dihentikan dan *sistem SIMAS-KS tidak dapat diakses / error pada bulan berikutnya.*\n\n` +
+      `📋 Yang perlu segera dilakukan:\n` +
+      `• Login ke akun SUMOPOD dan cek tagihan aktif\n` +
+      `• Bendahara segera proses pembayaran server\n` +
+      `• Konfirmasikan bukti pembayaran kepada pengelola sistem\n` +
+      `• Pastikan layanan SUMOPOD tetap aktif\n\n` +
+      `Terima kasih atas perhatian dan kerja samanya. 🙏`;
+    await db.notification.createMany({
+      data: targets.map((u) => ({
+        userId: u.id,
+        title,
+        message,
+        type: 'PENGUMUMAN',
+        referenceId: refId,
+      })),
+    });
+
+    processNotificationQueue().catch(console.error);
+    console.log(`💳 System billing reminder sent to ${targets.length} recipients (${refId}).`);
+  } catch (error) {
+    console.error('Failed to run checkSystemBillingReminder:', error);
+  }
+}
+
 let cronInterval: NodeJS.Timeout | null = null;
 
 export function startCronJobs() {
   if (cronInterval) return;
 
-  console.log('⏰ Starting Cron jobs worker (every 15 minutes)...');
+  console.log('â° Starting Cron jobs worker (every 15 minutes)...');
   
   // Run checks immediately on startup
   checkTodayPiketReminders();
@@ -1200,6 +1276,7 @@ export function startCronJobs() {
   checkActivityReminders();
   checkSecurityDutyReminders();
   checkCctvReminders();
+  checkSystemBillingReminder();
 
   // Run checks every 15 minutes so specific reminder hours are caught accurately
   cronInterval = setInterval(() => {
@@ -1212,6 +1289,7 @@ export function startCronJobs() {
     checkActivityReminders();
     checkSecurityDutyReminders();
     checkCctvReminders();
+    checkSystemBillingReminder();
   }, 1000 * 60 * 15); // 15 minutes
 }
 
@@ -1219,7 +1297,7 @@ export function stopCronJobs() {
   if (cronInterval) {
     clearInterval(cronInterval);
     cronInterval = null;
-    console.log('⏰ Cron jobs worker stopped.');
+    console.log('â° Cron jobs worker stopped.');
   }
 }
 

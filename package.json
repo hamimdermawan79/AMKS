@@ -14,7 +14,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:cleanup-superadmin": "tsx prisma/scripts/cleanup-superadmin-bills.ts",
-    "db:sync-kesekretariatan": "tsx prisma/scripts/sync-kesekretariatan-permissions.ts"
+    "db:sync-kesekretariatan": "tsx prisma/scripts/sync-kesekretariatan-permissions.ts",
+    "db:sync-keamanan": "tsx prisma/scripts/sync-keamanan-permissions.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",

@@ -107,7 +107,7 @@ export default async function KeamananPage() {
             id: a.id,
             date: a.date.toISOString(),
             userId: a.userId,
-            user: { id: a.user.id, fullName: a.user.fullName },
+            user: { id: a.user?.id || a.userId, fullName: a.user?.fullName || 'Warga' },
             attendance: a.attendance
               ? {
                   id: a.attendance.id,
@@ -126,11 +126,11 @@ export default async function KeamananPage() {
           visitorName: g.visitorName,
           originCity: g.originCity,
           institution: g.institution,
-          phone: g.phone,
+          phone: g.phone || null,
           purpose: g.purpose,
           knownById: g.knownById,
           knownByOther: g.knownByOther,
-          entryTime: g.entryTime.toISOString(),
+          entryTime: g.entryTime ? g.entryTime.toISOString() : new Date().toISOString(),
           exitTime: g.exitTime ? g.exitTime.toISOString() : null,
           isStaying: g.isStaying,
           stayDuration: g.stayDuration,

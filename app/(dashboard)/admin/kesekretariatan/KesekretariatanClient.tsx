@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   BookOpen, Calendar, Users, FileText, CheckCircle, Clock, 
@@ -59,6 +60,7 @@ function formatTanggal(dateInput: string | Date, opts?: { withDay?: boolean; wit
 }
 
 export default function KesekretariatanClient({ wargaList, internalMeetings, externalMeetings, currentUserId, canManage = false }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"internal" | "rt_schedule" | "rt_notes">("internal");
   const [isPending, startTransition] = useTransition();
 
@@ -353,7 +355,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                 <div className="flex gap-4 text-xs text-muted-foreground">
                   <div><span className="font-semibold block">Pemimpin</span> {m.leader?.fullName || "-"}</div>
                   <div><span className="font-semibold block">Notulis</span> {m.noteTaker?.fullName || "-"}</div>
-                  <div><span className="font-semibold block">Notulensi</span> {m.notes.length} bidang tercatat</div>
+                  <div><span className="font-semibold block">Notulensi</span> {(m.notes?.length || 0)} bidang tercatat</div>
                 </div>
               </motion.div>
             ))}
@@ -483,7 +485,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                 
                 <div className="space-y-4">
                   {DIVISIONS.map(div => {
-                    const note = selectedMeeting.notes.find((n: any) => n.division === div);
+                    const note = (activeMeeting.notes || []).find((n: any) => n.division === div);
                     const isBendahara = div === "BENDAHARA";
                     return (
                       <div key={div} className={`border rounded-xl p-4 transition-colors ${
@@ -555,7 +557,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                   )}
                 </div>
                 <div className="space-y-3">
-                  {selectedMeeting.actionItems.map((act: any) => (
+                  {(activeMeeting.actionItems || []).map((act: any) => (
                     <div key={act.id} className="border border-border rounded-lg p-3 text-sm flex gap-2 items-start group">
                       {canManage ? (
                         <button 
@@ -593,7 +595,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                       )}
                     </div>
                   ))}
-                  {selectedMeeting.actionItems.length === 0 && (
+                  {(activeMeeting.actionItems || []).length === 0 && (
                     <p className="text-xs text-muted-foreground italic text-center py-4">
                       {canManage ? 'Belum ada action item. Klik "Tambah" untuk menambahkan tindak lanjut.' : 'Belum ada action item.'}
                     </p>
@@ -718,7 +720,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                @{att.user?.username} • Submit: {formatTanggal(att.submittedAt || att.createdAt, { withTime: true })}
+                                @{att.user?.username} • {att.submittedAt ? `Submit: ${formatTanggal(att.submittedAt, { withTime: true })}` : "Dicatat Pengurus"}
                               </div>
                             </div>
                           </div>
@@ -940,7 +942,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                           <ul className="space-y-1">
                             {delegates.map((d: any) => (
                               <li key={d.userId} className="text-sm font-medium flex items-center gap-1.5">
-                                <UserCheck className="h-3.5 w-3.5 text-indigo-500"/> {d.user.fullName}
+                                <UserCheck className="h-3.5 w-3.5 text-indigo-500"/> {d.user?.fullName || "Warga"}
                               </li>
                             ))}
                           </ul>
@@ -1015,7 +1017,7 @@ export default function KesekretariatanClient({ wargaList, internalMeetings, ext
                       </p>
                       {delegates.length > 0 && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Delegasi: {delegates.map((d: any) => d.user.fullName).join(", ")}
+                          Delegasi: {delegates.map((d: any) => d.user?.fullName || "Warga").join(", ")}
                         </p>
                       )}
                     </div>
