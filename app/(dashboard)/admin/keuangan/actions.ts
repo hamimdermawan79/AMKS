@@ -44,6 +44,15 @@ export async function addTransaction(data: {
   const v = transactionSchema.parse(data);
 
   if (v.type === 'PENGELUARAN') {
+    if (v.category === 'Maintenance' && (!v.description || !v.description.trim())) {
+      throw new Error('Keterangan apa yang dibetulkan wajib diisi untuk kategori Maintenance.');
+    }
+    if (v.category === 'Pengadaan Inventaris' && (!v.description || !v.description.trim())) {
+      throw new Error('Keterangan barang yang ditambahkan wajib diisi untuk kategori Pengadaan Inventaris.');
+    }
+    if (v.category === 'Dana Dadakan' && (!v.description || !v.description.trim())) {
+      throw new Error('Keterangan keperluan wajib diisi untuk kategori Dana Dadakan.');
+    }
     await assertPengeluaranAllowed({ scope: 'ALL' }, v.amount, 'Saldo kas');
   }
 

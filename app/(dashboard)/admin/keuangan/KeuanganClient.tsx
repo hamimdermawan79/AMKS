@@ -827,6 +827,21 @@ export default function KeuanganClient({
 
     if (isNaN(amountNum) || amountNum <= 0 || !finalCategory) return;
 
+    if (newTx.type === 'PENGELUARAN') {
+      if (finalCategory === 'Maintenance' && !newTx.description.trim()) {
+        setError('Untuk kategori Maintenance, keterangan barang/fasilitas yang dibetulkan wajib diisi.');
+        return;
+      }
+      if (finalCategory === 'Pengadaan Inventaris' && !newTx.description.trim()) {
+        setError('Untuk kategori Pengadaan Inventaris, keterangan barang yang ditambahkan wajib diisi.');
+        return;
+      }
+      if (finalCategory === 'Dana Dadakan' && !newTx.description.trim()) {
+        setError('Untuk kategori Dana Dadakan, keterangan keperluan pengeluaran wajib diisi.');
+        return;
+      }
+    }
+
     if (newTx.type === 'PENGELUARAN' && amountNum > saldo) {
       setError('Saldo tidak mencukupi. Tersedia ' + formatRp(saldo));
       return;
@@ -2928,8 +2943,12 @@ export default function KeuanganClient({
                         <option value="Uang Divisi Keamanan">Uang Divisi Keamanan</option>
                         <option value="Uang Kerja Bakti">Uang Kerja Bakti</option>
                         <option value="Uang Rapat RT">Uang Rapat RT</option>
-                        <option value="Uang Rapat Bulanan">Uang Rapat Bulanan</option>
+                        <option value="Uang Konsumsi Rapat Asrama">Uang Konsumsi Rapat Asrama</option>
                         <option value="Uang Air Galon">Uang Air Galon</option>
+                        <option value="Uang Gas Elpiji">Uang Gas Elpiji</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Pengadaan Inventaris">Pengadaan Inventaris</option>
+                        <option value="Dana Dadakan">Dana Dadakan</option>
                         <option value="Lain-lain">Lain-lain</option>
                       </>
                     ) : (
@@ -2993,16 +3012,58 @@ export default function KeuanganClient({
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">Keterangan / Detail (Opsional)</label>
-                  <textarea
-                    rows={2}
-                    value={newTx.description}
-                    onChange={(e) => setNewTx({ ...newTx, description: e.target.value })}
-                    placeholder="Tulis rincian catatan transaksi..."
-                    className="input text-sm resize-none"
-                  />
-                </div>
+                {(() => {
+                  const isMaintenance = newTx.type === 'PENGELUARAN' && newTx.category === 'Maintenance';
+                  const isInventaris = newTx.type === 'PENGELUARAN' && newTx.category === 'Pengadaan Inventaris';
+                  const isDadakan = newTx.type === 'PENGELUARAN' && newTx.category === 'Dana Dadakan';
+                  const isRequired = isMaintenance || isInventaris || isDadakan;
+
+                  let labelText = 'Keterangan / Detail (Opsional)';
+                  let placeholderText = 'Tulis rincian catatan transaksi...';
+                  let hintText = '';
+
+                  if (isMaintenance) {
+                    labelText = 'Keterangan Perbaikan (Apa yang dibetulkan)';
+                    placeholderText = 'Contoh: Perbaikan pompa air lantai 1, ganti kran wastafel, perbaikan instalasi listrik...';
+                    hintText = 'Wajib diisi: sebutkan fasilitas atau barang apa yang dibetulkan/diperbaiki.';
+                  } else if (isInventaris) {
+                    labelText = 'Keterangan Inventaris (Barang yang ditambahkan)';
+                    placeholderText = 'Contoh: Pembelian sapu 3 pcs, dispenser air lantai 2, kipas angin aula...';
+                    hintText = 'Wajib diisi: sebutkan barang atau peralatan baru yang dibeli/ditambahkan.';
+                  } else if (isDadakan) {
+                    labelText = 'Keterangan Keperluan (Detail dana dadakan)';
+                    placeholderText = 'Contoh: Biaya darurat perbaikan pipa bocor mendadak, talangan musibah...';
+                    hintText = 'Wajib diisi: jelaskan alasan pengeluaran mendesak/dadakan ini.';
+                  }
+
+                  return (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className={`text-xs font-semibold ${isRequired ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {labelText}
+                        </label>
+                        {isRequired && (
+                          <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                            Wajib Diisi
+                          </span>
+                        )}
+                      </div>
+                      <textarea
+                        rows={2}
+                        required={isRequired}
+                        value={newTx.description}
+                        onChange={(e) => setNewTx({ ...newTx, description: e.target.value })}
+                        placeholder={placeholderText}
+                        className={`input text-sm resize-none ${isRequired && !newTx.description.trim() ? 'border-amber-400 focus:border-primary' : ''}`}
+                      />
+                      {hintText && (
+                        <p className="text-[11px] text-amber-700 bg-amber-50/70 border border-amber-200/60 p-2 rounded-lg">
+                          💡 {hintText}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
                   <button
