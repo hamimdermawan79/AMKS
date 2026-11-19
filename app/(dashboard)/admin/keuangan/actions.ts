@@ -245,12 +245,17 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
 
   if (isPartial) {
     // Pembayaran sebagian / cicilan
-    const remainingAmount = targetAmount - payAmount;
+    // Simpan sisa sebagai PRINCIPAL murni (tanpa bunga), agar bunga tidak berlipat ganda
+    // pada cicilan berikutnya. Bunga dihitung ulang di display time dari principal.
+    const remainingPrincipal = isLate
+      ? Math.max(0, bill.amount - Math.round(payAmount / 1.2))
+      : bill.amount - payAmount;
+    const remainingDisplay = targetAmount - payAmount; // untuk notifikasi/catatan
     await db.bill.update({
       where: { id: billId },
       data: {
-        amount: remainingAmount,
-        note: note ? `${bill.note || ''}\nCatatan Cicilan: ${note} (Bayar Rp${payAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')})`.trim() : `${bill.note || ''}\n(Bayar Rp${payAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')})`.trim(),
+        amount: remainingPrincipal,
+        note: note ? `${bill.note || ''}\nCatatan Cicilan: ${note} (Bayar Rp${payAmount.toLocaleString('id-ID')}, sisa Rp${remainingDisplay.toLocaleString('id-ID')})`.trim() : `${bill.note || ''}\n(Bayar Rp${payAmount.toLocaleString('id-ID')}, sisa Rp${remainingDisplay.toLocaleString('id-ID')})`.trim(),
       },
     });
   } else {

@@ -216,6 +216,9 @@ export default function KeuanganUserView({
             {pendingBills.map((bill) => {
               const isOverdue =
                 bill.dueDate && new Date(bill.dueDate) < now;
+              const isLateIuran = isOverdue && bill.type === "IURAN";
+              const displayAmount = isLateIuran ? Math.floor(bill.amount * 1.2) : bill.amount;
+
               return (
                 <div
                   key={bill.id}
@@ -255,8 +258,11 @@ export default function KeuanganUserView({
                   </div>
                   <div className="ml-4 text-right flex-shrink-0">
                     <p className="text-sm font-bold text-red-600">
-                      {fmtCurrency(bill.amount)}
+                      {fmtCurrency(displayAmount)}
                     </p>
+                    {isLateIuran && (
+                      <span className="text-[10px] text-red-600 font-semibold block">+20% Bunga Telat</span>
+                    )}
                     {statusBadge(bill.status)}
                   </div>
                 </div>

@@ -50,6 +50,7 @@ interface Transaction {
   amount: number;
   description: string | null;
   occurredAt: string;
+  paidByName?: string | null;
 }
 
 interface Bill {
@@ -227,6 +228,10 @@ export default function KeuanganClient({
   const [monthlyReportMonth, setMonthlyReportMonth] = useState<number>(new Date().getMonth());
   const [monthlyReportYear, setMonthlyReportYear] = useState<number>(new Date().getFullYear());
 
+  // States for Category Filter
+  const [categoryFilterMonth, setCategoryFilterMonth] = useState<number | 'ALL'>('ALL');
+  const [categoryFilterYear, setCategoryFilterYear] = useState<number>(new Date().getFullYear());
+
   // Modals
   const [txModalOpen, setTxModalOpen] = useState(false);
   const [billModalOpen, setBillModalOpen] = useState(false);
@@ -293,7 +298,10 @@ export default function KeuanganClient({
 
   const totalPiutang = bills
     .filter((b) => b.status === 'BELUM_LUNAS')
-    .reduce((sum, b) => sum + b.amount, 0);
+    .reduce((sum, b) => {
+      const isLate = b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+      return sum + (isLate ? Math.floor(b.amount * 1.2) : b.amount);
+    }, 0);
 
   // previous month totals are passed via props
   const previousSaldo = previousMonthTotals.pemasukan - previousMonthTotals.pengeluaran;
@@ -329,11 +337,17 @@ export default function KeuanganClient({
 
   const piutangBulanIni = bills
     .filter((b) => b.status === 'BELUM_LUNAS' && new Date(b.createdAt) >= currentMonthStart && new Date(b.createdAt) <= currentMonthEnd)
-    .reduce((sum, b) => sum + b.amount, 0);
+    .reduce((sum, b) => {
+      const isLate = b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+      return sum + (isLate ? Math.floor(b.amount * 1.2) : b.amount);
+    }, 0);
 
   const piutangBulanLalu = bills
     .filter((b) => b.status === 'BELUM_LUNAS' && new Date(b.createdAt) >= prevMonthStart && new Date(b.createdAt) <= prevMonthEnd)
-    .reduce((sum, b) => sum + b.amount, 0);
+    .reduce((sum, b) => {
+      const isLate = b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+      return sum + (isLate ? Math.floor(b.amount * 1.2) : b.amount);
+    }, 0);
 
   const renderTrendIndicator = (bulanIni: number, bulanLalu: number) => {
     if (!bulanLalu || bulanLalu === 0) {
@@ -377,6 +391,24 @@ export default function KeuanganClient({
   };
 
   // Generate chart data based on selected range
+  const getFilteredCategoryBreakdown = () => {
+    const filtered = transactions.filter((t) => {
+      if (categoryFilterMonth === 'ALL') return true;
+      const d = new Date(t.occurredAt);
+      return d.getMonth() === categoryFilterMonth && d.getFullYear() === categoryFilterYear;
+    });
+
+    const catMap = new Map<string, { category: string; amount: number; type: string }>();
+    filtered.forEach((t) => {
+      const cat = t.category || 'Lain-lain';
+      const key = `${cat}|${t.type}`;
+      const existing = catMap.get(key) ?? { category: cat, amount: 0, type: t.type };
+      existing.amount += t.amount;
+      catMap.set(key, existing);
+    });
+    return Array.from(catMap.values());
+  };
+
   const getChartData = () => {
     const dataMap: Record<string, { date: string; Pemasukan: number; Pengeluaran: number }> = {};
     const today = new Date();
@@ -496,13 +528,16 @@ export default function KeuanganClient({
 
       ledgers[uId].billsList.push(b);
       if (b.status === 'BELUM_LUNAS') {
-        ledgers[uId].unpaid += b.amount;
+        // Hitung bunga 20% jika IURAN dan sudah melewati jatuh tempo
+        const isLateBill = b.type === 'IURAN' && b.dueDate && new Date() > new Date(b.dueDate);
+        const displayAmount = isLateBill ? Math.floor(b.amount * 1.2) : b.amount;
+        ledgers[uId].unpaid += displayAmount;
         if (b.type === 'DENDA_PIKET') {
-          ledgers[uId].dendaPiket += b.amount;
+          ledgers[uId].dendaPiket += displayAmount;
         } else if (b.type === 'IURAN') {
-          ledgers[uId].iuran += b.amount;
+          ledgers[uId].iuran += displayAmount;
         } else {
-          ledgers[uId].lainnya += b.amount;
+          ledgers[uId].lainnya += displayAmount;
         }
       } else if (b.status === 'LUNAS') {
         ledgers[uId].paid += b.amount;
@@ -612,7 +647,9 @@ export default function KeuanganClient({
           amount: 0,
         };
       }
-      debtorsMap[uId].amount += b.amount;
+      // Gunakan displayAmount (termasuk bunga 20% jika IURAN terlambat)
+      const isLateBill = b.type === 'IURAN' && b.dueDate && new Date() > new Date(b.dueDate);
+      debtorsMap[uId].amount += isLateBill ? Math.floor(b.amount * 1.2) : b.amount;
     });
 
     return Object.values(debtorsMap)
@@ -648,9 +685,12 @@ export default function KeuanganClient({
     const billsLunas = monthlyBills.filter((b) => b.status === 'LUNAS');
     const billsBelumLunas = monthlyBills.filter((b) => b.status === 'BELUM_LUNAS');
 
-    const totalBillsAmount = monthlyBills.reduce((sum, b) => sum + b.amount, 0);
     const lunasAmount = billsLunas.reduce((sum, b) => sum + b.amount, 0);
-    const belumLunasAmount = billsBelumLunas.reduce((sum, b) => sum + b.amount, 0);
+    const belumLunasAmount = billsBelumLunas.reduce((sum, b) => {
+      const isLate = b.dueDate && new Date() > new Date(b.dueDate) && b.type === 'IURAN';
+      return sum + (isLate ? Math.floor(b.amount * 1.2) : b.amount);
+    }, 0);
+    const totalBillsAmount = lunasAmount + belumLunasAmount;
 
     const scarcityRate = totalBillsAmount > 0 ? (lunasAmount / totalBillsAmount) * 100 : 100;
 
@@ -726,16 +766,19 @@ export default function KeuanganClient({
         }
       }
 
+      const isLate = diffDays > 0 && b.type === 'IURAN';
+      const actualAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
+
       debtorsMap[uId].bills.push({
         id: b.id,
         type: b.type === 'DENDA_PIKET' ? 'Denda Piket' : b.type === 'IURAN' ? 'Iuran Bulanan' : 'Lainnya',
-        amount: b.amount,
+        amount: actualAmount,
         dueDate: b.dueDate,
         overdueLabel,
         urgency,
         diffDays
       });
-      debtorsMap[uId].totalAmount += b.amount;
+      debtorsMap[uId].totalAmount += actualAmount;
     });
 
     const overdueDebtors = Object.values(debtorsMap).sort((a, b) => b.totalAmount - a.totalAmount);
@@ -1012,7 +1055,11 @@ export default function KeuanganClient({
           const isLate = billObj.status === 'BELUM_LUNAS' && billObj.dueDate && new Date() > new Date(billObj.dueDate) && billObj.type === 'IURAN';
           const targetAmount = isLate ? Math.floor(billObj.amount * 1.2) : billObj.amount;
           const isPartial = settleAmount < targetAmount;
-          const remainingAmount = targetAmount - settleAmount;
+          // Sisa principal (tanpa bunga) — sinkron dengan logika actions.ts
+          const remainingPrincipal = isLate
+            ? Math.max(0, billObj.amount - Math.round(settleAmount / 1.2))
+            : billObj.amount - settleAmount;
+          const remainingDisplay = targetAmount - settleAmount; // untuk tampilan catatan
 
           setBills((prev) =>
             prev.map((b) =>
@@ -1020,10 +1067,11 @@ export default function KeuanganClient({
                 ? {
                   ...b,
                   status: isPartial ? b.status : ('LUNAS' as const),
-                  amount: isPartial ? remainingAmount : settleAmount,
+                  // Simpan principal agar bunga tidak berlipat ganda saat cicilan berikutnya
+                  amount: isPartial ? remainingPrincipal : settleAmount,
                   note: settleNote
-                    ? `${b.note || ''}\nPelunasan: ${settleNote} (${isPartial ? `Cicilan Rp${settleAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')}` : 'Lunas Penuh'})`.trim()
-                    : `${b.note || ''}\n(${isPartial ? `Cicilan Rp${settleAmount.toLocaleString('id-ID')}, sisa Rp${remainingAmount.toLocaleString('id-ID')}` : 'Lunas Penuh'})`.trim(),
+                    ? `${b.note || ''}\nPelunasan: ${settleNote} (${isPartial ? `Cicilan Rp${settleAmount.toLocaleString('id-ID')}, sisa Rp${remainingDisplay.toLocaleString('id-ID')}` : 'Lunas Penuh'})`.trim()
+                    : `${b.note || ''}\n(${isPartial ? `Cicilan Rp${settleAmount.toLocaleString('id-ID')}, sisa Rp${remainingDisplay.toLocaleString('id-ID')}` : 'Lunas Penuh'})`.trim(),
                 }
                 : b
             )
@@ -1297,7 +1345,7 @@ export default function KeuanganClient({
                 </div>
               </div>
 
-              <div className="h-48 sm:h-64 md:h-80 w-full pt-4">
+              <div className="h-64 sm:h-80 md:h-96 w-full pt-4">
                 {mounted ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={getChartData()}>
@@ -1339,7 +1387,7 @@ export default function KeuanganClient({
                   <h3 className="font-bold text-foreground text-md">Komposisi Pemasukan</h3>
                   <p className="text-xs text-muted-foreground">Arus kas masuk berdasarkan kategori transaksi.</p>
                 </div>
-                <div className="relative h-64 flex items-center justify-center pt-2">
+                <div className="relative h-80 flex items-center justify-center pt-2">
                   {mounted ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -1351,14 +1399,12 @@ export default function KeuanganClient({
                           outerRadius={90}
                           paddingAngle={3}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                         >
                           {getPemasukanDonutData().map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={PEMASUKAN_COLORS[index % PEMASUKAN_COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip formatter={(value) => formatRp(Number(value))} />
-                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1367,12 +1413,26 @@ export default function KeuanganClient({
                     </div>
                   )}
                   {mounted && (
-                    <div className="absolute flex flex-col items-center justify-center pointer-events-none pb-9">
+                    <div className="absolute flex flex-col items-center justify-center pointer-events-none" style={{ top: '50%', transform: 'translateY(-60%)' }}>
                       <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider">Total</span>
                       <span className="text-xs font-extrabold text-emerald-600">{formatRp(totalPemasukan)}</span>
                     </div>
                   )}
                 </div>
+                {mounted && (
+                  <div className="max-h-28 overflow-y-auto space-y-1 pt-1">
+                    {getPemasukanDonutData().map((entry, index) => {
+                      const pct = totalPemasukan > 0 ? ((entry.value / totalPemasukan) * 100).toFixed(0) : '0';
+                      return (
+                        <div key={index} className="flex items-center gap-2 text-xs">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: PEMASUKAN_COLORS[index % PEMASUKAN_COLORS.length] }} />
+                          <span className="text-foreground font-medium truncate flex-1">{entry.name}</span>
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Donut Chart Pengeluaran */}
@@ -1381,7 +1441,7 @@ export default function KeuanganClient({
                   <h3 className="font-bold text-foreground text-md">Komposisi Pengeluaran</h3>
                   <p className="text-xs text-muted-foreground">Arus kas keluar berdasarkan kategori transaksi.</p>
                 </div>
-                <div className="relative h-64 flex items-center justify-center pt-2">
+                <div className="relative h-80 flex items-center justify-center pt-2">
                   {mounted ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -1393,14 +1453,12 @@ export default function KeuanganClient({
                           outerRadius={90}
                           paddingAngle={3}
                           dataKey="value"
-                          label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                         >
                           {getPengeluaranDonutData().map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={PENGELUARAN_COLORS[index % PENGELUARAN_COLORS.length]} />
                           ))}
                         </Pie>
                         <Tooltip formatter={(value) => formatRp(Number(value))} />
-                        <Legend verticalAlign="bottom" height={36} iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
@@ -1409,12 +1467,26 @@ export default function KeuanganClient({
                     </div>
                   )}
                   {mounted && (
-                    <div className="absolute flex flex-col items-center justify-center pointer-events-none pb-9">
+                    <div className="absolute flex flex-col items-center justify-center pointer-events-none" style={{ top: '50%', transform: 'translateY(-60%)' }}>
                       <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider">Total</span>
                       <span className="text-xs font-extrabold text-red-600">{formatRp(totalPengeluaran)}</span>
                     </div>
                   )}
                 </div>
+                {mounted && (
+                  <div className="max-h-28 overflow-y-auto space-y-1 pt-1">
+                    {getPengeluaranDonutData().map((entry, index) => {
+                      const pct = totalPengeluaran > 0 ? ((entry.value / totalPengeluaran) * 100).toFixed(0) : '0';
+                      return (
+                        <div key={index} className="flex items-center gap-2 text-xs">
+                          <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: PENGELUARAN_COLORS[index % PENGELUARAN_COLORS.length] }} />
+                          <span className="text-foreground font-medium truncate flex-1">{entry.name}</span>
+                          <span className="text-slate-500 font-semibold whitespace-nowrap">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1424,7 +1496,7 @@ export default function KeuanganClient({
                 <h3 className="font-bold text-foreground text-md">Tren Keuangan 12 Bulan Terakhir</h3>
                 <p className="text-xs text-muted-foreground">Perbandingan bulanan pemasukan, pengeluaran, dan saldo bersih.</p>
               </div>
-              <div className="h-48 sm:h-64 md:h-80 w-full pt-4">
+              <div className="h-64 sm:h-80 md:h-96 w-full pt-4">
                 {mounted ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
@@ -1454,8 +1526,8 @@ export default function KeuanganClient({
                         }}
                       />
                       <Legend iconType="circle" />
-                      <Bar dataKey="Pemasukan" stackId="a" fill="#10b981" />
-                      <Bar dataKey="Pengeluaran" stackId="a" fill="#ef4444" />
+                      <Bar dataKey="Pemasukan" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="Pengeluaran" fill="#ef4444" radius={[4, 4, 0, 0]} />
                       <Line
                         type="monotone"
                         dataKey="Saldo Bersih"
@@ -1484,35 +1556,80 @@ export default function KeuanganClient({
                   <p className="text-xs text-muted-foreground">Persentase pengeluaran dan pemasukan per kategori.</p>
                 </div>
 
+                {/* Filter UI */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className="text-xs font-semibold text-muted-foreground">Filter:</span>
+                  <button
+                    onClick={() => setCategoryFilterMonth('ALL')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${categoryFilterMonth === 'ALL' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    Semua
+                  </button>
+                  {categoryFilterMonth !== 'ALL' && (
+                    <>
+                      <select
+                        value={categoryFilterMonth}
+                        onChange={(e) => setCategoryFilterMonth(Number(e.target.value))}
+                        className="input text-xs py-1 px-2"
+                      >
+                        {INDO_MONTHS.map((m, idx) => (
+                          <option key={idx} value={idx}>{m}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={categoryFilterYear}
+                        onChange={(e) => setCategoryFilterYear(Number(e.target.value))}
+                        className="input text-xs py-1 px-2"
+                      >
+                        {[2022, 2023, 2024, 2025, 2026].map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  {categoryFilterMonth === 'ALL' && (
+                    <button
+                      onClick={() => { setCategoryFilterMonth(new Date().getMonth()); setCategoryFilterYear(new Date().getFullYear()); }}
+                      className="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    >
+                      Pilih Bulan
+                    </button>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Pemasukan */}
                   <div className="space-y-4">
                     <h5 className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Pemasukan</h5>
                     <div className="space-y-3">
-                      {categoryBreakdown.filter(c => c.type === 'PEMASUKAN').length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic">Belum ada kategori pemasukan.</p>
-                      ) : (
-                        categoryBreakdown
-                          .filter(c => c.type === 'PEMASUKAN')
-                          .sort((a, b) => b.amount - a.amount)
-                          .map((cat, idx) => {
-                            const pct = totalPemasukan > 0 ? (cat.amount / totalPemasukan) * 100 : 0;
-                            return (
-                              <div key={idx} className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                  <span className="font-medium text-foreground">{cat.category}</span>
-                                  <span className="font-bold text-slate-700">{formatRp(cat.amount)} ({pct.toFixed(0)}%)</span>
+                      {(() => {
+                        const filteredData = getFilteredCategoryBreakdown();
+                        const filteredPemasukan = filteredData.filter(c => c.type === 'PEMASUKAN');
+                        const filteredTotalPemasukan = filteredPemasukan.reduce((s, c) => s + c.amount, 0);
+                        return filteredPemasukan.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">Belum ada kategori pemasukan.</p>
+                        ) : (
+                          filteredPemasukan
+                            .sort((a, b) => b.amount - a.amount)
+                            .map((cat, idx) => {
+                              const pct = filteredTotalPemasukan > 0 ? (cat.amount / filteredTotalPemasukan) * 100 : 0;
+                              return (
+                                <div key={idx} className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="font-medium text-foreground">{cat.category}</span>
+                                    <span className="font-bold text-slate-700">{formatRp(cat.amount)} ({pct.toFixed(0)}%)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-2">
+                                    <div
+                                      className="bg-emerald-500 h-2 rounded-full"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
                                 </div>
-                                <div className="w-full bg-slate-100 rounded-full h-2">
-                                  <div
-                                    className="bg-emerald-500 h-2 rounded-full"
-                                    style={{ width: `${pct}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })
-                      )}
+                              );
+                            })
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1520,30 +1637,34 @@ export default function KeuanganClient({
                   <div className="space-y-4">
                     <h5 className="text-xs font-semibold text-red-600 uppercase tracking-wider">Pengeluaran</h5>
                     <div className="space-y-3">
-                      {categoryBreakdown.filter(c => c.type === 'PENGELUARAN').length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic">Belum ada kategori pengeluaran.</p>
-                      ) : (
-                        categoryBreakdown
-                          .filter(c => c.type === 'PENGELUARAN')
-                          .sort((a, b) => b.amount - a.amount)
-                          .map((cat, idx) => {
-                            const pct = totalPengeluaran > 0 ? (cat.amount / totalPengeluaran) * 100 : 0;
-                            return (
-                              <div key={idx} className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                  <span className="font-medium text-foreground">{cat.category}</span>
-                                  <span className="font-bold text-slate-700">{formatRp(cat.amount)} ({pct.toFixed(0)}%)</span>
+                      {(() => {
+                        const filteredData = getFilteredCategoryBreakdown();
+                        const filteredPengeluaran = filteredData.filter(c => c.type === 'PENGELUARAN');
+                        const filteredTotalPengeluaran = filteredPengeluaran.reduce((s, c) => s + c.amount, 0);
+                        return filteredPengeluaran.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">Belum ada kategori pengeluaran.</p>
+                        ) : (
+                          filteredPengeluaran
+                            .sort((a, b) => b.amount - a.amount)
+                            .map((cat, idx) => {
+                              const pct = filteredTotalPengeluaran > 0 ? (cat.amount / filteredTotalPengeluaran) * 100 : 0;
+                              return (
+                                <div key={idx} className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="font-medium text-foreground">{cat.category}</span>
+                                    <span className="font-bold text-slate-700">{formatRp(cat.amount)} ({pct.toFixed(0)}%)</span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-2">
+                                    <div
+                                      className="bg-red-500 h-2 rounded-full"
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
                                 </div>
-                                <div className="w-full bg-slate-100 rounded-full h-2">
-                                  <div
-                                    className="bg-red-500 h-2 rounded-full"
-                                    style={{ width: `${pct}%` }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })
-                      )}
+                              );
+                            })
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1637,6 +1758,7 @@ export default function KeuanganClient({
                     <th>Tanggal</th>
                     <th>Tipe</th>
                     <th>Kategori</th>
+                    <th>Atas Nama</th>
                     <th>Deskripsi</th>
                     <th>Nominal</th>
                     {permissions.canDeleteTx && <th className="text-right">Aksi</th>}
@@ -1645,7 +1767,7 @@ export default function KeuanganClient({
                 <tbody>
                   {transactions.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 italic text-muted-foreground">
+                      <td colSpan={7} className="text-center py-12 italic text-muted-foreground">
                         Belum ada catatan transaksi arus kas.
                       </td>
                     </tr>
@@ -1662,6 +1784,16 @@ export default function KeuanganClient({
                           </span>
                         </td>
                         <td className="font-semibold text-foreground">{tx.category}</td>
+                        <td className="font-medium text-slate-600">
+                          {tx.type === 'PEMASUKAN' && tx.paidByName ? (
+                            <span className="flex items-center gap-1">
+                              <User className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                              <span className="text-emerald-700 font-semibold">{tx.paidByName}</span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </td>
                         <td>{tx.description || '-'}</td>
                         <td className={`font-bold ${tx.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-red-600'}`}>
                           {tx.type === 'PEMASUKAN' ? '+' : '-'} {formatRp(tx.amount)}

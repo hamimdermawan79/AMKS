@@ -64,6 +64,15 @@ export default async function KeuanganPage() {
     orderBy: {
       occurredAt: 'desc',
     },
+    include: {
+      relatedBill: {
+        select: {
+          user: {
+            select: { fullName: true },
+          },
+        },
+      },
+    },
   });
 
   // Fetch bills with associated user info (exclude SUPERADMIN)
@@ -219,30 +228,33 @@ const agingBuckets = [
 
 bills.forEach((b) => {
   if (b.status !== 'BELUM_LUNAS') return;
+  const isLate = b.dueDate && now > new Date(b.dueDate) && b.type === 'IURAN';
+  const displayAmount = isLate ? Math.floor(b.amount * 1.2) : b.amount;
+
   if (!b.dueDate) {
     agingBuckets[0].count++;
-    agingBuckets[0].amount += b.amount;
+    agingBuckets[0].amount += displayAmount;
     return;
   }
   const due = new Date(b.dueDate);
   const diffDays = Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   if (diffDays > 0) {
     agingBuckets[0].count++;
-    agingBuckets[0].amount += b.amount;
+    agingBuckets[0].amount += displayAmount;
   } else {
     const overdue = -diffDays;
     if (overdue <= 30) {
       agingBuckets[1].count++;
-      agingBuckets[1].amount += b.amount;
+      agingBuckets[1].amount += displayAmount;
     } else if (overdue <= 60) {
       agingBuckets[2].count++;
-      agingBuckets[2].amount += b.amount;
+      agingBuckets[2].amount += displayAmount;
     } else if (overdue <= 90) {
       agingBuckets[3].count++;
-      agingBuckets[3].amount += b.amount;
+      agingBuckets[3].amount += displayAmount;
     } else {
       agingBuckets[4].count++;
-      agingBuckets[4].amount += b.amount;
+      agingBuckets[4].amount += displayAmount;
     }
   }
 });
@@ -273,6 +285,7 @@ return (
           amount: t.amount,
           description: t.description,
           occurredAt: t.occurredAt.toISOString(),
+          paidByName: t.relatedBill?.user?.fullName ?? null,
         }))}
         bills={bills.map((b) => ({
           id: b.id,
