@@ -511,12 +511,24 @@ const TRANSACTIONS: TxData[] = [
 
 async function main() {
   // Ambil user IDs dari DB
-  const users = await db.user.findMany({ select: { id: true, fullName: true, role: true } });
+  const users = await db.user.findMany({
+    select: {
+      id: true,
+      fullName: true,
+      roles: {
+        select: {
+          role: {
+            select: { name: true },
+          },
+        },
+      },
+    },
+  });
   for (const u of users) {
     USERS[u.fullName] = u.id;
   }
-  const admin = users.find(u => u.role === 'ADMIN');
-  if (!admin) throw new Error('Tidak ada user ADMIN di DB!');
+  const admin = users.find(u => u.roles.some(r => r.role.name.includes('ADMIN') || r.role.name === 'BENDAHARA')) || users[0];
+  if (!admin) throw new Error('Tidak ada user di DB!');
   ADMIN_ID = admin.id;
 
   console.log(`\n✅ Loaded ${users.length} users dari DB`);
