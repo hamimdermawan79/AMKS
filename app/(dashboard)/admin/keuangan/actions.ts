@@ -304,6 +304,7 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
       relatedBillId: isPartial ? null : bill.id,
       createdById: session.user.id,
       division: bill.division,
+      paidByName: bill.user.fullName,
     },
   });
 

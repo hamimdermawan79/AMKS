@@ -279,7 +279,7 @@ return (
       <KeuanganClient
         iuranConfig={iuranConfig}
         transactions={transactions.map((t) => {
-          let paidByName = t.relatedBill?.user?.fullName ?? null;
+          let paidByName = (t as any).paidByName || t.relatedBill?.user?.fullName || null;
 
           // Ekstraksi nama pembayar jika cicilan (relatedBillId null) dari pola (a.n. Nama Warga)
           if (!paidByName && t.description) {
