@@ -123,6 +123,12 @@ const formatThousand = (val: string | number) => {
   return new Intl.NumberFormat('id-ID').format(parseInt(numStr));
 };
 
+const extractPaidByName = (desc: string | null | undefined): string | null => {
+  if (!desc) return null;
+  const match = desc.match(/(?:\(|\[)?(?:a\.n\.|an\.|atas\s+nama)\s*:?\s*([^()\]\n-]+)(?:\)|\])?/i);
+  return match && match[1] ? match[1].trim() : null;
+};
+
 const DebtorRow = ({ deb }: { deb: any }) => {
   const [selectedBillId, setSelectedBillId] = useState<string>(deb.bills[0]?.id || '');
   // make sure selectedBillId exists in bills, else fallback to first bill
@@ -1098,17 +1104,22 @@ export default function KeuanganClient({
               ? 'Denda Piket'
               : billObj.type === 'IURAN'
                 ? 'Iuran Warga'
-                : 'Lain-lain';
+                : billObj.type === 'IURAN_OLAHRAGA'
+                  ? 'Iuran Olahraga'
+                  : billObj.type === 'DENDA_OLAHRAGA'
+                    ? 'Denda Olahraga'
+                    : 'Lain-lain';
 
+          const descPrefix = isPartial ? 'Pembayaran cicilan tagihan' : 'Pelunasan tagihan';
+          const customNoteSuffix = settleNote ? ` - ${settleNote}` : '';
           const localTx: Transaction = {
             id: `temp-${Date.now()}`,
             type: 'PEMASUKAN',
             category,
             amount: settleAmount,
-            description: isPartial 
-              ? `Pembayaran cicilan tagihan: ${billObj.title}`
-              : `Pelunasan tagihan: ${billObj.title}`,
+            description: `${descPrefix}: ${billObj.title} (a.n. ${billObj.user.fullName})${customNoteSuffix}`,
             occurredAt: new Date().toISOString(),
+            paidByName: billObj.user.fullName,
           };
           setTransactions((prev) => [localTx, ...prev]);
         }
@@ -1800,10 +1811,10 @@ export default function KeuanganClient({
                         </td>
                         <td className="font-semibold text-foreground">{tx.category}</td>
                         <td className="font-medium text-slate-600">
-                          {tx.type === 'PEMASUKAN' && tx.paidByName ? (
+                          {tx.type === 'PEMASUKAN' && (tx.paidByName || extractPaidByName(tx.description)) ? (
                             <span className="flex items-center gap-1">
                               <User className="h-3 w-3 text-emerald-500 flex-shrink-0" />
-                              <span className="text-emerald-700 font-semibold">{tx.paidByName}</span>
+                              <span className="text-emerald-700 font-semibold">{tx.paidByName || extractPaidByName(tx.description)}</span>
                             </span>
                           ) : (
                             <span className="text-muted-foreground">-</span>
@@ -2815,48 +2826,61 @@ export default function KeuanganClient({
                       <th className="py-3 px-4">Tanggal</th>
                       <th className="py-3 px-4">Tipe</th>
                       <th className="py-3 px-4">Kategori</th>
+                      <th className="py-3 px-4">Atas Nama</th>
+                      <th className="py-3 px-4">Keterangan</th>
                       <th className="py-3 px-4 text-right">Nominal</th>
                     </tr>
                   </thead>
                   <tbody>
                     {monthlyReport.txs.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-12 italic text-muted-foreground">
+                        <td colSpan={6} className="text-center py-12 italic text-muted-foreground">
                           Belum ada transaksi arus kas pada periode ini.
                         </td>
                       </tr>
                     ) : (
-                      monthlyReport.txs.map((tx) => (
-                        <tr key={tx.id}>
-                          <td className="py-3 px-4">{formatDate(tx.occurredAt)}</td>
-                          <td className="py-3 px-4">
-                            <span
-                              className={`badge ${tx.type === 'PEMASUKAN' ? 'badge-success' : 'badge-danger'
-                                }`}
-                            >
-                              {tx.type}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-semibold text-foreground">{tx.category}</td>
-                          <td className="py-3 px-4 text-right font-bold ${tx.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-red-600'}">
-                            {tx.type === 'PEMASUKAN' ? '+' : '-'} {formatRp(tx.amount)}
-                          </td>
-                        </tr>
-                      ))
+                      monthlyReport.txs.map((tx) => {
+                        const payer = tx.paidByName || extractPaidByName(tx.description);
+                        return (
+                          <tr key={tx.id}>
+                            <td className="py-3 px-4">{formatDate(tx.occurredAt)}</td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`badge ${tx.type === 'PEMASUKAN' ? 'badge-success' : 'badge-danger'
+                                  }`}
+                              >
+                                {tx.type}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-semibold text-foreground">{tx.category}</td>
+                            <td className="py-3 px-4 font-medium text-slate-600">
+                              {tx.type === 'PEMASUKAN' && payer ? (
+                                <span className="text-emerald-700 font-semibold">{payer}</span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-slate-600">{tx.description || '-'}</td>
+                            <td className={`py-3 px-4 text-right font-bold ${tx.type === 'PEMASUKAN' ? 'text-emerald-600' : 'text-red-600'}`}>
+                              {tx.type === 'PEMASUKAN' ? '+' : '-'} {formatRp(tx.amount)}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                   {monthlyReport.txs.length > 0 && (
                     <tfoot className="bg-slate-50 border-t border-border font-semibold text-slate-700">
                       <tr>
-                        <td colSpan={4} className="py-2.5 px-4 text-right">Total Pemasukan</td>
+                        <td colSpan={5} className="py-2.5 px-4 text-right">Total Pemasukan</td>
                         <td className="py-2.5 px-4 text-right text-emerald-600">{formatRp(monthlyReport.pemasukan)}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="py-2.5 px-4 text-right">Total Pengeluaran</td>
+                        <td colSpan={5} className="py-2.5 px-4 text-right">Total Pengeluaran</td>
                         <td className="py-2.5 px-4 text-right text-red-600">{formatRp(monthlyReport.pengeluaran)}</td>
                       </tr>
                       <tr className="border-t border-slate-300 font-extrabold text-sm text-foreground bg-slate-100/50">
-                        <td colSpan={4} className="py-3 px-4 text-right">Saldo Bersih</td>
+                        <td colSpan={5} className="py-3 px-4 text-right">Saldo Bersih</td>
                         <td className={`py-3 px-4 text-right ${monthlyReport.saldo >= 0 ? 'text-primary' : 'text-red-700'}`}>
                           {formatRp(monthlyReport.saldo)}
                         </td>

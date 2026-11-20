@@ -235,7 +235,7 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
 
   const bill = await db.bill.findUnique({
     where: { id: billId },
-    include: { transaction: true },
+    include: { transaction: true, user: true },
   });
 
   if (!bill) {
@@ -292,12 +292,14 @@ export async function settleBill(billId: string, note?: string, amountOverride?:
           ? 'Denda Olahraga'
           : 'Lain-lain';
 
+  const descPrefix = isPartial ? 'Pembayaran cicilan tagihan' : 'Pelunasan tagihan';
+  const customNoteSuffix = note ? ` - ${note}` : '';
   const tx = await db.transaction.create({
     data: {
       type: 'PEMASUKAN',
       category,
       amount: payAmount,
-      description: isPartial ? `Pembayaran cicilan tagihan: ${bill.title}` : `Pelunasan tagihan: ${bill.title}`,
+      description: `${descPrefix}: ${bill.title} (a.n. ${bill.user.fullName})${customNoteSuffix}`,
       occurredAt: new Date(),
       relatedBillId: isPartial ? null : bill.id,
       createdById: session.user.id,

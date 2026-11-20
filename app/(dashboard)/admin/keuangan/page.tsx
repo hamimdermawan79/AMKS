@@ -278,15 +278,40 @@ return (
 
       <KeuanganClient
         iuranConfig={iuranConfig}
-        transactions={transactions.map((t) => ({
-          id: t.id,
-          type: t.type,
-          category: t.category,
-          amount: t.amount,
-          description: t.description,
-          occurredAt: t.occurredAt.toISOString(),
-          paidByName: t.relatedBill?.user?.fullName ?? null,
-        }))}
+        transactions={transactions.map((t) => {
+          let paidByName = t.relatedBill?.user?.fullName ?? null;
+
+          // Ekstraksi nama pembayar jika cicilan (relatedBillId null) dari pola (a.n. Nama Warga)
+          if (!paidByName && t.description) {
+            const match = t.description.match(/(?:\(|\[)?(?:a\.n\.|an\.|atas\s+nama)\s*:?\s*([^()\]\n-]+)(?:\)|\])?/i);
+            if (match && match[1]) {
+              paidByName = match[1].trim();
+            }
+          }
+
+          // Fallback untuk transaksi cicilan lama: cocokkan dengan catatan cicilan di bills
+          if (!paidByName && t.description && t.description.toLowerCase().includes('cicilan')) {
+            const matchingBill = bills.find((b) => {
+              const noteMatches = b.note && b.note.includes(`Bayar Rp${t.amount.toLocaleString('id-ID')}`);
+              const titleMatches = t.description?.includes(b.title);
+              return noteMatches && titleMatches;
+            }) || bills.find((b) => b.note && b.note.includes(`Bayar Rp${t.amount.toLocaleString('id-ID')}`));
+
+            if (matchingBill) {
+              paidByName = matchingBill.user.fullName;
+            }
+          }
+
+          return {
+            id: t.id,
+            type: t.type,
+            category: t.category,
+            amount: t.amount,
+            description: t.description,
+            occurredAt: t.occurredAt.toISOString(),
+            paidByName,
+          };
+        })}
         bills={bills.map((b) => ({
           id: b.id,
           type: b.type,
