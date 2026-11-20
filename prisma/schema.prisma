@@ -463,6 +463,7 @@ model Transaction {
   createdById      String
   division         Division?
   sportsActivityId String?
+  paidByName       String?         // Nama warga yang melakukan pembayaran (opsional)
   relatedBill      Bill?           @relation(fields: [relatedBillId], references: [id])
   createdBy        User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
   sportsActivity   SportsActivity? @relation(fields: [sportsActivityId], references: [id])
